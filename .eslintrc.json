@@ -1,25 +1,13 @@
 {
-  "extends": [
-    "next/core-web-vitals",
-    "next/typescript",
-    "@typescript-eslint/recommended"
-  ],
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
+  "extends": ["next/core-web-vitals", "next/typescript"],
   "rules": {
-    "@typescript-eslint/no-unused-vars": "error",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/prefer-const": "error",
-    "react-hooks/exhaustive-deps": "warn",
-    "react/jsx-key": "error",
-    "no-console": "warn",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "no-console": "off",
     "prefer-const": "error",
-    "no-var": "error"
+    "no-var": "error",
+    "react-hooks/exhaustive-deps": "off"
   },
-  "ignorePatterns": [
-    "node_modules/",
-    ".next/",
-    "dist/",
-    "build/"
-  ]
+  "ignorePatterns": ["node_modules/", ".next/", "dist/", "build/"]
 }

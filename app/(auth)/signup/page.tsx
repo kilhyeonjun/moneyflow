@@ -37,7 +37,8 @@ export default function SignupPage() {
       setError('비밀번호는 최소 6자 이상이어야 합니다.')
       setIsLoading(false)
       return
-    }    try {
+    }
+    try {
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -73,7 +74,8 @@ export default function SignupPage() {
             <span className="text-3xl font-bold text-gray-900">MoneyFlow</span>
           </div>
           <p className="text-gray-600">새 계정을 만드세요</p>
-        </div>        {/* Signup Form */}
+        </div>{' '}
+        {/* Signup Form */}
         <Card className="p-6">
           <CardHeader className="pb-6">
             <h1 className="text-2xl font-bold text-center">회원가입</h1>
@@ -97,7 +99,7 @@ export default function SignupPage() {
                 label="이름"
                 placeholder="이름을 입력하세요"
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={e => setFullName(e.target.value)}
                 startContent={<User className="h-4 w-4 text-gray-400" />}
                 required
               />
@@ -107,7 +109,7 @@ export default function SignupPage() {
                 label="이메일"
                 placeholder="이메일을 입력하세요"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 startContent={<Mail className="h-4 w-4 text-gray-400" />}
                 required
               />
@@ -116,7 +118,7 @@ export default function SignupPage() {
                 label="비밀번호"
                 placeholder="비밀번호를 입력하세요 (최소 6자)"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 startContent={<Lock className="h-4 w-4 text-gray-400" />}
                 endContent={
                   <button
@@ -131,7 +133,7 @@ export default function SignupPage() {
                     )}
                   </button>
                 }
-                type={isVisible ? "text" : "password"}
+                type={isVisible ? 'text' : 'password'}
                 required
               />
 
@@ -139,7 +141,7 @@ export default function SignupPage() {
                 label="비밀번호 확인"
                 placeholder="비밀번호를 다시 입력하세요"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={e => setConfirmPassword(e.target.value)}
                 startContent={<Lock className="h-4 w-4 text-gray-400" />}
                 endContent={
                   <button
@@ -154,7 +156,7 @@ export default function SignupPage() {
                     )}
                   </button>
                 }
-                type={isConfirmVisible ? "text" : "password"}
+                type={isConfirmVisible ? 'text' : 'password'}
                 required
               />
 

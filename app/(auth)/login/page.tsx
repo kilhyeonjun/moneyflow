@@ -37,7 +37,9 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
-  }  return (
+  }
+
+  return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
@@ -67,7 +69,7 @@ export default function LoginPage() {
                 label="이메일"
                 placeholder="이메일을 입력하세요"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={e => setEmail(e.target.value)}
                 startContent={<Mail className="h-4 w-4 text-gray-400" />}
                 required
               />
@@ -76,7 +78,7 @@ export default function LoginPage() {
                 label="비밀번호"
                 placeholder="비밀번호를 입력하세요"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={e => setPassword(e.target.value)}
                 startContent={<Lock className="h-4 w-4 text-gray-400" />}
                 endContent={
                   <button
@@ -91,7 +93,7 @@ export default function LoginPage() {
                     )}
                   </button>
                 }
-                type={isVisible ? "text" : "password"}
+                type={isVisible ? 'text' : 'password'}
                 required
               />
 

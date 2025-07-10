@@ -27,16 +27,21 @@ export default function HomePage() {
       <main className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            가족과 팀을 위한<br />
+            가족과 팀을 위한
+            <br />
             <span className="text-blue-600">스마트 가계부</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            조직 단위로 재정을 관리하고, 목표를 설정하며, 
-            실시간으로 동기화되는 종합 재정 관리 시스템
+            조직 단위로 재정을 관리하고, 목표를 설정하며, 실시간으로 동기화되는
+            종합 재정 관리 시스템
           </p>
           <div className="flex items-center justify-center space-x-4">
             <Link href="/signup">
-              <Button color="primary" size="lg" endContent={<ArrowRight className="h-5 w-5" />}>
+              <Button
+                color="primary"
+                size="lg"
+                endContent={<ArrowRight className="h-5 w-5" />}
+              >
                 무료로 시작하기
               </Button>
             </Link>
@@ -46,7 +51,8 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-        </div>        {/* Features Section */}
+        </div>{' '}
+        {/* Features Section */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           <Card className="p-6">
             <CardHeader className="pb-4">
@@ -96,7 +102,6 @@ export default function HomePage() {
             </CardBody>
           </Card>
         </div>
-
         {/* CTA Section */}
         <div className="text-center bg-white rounded-2xl p-12 shadow-lg">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
@@ -106,7 +111,11 @@ export default function HomePage() {
             무료로 시작하고, 가족과 팀의 재정을 체계적으로 관리해보세요
           </p>
           <Link href="/signup">
-            <Button color="primary" size="lg" endContent={<ArrowRight className="h-5 w-5" />}>
+            <Button
+              color="primary"
+              size="lg"
+              endContent={<ArrowRight className="h-5 w-5" />}
+            >
               무료 계정 만들기
             </Button>
           </Link>

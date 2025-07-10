@@ -1,13 +1,26 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Button, Card, CardBody, CardHeader, Input, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/react'
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Input,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+} from '@heroui/react'
 import { Plus, Users, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
-type OrganizationInsert = Database['public']['Tables']['organizations']['Insert']
+type OrganizationInsert =
+  Database['public']['Tables']['organizations']['Insert']
 
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -23,12 +36,15 @@ export default function OrganizationsPage() {
 
   const fetchOrganizations = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) return
 
       const { data, error } = await supabase
         .from('organization_members')
-        .select(`
+        .select(
+          `
           organization_id,
           role,
           organizations (
@@ -39,24 +55,31 @@ export default function OrganizationsPage() {
             updated_at,
             created_by
           )
-        `)
+        `
+        )
         .eq('user_id', user.id)
 
       if (error) throw error
 
-      const orgs = data?.map(item => item.organizations).filter(Boolean) as Organization[]
+      const orgs = data
+        ?.map(item => item.organizations)
+        .filter(Boolean) as any[]
       setOrganizations(orgs || [])
     } catch (error) {
       console.error('조직 목록 조회 실패:', error)
     } finally {
       setLoading(false)
     }
-  }  const createOrganization = async () => {
+  }
+
+  const createOrganization = async () => {
     if (!newOrgName.trim()) return
 
     setCreating(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) throw new Error('사용자 인증이 필요합니다')
 
       // 조직 생성
@@ -65,7 +88,7 @@ export default function OrganizationsPage() {
         .insert({
           name: newOrgName.trim(),
           description: newOrgDescription.trim() || null,
-          created_by: user.id
+          created_by: user.id,
         })
         .select()
         .single()
@@ -78,14 +101,14 @@ export default function OrganizationsPage() {
         .insert({
           organization_id: org.id,
           user_id: user.id,
-          role: 'owner'
+          role: 'owner',
         })
 
       if (memberError) throw memberError
 
       // 목록 새로고침
       await fetchOrganizations()
-      
+
       // 모달 닫기 및 폼 초기화
       onClose()
       setNewOrgName('')
@@ -96,7 +119,9 @@ export default function OrganizationsPage() {
     } finally {
       setCreating(false)
     }
-  }  const selectOrganization = (orgId: string) => {
+  }
+
+  const selectOrganization = (orgId: string) => {
     // 조직 선택 후 대시보드로 이동
     localStorage.setItem('selectedOrganization', orgId)
     window.location.href = '/dashboard'
@@ -119,7 +144,9 @@ export default function OrganizationsPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">조직 선택</h1>
-            <p className="text-gray-600">관리할 조직을 선택하거나 새로운 조직을 생성하세요.</p>
+            <p className="text-gray-600">
+              관리할 조직을 선택하거나 새로운 조직을 생성하세요.
+            </p>
           </div>
           <Button
             color="primary"
@@ -128,11 +155,16 @@ export default function OrganizationsPage() {
           >
             새 조직 만들기
           </Button>
-        </div>        {organizations.length === 0 ? (
+        </div>{' '}
+        {organizations.length === 0 ? (
           <div className="text-center py-12">
             <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">조직이 없습니다</h3>
-            <p className="text-gray-600 mb-6">첫 번째 조직을 만들어 MoneyFlow를 시작하세요.</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              조직이 없습니다
+            </h3>
+            <p className="text-gray-600 mb-6">
+              첫 번째 조직을 만들어 MoneyFlow를 시작하세요.
+            </p>
             <Button
               color="primary"
               size="lg"
@@ -144,7 +176,7 @@ export default function OrganizationsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {organizations.map((org) => (
+            {organizations.map(org => (
               <Card
                 key={org.id}
                 isPressable
@@ -157,9 +189,12 @@ export default function OrganizationsPage() {
                       <Users className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{org.name}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {org.name}
+                      </h3>
                       <p className="text-sm text-gray-500">
-                        {new Date(org.created_at).toLocaleDateString('ko-KR')} 생성
+                        {new Date(org.created_at).toLocaleDateString('ko-KR')}{' '}
+                        생성
                       </p>
                     </div>
                   </div>
@@ -172,7 +207,8 @@ export default function OrganizationsPage() {
               </Card>
             ))}
           </div>
-        )}        {/* 조직 생성 모달 */}
+        )}{' '}
+        {/* 조직 생성 모달 */}
         <Modal isOpen={isOpen} onClose={onClose} size="md">
           <ModalContent>
             <ModalHeader>새 조직 만들기</ModalHeader>
@@ -194,11 +230,7 @@ export default function OrganizationsPage() {
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button
-                variant="light"
-                onPress={onClose}
-                disabled={creating}
-              >
+              <Button variant="light" onPress={onClose} disabled={creating}>
                 취소
               </Button>
               <Button

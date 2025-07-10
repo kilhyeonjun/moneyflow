@@ -49,7 +49,8 @@ export interface Database {
           role?: 'owner' | 'admin' | 'member'
           joined_at?: string
         }
-      }      categories: {
+      }
+      categories: {
         Row: {
           id: string
           name: string
@@ -100,7 +101,8 @@ export interface Database {
           organization_id?: string
           created_at?: string
         }
-      }      transactions: {
+      }
+      transactions: {
         Row: {
           id: string
           amount: number
