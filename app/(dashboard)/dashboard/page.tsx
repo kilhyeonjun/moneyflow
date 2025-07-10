@@ -1,7 +1,75 @@
 import { Card, CardBody, CardHeader } from '@heroui/react'
 import { TrendingUp, TrendingDown, Wallet, Target } from 'lucide-react'
 
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardHeader, CardBody } from '@heroui/react'
+import { TrendingUp, TrendingDown, Wallet, Target } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+
 export default function DashboardPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(true)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkOrganizationSelection()
+  }, [])
+
+  const checkOrganizationSelection = async () => {
+    try {
+      // 로컬 스토리지에서 선택된 조직 확인
+      const storedOrgId = localStorage.getItem('selectedOrganization')
+      
+      if (!storedOrgId) {
+        // 선택된 조직이 없으면 조직 선택 페이지로 이동
+        router.push('/organizations')
+        return
+      }
+
+      // 사용자가 해당 조직의 멤버인지 확인
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('organization_id', storedOrgId)
+        .single()
+
+      if (error || !data) {
+        // 권한이 없으면 조직 선택 페이지로 이동
+        localStorage.removeItem('selectedOrganization')
+        router.push('/organizations')
+        return
+      }
+
+      setSelectedOrgId(storedOrgId)
+    } catch (error) {
+      console.error('조직 확인 실패:', error)
+      router.push('/organizations')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">대시보드를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -54,7 +122,23 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-500">목표까지 54,800,000원</p>
           </CardBody>
         </Card>
-      </div>      {/* Recent Transactions */}
+      </div>
+
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader>
+          <h3 className="text-lg font-semibold">최근 거래 내역</h3>
+        </CardHeader>
+        <CardBody>
+          <div className="text-center py-8 text-gray-500">
+            <p>거래 내역이 없습니다.</p>
+            <p className="text-sm mt-2">첫 번째 거래를 추가해보세요!</p>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  )
+}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <CardHeader className="pb-4">

@@ -38,6 +38,7 @@ next-env.d.ts
 
 # amazon q
 .amazonq/mcp.json
+.amazonq/temp
 
 # serena
 .serena
