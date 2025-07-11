@@ -159,7 +159,8 @@ export function Sidebar() {
             조직 선택
           </Button>
         )}
-      </div>{' '}
+      </div>
+      
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
         {navigation.map(item => {
@@ -179,6 +180,7 @@ export function Sidebar() {
           )
         })}
       </nav>
+      
       {/* Logout */}
       <div className="p-4 border-t border-gray-200">
         <Button
@@ -224,7 +226,7 @@ export function Sidebar() {
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200">
+      <div className="hidden lg:block w-64 bg-white border-r border-gray-200 flex-shrink-0">
         <SidebarContent />
       </div>
     </>
