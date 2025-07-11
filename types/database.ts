@@ -140,6 +140,232 @@ export interface Database {
           updated_at?: string
         }
       }
+      asset_categories: {
+        Row: {
+          id: string
+          name: string
+          type: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash' | 'other'
+          icon: string | null
+          color: string | null
+          organization_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash' | 'other'
+          icon?: string | null
+          color?: string | null
+          organization_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          type?: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash' | 'other'
+          icon?: string | null
+          color?: string | null
+          organization_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      assets: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          category_id: string
+          current_value: number
+          target_value: number | null
+          last_updated_value: number | null
+          last_updated_date: string | null
+          organization_id: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          category_id: string
+          current_value?: number
+          target_value?: number | null
+          last_updated_value?: number | null
+          last_updated_date?: string | null
+          organization_id: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          category_id?: string
+          current_value?: number
+          target_value?: number | null
+          last_updated_value?: number | null
+          last_updated_date?: string | null
+          organization_id?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      liabilities: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          type: 'mortgage' | 'personal_loan' | 'credit_card' | 'student_loan' | 'other'
+          current_amount: number
+          original_amount: number | null
+          interest_rate: number | null
+          monthly_payment: number | null
+          due_date: string | null
+          organization_id: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          type: 'mortgage' | 'personal_loan' | 'credit_card' | 'student_loan' | 'other'
+          current_amount?: number
+          original_amount?: number | null
+          interest_rate?: number | null
+          monthly_payment?: number | null
+          due_date?: string | null
+          organization_id: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          type?: 'mortgage' | 'personal_loan' | 'credit_card' | 'student_loan' | 'other'
+          current_amount?: number
+          original_amount?: number | null
+          interest_rate?: number | null
+          monthly_payment?: number | null
+          due_date?: string | null
+          organization_id?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      financial_goals: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          type: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
+          target_amount: number
+          current_amount: number
+          target_date: string
+          status: 'active' | 'completed' | 'paused' | 'cancelled'
+          achievement_rate: number
+          organization_id: string
+          created_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          description?: string | null
+          type: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
+          target_amount: number
+          current_amount?: number
+          target_date: string
+          status?: 'active' | 'completed' | 'paused' | 'cancelled'
+          organization_id: string
+          created_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          type?: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
+          target_amount?: number
+          current_amount?: number
+          target_date?: string
+          status?: 'active' | 'completed' | 'paused' | 'cancelled'
+          organization_id?: string
+          created_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      asset_value_history: {
+        Row: {
+          id: string
+          asset_id: string
+          value: number
+          recorded_date: string
+          note: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          asset_id: string
+          value: number
+          recorded_date?: string
+          note?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          asset_id?: string
+          value?: number
+          recorded_date?: string
+          note?: string | null
+          created_by?: string
+          created_at?: string
+        }
+      }
+      goal_progress_history: {
+        Row: {
+          id: string
+          goal_id: string
+          amount: number
+          recorded_date: string
+          note: string | null
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          goal_id: string
+          amount: number
+          recorded_date?: string
+          note?: string | null
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          goal_id?: string
+          amount?: number
+          recorded_date?: string
+          note?: string | null
+          created_by?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

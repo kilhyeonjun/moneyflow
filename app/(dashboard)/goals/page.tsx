@@ -29,18 +29,11 @@ import {
   Trash2,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
+import { Database } from '@/types/database'
 
-interface FinancialGoal {
-  id: string
-  title: string
-  type: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
-  targetAmount: number
-  currentAmount: number
-  targetDate: string
-  createdAt: string
-  achievementRate: number
-  status: 'active' | 'completed' | 'paused'
-}
+type FinancialGoal = Database['public']['Tables']['financial_goals']['Row']
+type FinancialGoalInsert = Database['public']['Tables']['financial_goals']['Insert']
 
 const goalTypes = [
   { key: 'asset_growth', label: '자산 증가' },
@@ -55,42 +48,7 @@ export default function GoalsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
-
-  const [goals, setGoals] = useState<FinancialGoal[]>([
-    {
-      id: '1',
-      title: '2025년 자산 증가 목표',
-      type: 'asset_growth',
-      targetAmount: 100000000,
-      currentAmount: -224380000, // 음수는 목표 대비 부족분
-      targetDate: '2025-12-31',
-      createdAt: '2025-01-01',
-      achievementRate: -224.4,
-      status: 'active',
-    },
-    {
-      id: '2',
-      title: '비상자금 1억원 모으기',
-      type: 'savings',
-      targetAmount: 100000000,
-      currentAmount: 42217720,
-      targetDate: '2025-06-30',
-      createdAt: '2025-01-01',
-      achievementRate: 42.2,
-      status: 'active',
-    },
-    {
-      id: '3',
-      title: '전세대출 5천만원 상환',
-      type: 'debt_reduction',
-      targetAmount: 50000000,
-      currentAmount: 0,
-      targetDate: '2025-12-31',
-      createdAt: '2025-01-01',
-      achievementRate: 0,
-      status: 'active',
-    },
-  ])
+  const [goals, setGoals] = useState<FinancialGoal[]>([])
 
   const [formData, setFormData] = useState({
     title: '',
@@ -113,7 +71,7 @@ export default function GoalsPage() {
       }
 
       setSelectedOrgId(storedOrgId)
-      // TODO: Load actual goals data from database
+      await loadGoals(storedOrgId)
     } catch (error) {
       console.error('데이터 로드 실패:', error)
     } finally {
@@ -121,8 +79,23 @@ export default function GoalsPage() {
     }
   }
 
+  const loadGoals = async (orgId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('financial_goals')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setGoals(data || [])
+    } catch (error) {
+      console.error('목표 로드 실패:', error)
+    }
+  }
+
   const handleCreateGoal = async () => {
-    if (!formData.title || !formData.type || !formData.targetAmount || !formData.targetDate) {
+    if (!selectedOrgId || !formData.title || !formData.type || !formData.targetAmount || !formData.targetDate) {
       toast.error('모든 필드를 입력해주세요.')
       return
     }
@@ -130,28 +103,41 @@ export default function GoalsPage() {
     setCreating(true)
 
     try {
-      const newGoal: FinancialGoal = {
-        id: Date.now().toString(),
-        title: formData.title,
-        type: formData.type as any,
-        targetAmount: parseFloat(formData.targetAmount),
-        currentAmount: 0,
-        targetDate: formData.targetDate,
-        createdAt: new Date().toISOString(),
-        achievementRate: 0,
-        status: 'active',
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        toast.error('로그인이 필요합니다.')
+        return
       }
 
-      setGoals([...goals, newGoal])
-      toast.success('목표가 성공적으로 추가되었습니다!')
-      
-      setFormData({
-        title: '',
-        type: '',
-        targetAmount: '',
-        targetDate: '',
-      })
-      onClose()
+      const goalData: FinancialGoalInsert = {
+        title: formData.title,
+        type: formData.type as any,
+        target_amount: parseFloat(formData.targetAmount),
+        target_date: formData.targetDate,
+        organization_id: selectedOrgId,
+        created_by: user.id,
+      }
+
+      const { error } = await supabase
+        .from('financial_goals')
+        .insert([goalData])
+
+      if (error) {
+        console.error('목표 생성 실패:', error)
+        toast.error('목표 생성에 실패했습니다.')
+      } else {
+        toast.success('목표가 성공적으로 추가되었습니다!')
+        
+        setFormData({
+          title: '',
+          type: '',
+          targetAmount: '',
+          targetDate: '',
+        })
+        onClose()
+        await loadGoals(selectedOrgId)
+      }
     } catch (error) {
       console.error('목표 생성 중 오류:', error)
       toast.error('목표 생성 중 오류가 발생했습니다.')
@@ -312,40 +298,40 @@ export default function GoalsPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-gray-600">목표 금액</p>
-                    <p className="text-lg font-semibold">{formatCurrency(goal.targetAmount)}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(goal.target_amount)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">현재 달성</p>
                     <p className={`text-lg font-semibold ${
-                      goal.currentAmount >= 0 ? 'text-green-600' : 'text-red-600'
+                      goal.current_amount >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {formatCurrency(Math.abs(goal.currentAmount))}
+                      {formatCurrency(Math.abs(goal.current_amount))}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">달성률</p>
                     <p className={`text-lg font-semibold ${
-                      goal.achievementRate >= 0 ? 'text-green-600' : 'text-red-600'
+                      goal.achievement_rate >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {goal.achievementRate.toFixed(1)}%
+                      {goal.achievement_rate.toFixed(1)}%
                     </p>
                   </div>
                 </div>
 
                 <Progress
-                  value={Math.max(0, Math.min(100, goal.achievementRate))}
-                  color={goal.achievementRate >= 100 ? 'success' : goal.achievementRate >= 50 ? 'primary' : 'danger'}
+                  value={Math.max(0, Math.min(100, goal.achievement_rate))}
+                  color={goal.achievement_rate >= 100 ? 'success' : goal.achievement_rate >= 50 ? 'primary' : 'danger'}
                   className="w-full"
                 />
 
                 <div className="flex justify-between items-center text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    <span>목표일: {new Date(goal.targetDate).toLocaleDateString('ko-KR')}</span>
+                    <span>목표일: {new Date(goal.target_date).toLocaleDateString('ko-KR')}</span>
                   </div>
                   <div>
-                    {getDaysRemaining(goal.targetDate) > 0 
-                      ? `${getDaysRemaining(goal.targetDate)}일 남음`
+                    {getDaysRemaining(goal.target_date) > 0 
+                      ? `${getDaysRemaining(goal.target_date)}일 남음`
                       : '기한 만료'
                     }
                   </div>

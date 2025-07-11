@@ -27,6 +27,17 @@ import {
   Plus,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { Database } from '@/types/database'
+
+type AssetCategory = Database['public']['Tables']['asset_categories']['Row']
+type Asset = Database['public']['Tables']['assets']['Row']
+type Liability = Database['public']['Tables']['liabilities']['Row']
+type AssetInsert = Database['public']['Tables']['assets']['Insert']
+type LiabilityInsert = Database['public']['Tables']['liabilities']['Insert']
+
+interface AssetWithCategory extends Asset {
+  asset_categories: AssetCategory | null
+}
 
 interface AssetSummary {
   totalAssets: number
@@ -36,74 +47,20 @@ interface AssetSummary {
   achievementRate: number
 }
 
-interface AssetCategory {
-  id: string
-  name: string
-  type: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash'
-  currentValue: number
-  targetValue?: number
-  items: AssetItem[]
-}
-
-interface AssetItem {
-  id: string
-  name: string
-  currentValue: number
-  lastUpdated: string
-}
-
 export default function AssetsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [assetSummary, setAssetSummary] = useState<AssetSummary>({
-    totalAssets: 224380685,
-    totalLiabilities: 200000000,
-    netWorth: 24380685,
-    yearlyGoal: 100000000,
-    achievementRate: -224.4,
+    totalAssets: 0,
+    totalLiabilities: 0,
+    netWorth: 0,
+    yearlyGoal: 100000000, // 기본 목표 1억원
+    achievementRate: 0,
   })
-
-  const [assetCategories] = useState<AssetCategory[]>([
-    {
-      id: '1',
-      name: '부동산',
-      type: 'real_estate',
-      currentValue: 70010000,
-      items: [
-        { id: '1-1', name: '전세 보증금', currentValue: 60000000, lastUpdated: '2025-01-01' },
-        { id: '1-2', name: '슬 청약통장', currentValue: 5350000, lastUpdated: '2025-01-01' },
-        { id: '1-3', name: '준 청약통장', currentValue: 4660000, lastUpdated: '2025-01-01' },
-      ],
-    },
-    {
-      id: '2',
-      name: '노후/연금',
-      type: 'retirement',
-      currentValue: 7187884,
-      items: [
-        { id: '2-1', name: '슬 IRP', currentValue: 3512222, lastUpdated: '2025-01-01' },
-        { id: '2-2', name: '준 IRP', currentValue: 3675662, lastUpdated: '2025-01-01' },
-      ],
-    },
-    {
-      id: '3',
-      name: '저축/투자',
-      type: 'investment',
-      currentValue: 147182801,
-      items: [
-        { id: '3-1', name: '국내주식', currentValue: 1002800, lastUpdated: '2025-01-01' },
-        { id: '3-2', name: '해외주식', currentValue: 15962281, lastUpdated: '2025-01-01' },
-        { id: '3-3', name: '예금', currentValue: 82000000, lastUpdated: '2025-01-01' },
-        { id: '3-4', name: '현금', currentValue: 42217720, lastUpdated: '2025-01-01' },
-        { id: '3-5', name: '청년도약계좌', currentValue: 6000000, lastUpdated: '2025-01-01' },
-      ],
-    },
-  ])
-
-  const [liabilities] = useState([
-    { id: '1', name: '전세대출', amount: 200000000, type: 'mortgage', lastUpdated: '2025-01-01' },
-  ])
+  const [assetCategories, setAssetCategories] = useState<AssetCategory[]>([])
+  const [assets, setAssets] = useState<AssetWithCategory[]>([])
+  const [liabilities, setLiabilities] = useState<Liability[]>([])
 
   useEffect(() => {
     checkOrganizationAndLoadData()
@@ -119,12 +76,100 @@ export default function AssetsPage() {
       }
 
       setSelectedOrgId(storedOrgId)
-      // TODO: Load actual asset data from database
+      await Promise.all([
+        loadAssetCategories(storedOrgId),
+        loadAssets(storedOrgId),
+        loadLiabilities(storedOrgId)
+      ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadAssetCategories = async (orgId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('asset_categories')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('name')
+
+      if (error) throw error
+      setAssetCategories(data || [])
+    } catch (error) {
+      console.error('자산 카테고리 로드 실패:', error)
+    }
+  }
+
+  const loadAssets = async (orgId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('assets')
+        .select(`
+          *,
+          asset_categories (*)
+        `)
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setAssets(data || [])
+      
+      // 자산 요약 계산
+      const totalAssets = (data || []).reduce((sum, asset) => sum + asset.current_value, 0)
+      updateAssetSummary(totalAssets)
+    } catch (error) {
+      console.error('자산 로드 실패:', error)
+    }
+  }
+
+  const loadLiabilities = async (orgId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('liabilities')
+        .select('*')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setLiabilities(data || [])
+      
+      // 부채 요약 계산
+      const totalLiabilities = (data || []).reduce((sum, liability) => sum + liability.current_amount, 0)
+      updateLiabilitySummary(totalLiabilities)
+    } catch (error) {
+      console.error('부채 로드 실패:', error)
+    }
+  }
+
+  const updateAssetSummary = (totalAssets: number) => {
+    setAssetSummary(prev => {
+      const netWorth = totalAssets - prev.totalLiabilities
+      const achievementRate = prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal * 100) : 0
+      
+      return {
+        ...prev,
+        totalAssets,
+        netWorth,
+        achievementRate
+      }
+    })
+  }
+
+  const updateLiabilitySummary = (totalLiabilities: number) => {
+    setAssetSummary(prev => {
+      const netWorth = prev.totalAssets - totalLiabilities
+      const achievementRate = prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal * 100) : 0
+      
+      return {
+        ...prev,
+        totalLiabilities,
+        netWorth,
+        achievementRate
+      }
+    })
   }
 
   const formatCurrency = (amount: number) => {
@@ -234,43 +279,57 @@ export default function AssetsPage() {
 
       {/* 자산 분류별 현황 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {assetCategories.map((category) => (
-          <Card key={category.id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-3">
-                {getAssetIcon(category.type)}
-                <div>
-                  <h3 className="text-lg font-semibold">{category.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    {formatCurrency(category.currentValue)}
-                  </p>
-                </div>
-              </div>
-              <Chip color="primary" variant="flat">
-                {category.items.length}개 항목
-              </Chip>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-3">
-                {category.items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-500">
-                        업데이트: {new Date(item.lastUpdated).toLocaleDateString('ko-KR')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-blue-600">
-                        {formatCurrency(item.currentValue)}
-                      </p>
-                    </div>
+        {assetCategories.map((category) => {
+          const categoryAssets = assets.filter(asset => asset.category_id === category.id)
+          const categoryValue = categoryAssets.reduce((sum, asset) => sum + asset.current_value, 0)
+          
+          return (
+            <Card key={category.id}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getAssetIcon(category.type)}
+                  <div>
+                    <h3 className="text-lg font-semibold">{category.name}</h3>
+                    <p className="text-sm text-gray-600">
+                      {formatCurrency(categoryValue)}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </CardBody>
-          </Card>
-        ))}
+                </div>
+                <Chip color="primary" variant="flat">
+                  {categoryAssets.length}개 항목
+                </Chip>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-3">
+                  {categoryAssets.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <p>등록된 자산이 없습니다</p>
+                      <Button size="sm" color="primary" className="mt-2">
+                        자산 추가
+                      </Button>
+                    </div>
+                  ) : (
+                    categoryAssets.map((asset) => (
+                      <div key={asset.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{asset.name}</p>
+                          <p className="text-sm text-gray-500">
+                            업데이트: {new Date(asset.updated_at).toLocaleDateString('ko-KR')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-blue-600">
+                            {formatCurrency(asset.current_value)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardBody>
+            </Card>
+          )
+        })}
       </div>
 
       {/* 부채 현황 */}
@@ -282,34 +341,47 @@ export default function AssetsPage() {
           </div>
         </CardHeader>
         <CardBody>
-          <Table aria-label="부채 현황 테이블">
-            <TableHeader>
-              <TableColumn>부채명</TableColumn>
-              <TableColumn>종류</TableColumn>
-              <TableColumn>금액</TableColumn>
-              <TableColumn>최종 업데이트</TableColumn>
-            </TableHeader>
-            <TableBody>
-              {liabilities.map((liability) => (
-                <TableRow key={liability.id}>
-                  <TableCell>{liability.name}</TableCell>
-                  <TableCell>
-                    <Chip color="danger" size="sm" variant="flat">
-                      {liability.type === 'mortgage' ? '담보대출' : '기타'}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-semibold text-red-600">
-                      {formatCurrency(liability.amount)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(liability.lastUpdated).toLocaleDateString('ko-KR')}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {liabilities.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p>등록된 부채가 없습니다</p>
+              <Button color="primary" className="mt-4">
+                부채 추가
+              </Button>
+            </div>
+          ) : (
+            <Table aria-label="부채 현황 테이블">
+              <TableHeader>
+                <TableColumn>부채명</TableColumn>
+                <TableColumn>종류</TableColumn>
+                <TableColumn>금액</TableColumn>
+                <TableColumn>최종 업데이트</TableColumn>
+              </TableHeader>
+              <TableBody>
+                {liabilities.map((liability) => (
+                  <TableRow key={liability.id}>
+                    <TableCell>{liability.name}</TableCell>
+                    <TableCell>
+                      <Chip color="danger" size="sm" variant="flat">
+                        {liability.type === 'mortgage' ? '담보대출' : 
+                         liability.type === 'personal_loan' ? '신용대출' :
+                         liability.type === 'credit_card' ? '신용카드' :
+                         liability.type === 'student_loan' ? '학자금대출' : '기타'}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold text-red-600">
+                        {formatCurrency(liability.current_amount)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {new Date(liability.updated_at).toLocaleDateString('ko-KR')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardBody>
       </Card>
     </div>
