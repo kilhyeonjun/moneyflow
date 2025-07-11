@@ -139,7 +139,7 @@ export default function DashboardPage() {
         .from('transactions')
         .select(`
           *,
-          categories (name, type),
+          categories (name, transaction_type),
           payment_methods (name)
         `)
         .eq('organization_id', selectedOrgId)
@@ -168,7 +168,7 @@ export default function DashboardPage() {
         .from('transactions')
         .select(`
           *,
-          categories (name, type),
+          categories (name, transaction_type),
           payment_methods (name)
         `)
         .eq('organization_id', selectedOrgId)
@@ -213,7 +213,7 @@ export default function DashboardPage() {
         .from('transactions')
         .select(`
           *,
-          categories (name, type)
+          categories (name, transaction_type)
         `)
         .eq('organization_id', selectedOrgId)
         .gte('transaction_date', sixMonthsAgo.toISOString().split('T')[0])
@@ -244,7 +244,7 @@ export default function DashboardPage() {
 
         const monthData = monthlyMap.get(monthKey)
         const amount = Math.abs(transaction.amount)
-        const type = (transaction as any).categories?.type
+        const type = (transaction as any).categories?.transaction_type
 
         switch (type) {
           case 'income':
@@ -288,7 +288,7 @@ export default function DashboardPage() {
 
     transactions.forEach(transaction => {
       const amount = Math.abs(transaction.amount)
-      const type = transaction.categories?.type
+      const type = transaction.categories?.transaction_type
       
       switch (type) {
         case 'income':
@@ -529,12 +529,12 @@ export default function DashboardPage() {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-3">
-                    {getTransactionIcon(transaction.categories?.type || '')}
+                    {getTransactionIcon(transaction.categories?.transaction_type || '')}
                     <div>
                       <p className="font-medium">{transaction.description}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Chip
-                          color={getTransactionColor(transaction.categories?.type || '') as any}
+                          color={getTransactionColor(transaction.categories?.transaction_type || '') as any}
                           size="sm"
                           variant="flat"
                         >
@@ -548,13 +548,13 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold ${
-                      transaction.categories?.type === 'income' 
+                      transaction.categories?.transaction_type === 'income' 
                         ? 'text-green-600' 
-                        : transaction.categories?.type === 'expense'
+                        : transaction.categories?.transaction_type === 'expense'
                         ? 'text-red-600'
                         : 'text-blue-600'
                     }`}>
-                      {transaction.categories?.type === 'income' ? '+' : '-'}
+                      {transaction.categories?.transaction_type === 'income' ? '+' : '-'}
                       {formatCurrency(Math.abs(transaction.amount))}
                     </p>
                     <p className="text-sm text-gray-500">

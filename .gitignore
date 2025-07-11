@@ -47,3 +47,7 @@ next-env.d.ts
 check-*.js
 fix-*.js
 test-*.js
+
+# development logs
+dev.log
+*.log

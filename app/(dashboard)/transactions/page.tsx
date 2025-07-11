@@ -32,6 +32,7 @@ import toast, { Toaster } from 'react-hot-toast'
 import { Plus, TrendingUp, TrendingDown, Wallet, Calendar, Search, Edit, Trash2, MoreVertical } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
+import { checkAndCreateInitialData } from '@/lib/initial-data'
 
 type Transaction = Database['public']['Tables']['transactions']['Row']
 type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
@@ -105,6 +106,16 @@ export default function TransactionsPage() {
       }
 
       setSelectedOrgId(storedOrgId)
+      
+      // 기본 데이터 확인 및 생성
+      try {
+        await checkAndCreateInitialData(storedOrgId)
+        console.log('기본 데이터 확인/생성 완료')
+      } catch (error) {
+        console.error('기본 데이터 확인/생성 실패:', error)
+        // 기본 데이터 생성 실패해도 페이지는 계속 로드
+      }
+
       await Promise.all([
         loadTransactions(storedOrgId),
         loadCategories(storedOrgId),
@@ -122,7 +133,7 @@ export default function TransactionsPage() {
       .from('transactions')
       .select(`
         *,
-        categories (name, type),
+        categories (name, transaction_type),
         payment_methods (name)
       `)
       .eq('organization_id', orgId)
@@ -141,7 +152,7 @@ export default function TransactionsPage() {
       .from('categories')
       .select('*')
       .eq('organization_id', orgId)
-      .order('type')
+      .order('transaction_type')
       .order('name')
 
     if (error) {
@@ -439,9 +450,9 @@ export default function TransactionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getTransactionIcon(transaction.categories?.type)}
+                        {getTransactionIcon(transaction.categories?.transaction_type)}
                         <Chip
-                          color={getTransactionColor(transaction.categories?.type)}
+                          color={getTransactionColor(transaction.categories?.transaction_type)}
                           size="sm"
                           variant="flat"
                         >
@@ -453,13 +464,13 @@ export default function TransactionsPage() {
                     <TableCell>{transaction.payment_methods?.name}</TableCell>
                     <TableCell>
                       <span className={`font-semibold ${
-                        transaction.categories?.type === 'income' 
+                        transaction.categories?.transaction_type === 'income' 
                           ? 'text-green-600' 
-                          : transaction.categories?.type === 'expense'
+                          : transaction.categories?.transaction_type === 'expense'
                           ? 'text-red-600'
                           : 'text-blue-600'
                       }`}>
-                        {transaction.categories?.type === 'income' ? '+' : '-'}
+                        {transaction.categories?.transaction_type === 'income' ? '+' : '-'}
                         {formatCurrency(Math.abs(transaction.amount))}
                       </span>
                     </TableCell>
