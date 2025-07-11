@@ -15,6 +15,16 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  Input,
+  Select,
+  SelectItem,
+  Textarea,
 } from '@heroui/react'
 import {
   TrendingUp,
@@ -26,6 +36,7 @@ import {
   CreditCard,
   Plus,
 } from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 
@@ -49,8 +60,17 @@ interface AssetSummary {
 
 export default function AssetsPage() {
   const router = useRouter()
+  const { isOpen, onOpen, onClose } = useDisclosure()
   const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    categoryId: '',
+    currentValue: '',
+  })
   const [assetSummary, setAssetSummary] = useState<AssetSummary>({
     totalAssets: 0,
     totalLiabilities: 0,
@@ -97,9 +117,49 @@ export default function AssetsPage() {
         .order('name')
 
       if (error) throw error
-      setAssetCategories(data || [])
+      
+      // 카테고리가 없으면 기본 카테고리 생성
+      if (!data || data.length === 0) {
+        await createDefaultAssetCategories(orgId)
+        // 다시 로드
+        const { data: newData, error: newError } = await supabase
+          .from('asset_categories')
+          .select('*')
+          .eq('organization_id', orgId)
+          .order('name')
+        
+        if (newError) throw newError
+        setAssetCategories(newData || [])
+      } else {
+        setAssetCategories(data)
+      }
     } catch (error) {
       console.error('자산 카테고리 로드 실패:', error)
+    }
+  }
+
+  const createDefaultAssetCategories = async (orgId: string) => {
+    try {
+      const defaultCategories = [
+        { name: '현금 및 예금', type: 'cash', icon: 'wallet', color: '#10B981' },
+        { name: '투자 자산', type: 'investment', icon: 'trending-up', color: '#8B5CF6' },
+        { name: '부동산', type: 'real_estate', icon: 'home', color: '#3B82F6' },
+        { name: '퇴직연금', type: 'retirement', icon: 'piggy-bank', color: '#F59E0B' },
+        { name: '기타 자산', type: 'other', icon: 'briefcase', color: '#6B7280' },
+      ]
+
+      const { error } = await supabase
+        .from('asset_categories')
+        .insert(
+          defaultCategories.map(category => ({
+            ...category,
+            organization_id: orgId,
+          }))
+        )
+
+      if (error) throw error
+    } catch (error) {
+      console.error('기본 자산 카테고리 생성 실패:', error)
     }
   }
 
@@ -172,6 +232,58 @@ export default function AssetsPage() {
     })
   }
 
+  const handleCreateAsset = async () => {
+    if (!selectedOrgId || !formData.name || !formData.categoryId || !formData.currentValue) {
+      toast.error('모든 필수 필드를 입력해주세요.')
+      return
+    }
+
+    setCreating(true)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        toast.error('로그인이 필요합니다.')
+        return
+      }
+
+      const assetData: AssetInsert = {
+        name: formData.name,
+        description: formData.description || null,
+        category_id: formData.categoryId,
+        current_value: parseFloat(formData.currentValue),
+        organization_id: selectedOrgId,
+        created_by: user.id,
+      }
+
+      const { error } = await supabase
+        .from('assets')
+        .insert([assetData])
+
+      if (error) {
+        console.error('자산 생성 실패:', error)
+        toast.error('자산 생성에 실패했습니다.')
+      } else {
+        toast.success('자산이 성공적으로 추가되었습니다!')
+        
+        setFormData({
+          name: '',
+          description: '',
+          categoryId: '',
+          currentValue: '',
+        })
+        onClose()
+        await loadAssets(selectedOrgId)
+      }
+    } catch (error) {
+      console.error('자산 생성 중 오류:', error)
+      toast.error('자산 생성 중 오류가 발생했습니다.')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -216,6 +328,7 @@ export default function AssetsPage() {
         <Button
           color="primary"
           startContent={<Plus className="w-4 h-4" />}
+          onPress={onOpen}
         >
           자산 추가
         </Button>
@@ -384,6 +497,82 @@ export default function AssetsPage() {
           )}
         </CardBody>
       </Card>
+
+      {/* 자산 추가 모달 */}
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl">
+        <ModalContent>
+          <ModalHeader>새 자산 추가</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Input
+                label="자산명"
+                placeholder="예: 우리은행 적금"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                isRequired
+              />
+
+              <Select
+                label="자산 카테고리"
+                placeholder="카테고리를 선택하세요"
+                selectedKeys={formData.categoryId ? [formData.categoryId] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string
+                  setFormData({ ...formData, categoryId: selectedKey })
+                }}
+                isRequired
+              >
+                {assetCategories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </Select>
+
+              <Input
+                label="현재 가치"
+                placeholder="0"
+                type="number"
+                value={formData.currentValue}
+                onChange={(e) => setFormData({ ...formData, currentValue: e.target.value })}
+                startContent={<span className="text-gray-500">₩</span>}
+                isRequired
+              />
+
+              <Textarea
+                label="설명 (선택사항)"
+                placeholder="자산에 대한 추가 정보를 입력하세요"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onClose}>
+              취소
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleCreateAsset}
+              isLoading={creating}
+            >
+              자산 추가
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Toast 알림 */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
     </div>
   )
 }

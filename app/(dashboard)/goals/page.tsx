@@ -45,10 +45,24 @@ const goalTypes = [
 export default function GoalsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const { 
+    isOpen: isEditOpen, 
+    onOpen: onEditOpen, 
+    onClose: onEditClose 
+  } = useDisclosure()
+  const { 
+    isOpen: isDeleteOpen, 
+    onOpen: onDeleteOpen, 
+    onClose: onDeleteClose 
+  } = useDisclosure()
+  
   const [loading, setLoading] = useState(true)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [goals, setGoals] = useState<FinancialGoal[]>([])
+  const [selectedGoal, setSelectedGoal] = useState<FinancialGoal | null>(null)
 
   const [formData, setFormData] = useState({
     title: '',
@@ -143,6 +157,93 @@ export default function GoalsPage() {
       toast.error('목표 생성 중 오류가 발생했습니다.')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleEditGoal = (goal: FinancialGoal) => {
+    setSelectedGoal(goal)
+    setFormData({
+      title: goal.title,
+      type: goal.type,
+      targetAmount: goal.target_amount.toString(),
+      targetDate: goal.target_date,
+    })
+    onEditOpen()
+  }
+
+  const handleUpdateGoal = async () => {
+    if (!selectedGoal || !selectedOrgId || !formData.title || !formData.type || !formData.targetAmount || !formData.targetDate) {
+      toast.error('모든 필드를 입력해주세요.')
+      return
+    }
+
+    setUpdating(true)
+
+    try {
+      const { error } = await supabase
+        .from('financial_goals')
+        .update({
+          title: formData.title,
+          type: formData.type as any,
+          target_amount: parseFloat(formData.targetAmount),
+          target_date: formData.targetDate,
+        })
+        .eq('id', selectedGoal.id)
+
+      if (error) {
+        console.error('목표 수정 실패:', error)
+        toast.error('목표 수정에 실패했습니다.')
+      } else {
+        toast.success('목표가 성공적으로 수정되었습니다!')
+        
+        setFormData({
+          title: '',
+          type: '',
+          targetAmount: '',
+          targetDate: '',
+        })
+        setSelectedGoal(null)
+        onEditClose()
+        await loadGoals(selectedOrgId)
+      }
+    } catch (error) {
+      console.error('목표 수정 중 오류:', error)
+      toast.error('목표 수정 중 오류가 발생했습니다.')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteGoal = (goal: FinancialGoal) => {
+    setSelectedGoal(goal)
+    onDeleteOpen()
+  }
+
+  const confirmDeleteGoal = async () => {
+    if (!selectedGoal || !selectedOrgId) return
+
+    setDeleting(true)
+
+    try {
+      const { error } = await supabase
+        .from('financial_goals')
+        .delete()
+        .eq('id', selectedGoal.id)
+
+      if (error) {
+        console.error('목표 삭제 실패:', error)
+        toast.error('목표 삭제에 실패했습니다.')
+      } else {
+        toast.success('목표가 성공적으로 삭제되었습니다!')
+        setSelectedGoal(null)
+        onDeleteClose()
+        await loadGoals(selectedOrgId)
+      }
+    } catch (error) {
+      console.error('목표 삭제 중 오류:', error)
+      toast.error('목표 삭제 중 오류가 발생했습니다.')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -252,7 +353,10 @@ export default function GoalsPage() {
           </CardHeader>
           <CardBody className="pt-0">
             <div className="text-2xl font-bold text-purple-600">
-              {(goals.reduce((sum, goal) => sum + Math.max(0, goal.achievementRate), 0) / goals.length).toFixed(1)}%
+              {goals.length > 0 
+                ? (goals.reduce((sum, goal) => sum + Math.max(0, goal.achievement_rate || 0), 0) / goals.length).toFixed(1)
+                : '0.0'
+              }%
             </div>
           </CardBody>
         </Card>
@@ -285,10 +389,21 @@ export default function GoalsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button isIconOnly size="sm" variant="light">
+                <Button 
+                  isIconOnly 
+                  size="sm" 
+                  variant="light"
+                  onPress={() => handleEditGoal(goal)}
+                >
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button isIconOnly size="sm" variant="light" color="danger">
+                <Button 
+                  isIconOnly 
+                  size="sm" 
+                  variant="light" 
+                  color="danger"
+                  onPress={() => handleDeleteGoal(goal)}
+                >
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -303,24 +418,24 @@ export default function GoalsPage() {
                   <div className="text-right">
                     <p className="text-sm text-gray-600">현재 달성</p>
                     <p className={`text-lg font-semibold ${
-                      goal.current_amount >= 0 ? 'text-green-600' : 'text-red-600'
+                      (goal.current_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {formatCurrency(Math.abs(goal.current_amount))}
+                      {formatCurrency(Math.abs(goal.current_amount || 0))}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">달성률</p>
                     <p className={`text-lg font-semibold ${
-                      goal.achievement_rate >= 0 ? 'text-green-600' : 'text-red-600'
+                      (goal.achievement_rate || 0) >= 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {goal.achievement_rate.toFixed(1)}%
+                      {(goal.achievement_rate || 0).toFixed(1)}%
                     </p>
                   </div>
                 </div>
 
                 <Progress
-                  value={Math.max(0, Math.min(100, goal.achievement_rate))}
-                  color={goal.achievement_rate >= 100 ? 'success' : goal.achievement_rate >= 50 ? 'primary' : 'danger'}
+                  value={Math.max(0, Math.min(100, goal.achievement_rate || 0))}
+                  color={(goal.achievement_rate || 0) >= 100 ? 'success' : (goal.achievement_rate || 0) >= 50 ? 'primary' : 'danger'}
                   className="w-full"
                 />
 
@@ -398,6 +513,97 @@ export default function GoalsPage() {
               isLoading={creating}
             >
               목표 추가
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 목표 수정 모달 */}
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="2xl">
+        <ModalContent>
+          <ModalHeader>재정 목표 수정</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Input
+                label="목표 제목"
+                placeholder="예: 2025년 자산 증가 목표"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              />
+
+              <Select
+                label="목표 유형"
+                placeholder="목표 유형을 선택하세요"
+                selectedKeys={formData.type ? [formData.type] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string
+                  setFormData({ ...formData, type: selectedKey })
+                }}
+              >
+                {goalTypes.map((type) => (
+                  <SelectItem key={type.key} value={type.key}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </Select>
+
+              <Input
+                label="목표 금액"
+                placeholder="0"
+                type="number"
+                value={formData.targetAmount}
+                onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
+                startContent={<span className="text-gray-500">₩</span>}
+              />
+
+              <Input
+                label="목표 달성일"
+                type="date"
+                value={formData.targetDate}
+                onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onEditClose}>
+              취소
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleUpdateGoal}
+              isLoading={updating}
+            >
+              수정하기
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 목표 삭제 확인 모달 */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader>목표 삭제</ModalHeader>
+          <ModalBody>
+            <p>정말로 이 목표를 삭제하시겠습니까?</p>
+            {selectedGoal && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p><strong>제목:</strong> {selectedGoal.title}</p>
+                <p><strong>목표 금액:</strong> {formatCurrency(selectedGoal.target_amount)}</p>
+                <p><strong>목표일:</strong> {new Date(selectedGoal.target_date).toLocaleDateString('ko-KR')}</p>
+              </div>
+            )}
+            <p className="text-red-600 text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onDeleteClose}>
+              취소
+            </Button>
+            <Button
+              color="danger"
+              onPress={confirmDeleteGoal}
+              isLoading={deleting}
+            >
+              삭제하기
             </Button>
           </ModalFooter>
         </ModalContent>

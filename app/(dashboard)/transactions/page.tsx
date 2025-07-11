@@ -206,7 +206,8 @@ export default function TransactionsPage() {
         category_id: formData.category_id,
         payment_method_id: formData.payment_method_id,
         organization_id: selectedOrgId,
-        created_by: user.id,
+        user_id: user.id,
+        transaction_type: selectedCategory.transaction_type,
       }
 
       const { error } = await supabase
