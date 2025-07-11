@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, useDisclosure } from '@heroui/react'
+import { Button, useDisclosure, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from '@heroui/react'
 import toast, { Toaster } from 'react-hot-toast'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -227,21 +227,26 @@ export default function TransactionsPage() {
         loading={loading}
       />
 
-      {/* 거래 추가 모달 */}
-      {selectedOrgId && (
-        <TransactionForm
-          isOpen={isOpen}
-          onClose={onClose}
-          categories={categories}
-          paymentMethods={paymentMethods}
-          organizationId={selectedOrgId}
-          onSuccess={handleTransactionSuccess}
-          mode="create"
-        />
-      )}
+      {/* 거래 추가 모달 - 테스트용 */}
+      <Modal isOpen={isOpen} onClose={onClose} size="2xl">
+        <ModalContent>
+          <ModalHeader>새 거래 추가 (테스트)</ModalHeader>
+          <ModalBody>
+            <p>모달이 정상적으로 작동합니다!</p>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onClose}>
+              취소
+            </Button>
+            <Button color="primary" onPress={onClose}>
+              확인
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       {/* 거래 수정 모달 */}
-      {selectedOrgId && selectedTransaction && (
+      {selectedTransaction && (
         <TransactionForm
           isOpen={isEditOpen}
           onClose={() => {
@@ -250,7 +255,7 @@ export default function TransactionsPage() {
           }}
           categories={categories}
           paymentMethods={paymentMethods}
-          organizationId={selectedOrgId}
+          organizationId={selectedOrgId || ''}
           onSuccess={handleTransactionSuccess}
           editTransaction={selectedTransaction}
           mode="edit"
