@@ -19,6 +19,8 @@ import {
   X,
   Building2,
   ChevronDown,
+  Wallet,
+  Target,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
@@ -28,6 +30,8 @@ type Organization = Database['public']['Tables']['organizations']['Row']
 const navigation = [
   { name: '대시보드', href: '/dashboard', icon: Home },
   { name: '거래 관리', href: '/transactions', icon: CreditCard },
+  { name: '자산 관리', href: '/assets', icon: Wallet },
+  { name: '재정 목표', href: '/goals', icon: Target },
   { name: '통계 분석', href: '/analytics', icon: BarChart3 },
   { name: '설정', href: '/settings', icon: Settings },
 ]

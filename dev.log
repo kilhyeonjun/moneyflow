@@ -11,3 +11,10 @@
 
  ✓ Starting...
  ✓ Ready in 1231ms
+ ○ Compiling / ...
+ ✓ Compiled / in 8.5s
+ GET / 200 in 8849ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 802ms
+ GET /login 200 in 970ms
+[?25h
