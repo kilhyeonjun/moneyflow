@@ -33,6 +33,7 @@ const navigation = [
 ]
 
 export function Sidebar() {
+  const [isMounted, setIsMounted] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null)
   const [userOrgs, setUserOrgs] = useState<Organization[]>([])
@@ -40,11 +41,19 @@ export function Sidebar() {
   const router = useRouter()
 
   useEffect(() => {
-    loadCurrentOrganization()
-    loadUserOrganizations()
+    setIsMounted(true)
   }, [])
 
+  useEffect(() => {
+    if (isMounted) {
+      loadCurrentOrganization()
+      loadUserOrganizations()
+    }
+  }, [isMounted])
+
   const loadCurrentOrganization = async () => {
+    if (typeof window === 'undefined') return
+    
     const selectedOrgId = localStorage.getItem('selectedOrganization')
     if (!selectedOrgId) return
 
@@ -96,13 +105,16 @@ export function Sidebar() {
   }
 
   const switchOrganization = (orgId: string) => {
+    if (typeof window === 'undefined') return
     localStorage.setItem('selectedOrganization', orgId)
     window.location.reload()
   }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    localStorage.removeItem('selectedOrganization')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('selectedOrganization')
+    }
     router.push('/login')
   }
 
@@ -194,6 +206,60 @@ export function Sidebar() {
       </div>
     </div>
   )
+
+  // 클라이언트 마운트 전에는 기본 구조만 렌더링
+  if (!isMounted) {
+    return (
+      <>
+        {/* Mobile menu button */}
+        <div className="lg:hidden fixed top-4 left-4 z-50">
+          <Button isIconOnly variant="flat">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* Desktop sidebar */}
+        <div className="hidden lg:block w-64 bg-white border-r border-gray-200 flex-shrink-0">
+          <div className="flex flex-col h-full">
+            {/* Organization Selector Placeholder */}
+            <div className="p-4 border-b border-gray-200">
+              <Button variant="flat" className="w-full justify-start">
+                <div className="flex items-center space-x-2">
+                  <Building2 className="h-4 w-4" />
+                  <span>로딩 중...</span>
+                </div>
+              </Button>
+            </div>
+            
+            {/* Navigation */}
+            <nav className="flex-1 p-4 space-y-2">
+              {navigation.map(item => (
+                <Button
+                  key={item.name}
+                  variant="light"
+                  className="w-full justify-start text-gray-700"
+                  startContent={<item.icon className="h-5 w-5" />}
+                >
+                  {item.name}
+                </Button>
+              ))}
+            </nav>
+            
+            {/* Logout */}
+            <div className="p-4 border-t border-gray-200">
+              <Button
+                variant="light"
+                className="w-full justify-start text-red-600"
+                startContent={<LogOut className="h-5 w-5" />}
+              >
+                로그아웃
+              </Button>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   return (
     <>
