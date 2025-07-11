@@ -8,8 +8,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <header className="container mx-auto px-4 py-6">
-        <nav className="flex items-center justify-between">
+      <header className="w-full px-6 py-6">
+        <nav className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-2">
             <BarChart3 className="h-8 w-8 text-blue-600" />
             <span className="text-2xl font-bold text-gray-900">MoneyFlow</span>
@@ -26,8 +26,8 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <main className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
+      <main className="w-full px-6 py-16">
+        <div className="text-center mb-16 max-w-7xl mx-auto">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
             가족과 팀을 위한
             <br />
@@ -53,9 +53,10 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
-        </div>{' '}
+        </div>
+        
         {/* Features Section */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 max-w-7xl mx-auto">
           <Card className="p-6">
             <CardHeader className="pb-4">
               <Users className="h-12 w-12 text-blue-600 mb-4" />
@@ -104,8 +105,9 @@ export default function HomePage() {
             </CardBody>
           </Card>
         </div>
+        
         {/* CTA Section */}
-        <div className="text-center bg-white rounded-2xl p-12 shadow-lg">
+        <div className="text-center bg-white rounded-2xl p-12 shadow-lg max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
             지금 시작해보세요
           </h2>
@@ -125,8 +127,8 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="container mx-auto px-4 py-8 mt-16 border-t">
-        <div className="text-center text-gray-600">
+      <footer className="w-full px-6 py-8 mt-16 border-t">
+        <div className="text-center text-gray-600 max-w-7xl mx-auto">
           <p>&copy; 2025 MoneyFlow. All rights reserved.</p>
         </div>
       </footer>
