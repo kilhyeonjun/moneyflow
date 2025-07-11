@@ -51,6 +51,18 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
 pnpm dev
 ```
 
+### 4. 테스트 계정
+개발 및 테스트를 위한 사전 생성된 계정:
+
+```
+이메일: admin@moneyflow.com
+비밀번호: admin123
+```
+
+- ✅ 이메일 인증 완료
+- ✅ 관리자 권한
+- ✅ 샘플 데이터 포함 (수입 ₩3,000,000, 지출 ₩35,000)
+
 ## 🗄️ 데이터베이스 설정
 
 ### Supabase 프로젝트 정보
