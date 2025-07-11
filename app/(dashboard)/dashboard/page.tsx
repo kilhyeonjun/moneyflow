@@ -6,6 +6,7 @@ import { Card, CardHeader, CardBody, Button, Chip } from '@heroui/react'
 import { TrendingUp, TrendingDown, Wallet, Target, Plus, Calendar } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 type Transaction = Database['public']['Tables']['transactions']['Row']
 
@@ -43,6 +44,10 @@ export default function DashboardPage() {
     previousMonthSavings: 0,
   })
   const [recentTransactions, setRecentTransactions] = useState<TransactionWithDetails[]>([])
+  const [monthlyData, setMonthlyData] = useState<any[]>([])
+  const [categoryData, setCategoryData] = useState<any[]>([])
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D']
 
   useEffect(() => {
     checkOrganizationSelection()
@@ -51,6 +56,33 @@ export default function DashboardPage() {
   useEffect(() => {
     if (selectedOrgId) {
       loadDashboardData()
+    }
+  }, [selectedOrgId])
+
+  useEffect(() => {
+    if (!selectedOrgId) return
+
+    // Realtime 구독 설정
+    const channel = supabase
+      .channel('dashboard-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `organization_id=eq.${selectedOrgId}`,
+        },
+        (payload) => {
+          console.log('대시보드 데이터 변경 감지:', payload)
+          // 대시보드 데이터 새로고침
+          loadDashboardData()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
     }
   }, [selectedOrgId])
 
@@ -161,8 +193,91 @@ export default function DashboardPage() {
         previousMonthSavings: previousStats.monthlySavings,
       })
 
+      // 차트 데이터 로드
+      await loadChartData()
+
     } catch (error) {
       console.error('대시보드 데이터 로드 실패:', error)
+    }
+  }
+
+  const loadChartData = async () => {
+    if (!selectedOrgId) return
+
+    try {
+      // 최근 6개월 데이터 조회
+      const sixMonthsAgo = new Date()
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5)
+      
+      const { data: monthlyTransactions, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          categories (name, type)
+        `)
+        .eq('organization_id', selectedOrgId)
+        .gte('transaction_date', sixMonthsAgo.toISOString().split('T')[0])
+        .order('transaction_date')
+
+      if (error) {
+        console.error('월별 데이터 조회 실패:', error)
+        return
+      }
+
+      // 월별 데이터 집계
+      const monthlyMap = new Map()
+      const categoryMap = new Map()
+
+      monthlyTransactions?.forEach(transaction => {
+        const date = new Date(transaction.transaction_date)
+        const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`
+        const monthName = date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'short' })
+        
+        if (!monthlyMap.has(monthKey)) {
+          monthlyMap.set(monthKey, {
+            month: monthName,
+            income: 0,
+            expense: 0,
+            savings: 0,
+          })
+        }
+
+        const monthData = monthlyMap.get(monthKey)
+        const amount = Math.abs(transaction.amount)
+        const type = (transaction as any).categories?.type
+
+        switch (type) {
+          case 'income':
+            monthData.income += amount
+            break
+          case 'expense':
+            monthData.expense += amount
+            break
+          case 'savings':
+            monthData.savings += amount
+            break
+        }
+
+        // 카테고리별 집계 (현재 월만)
+        const currentMonth = new Date().getMonth()
+        const currentYear = new Date().getFullYear()
+        if (date.getMonth() === currentMonth && date.getFullYear() === currentYear && type === 'expense') {
+          const categoryName = (transaction as any).categories?.name || '기타'
+          categoryMap.set(categoryName, (categoryMap.get(categoryName) || 0) + amount)
+        }
+      })
+
+      setMonthlyData(Array.from(monthlyMap.values()))
+      
+      const categoryArray = Array.from(categoryMap.entries()).map(([name, value]) => ({
+        name,
+        value,
+      })).sort((a, b) => b.value - a.value).slice(0, 6)
+      
+      setCategoryData(categoryArray)
+
+    } catch (error) {
+      console.error('차트 데이터 로드 실패:', error)
     }
   }
 
@@ -317,6 +432,64 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-500">
               {stats.totalBalance >= 0 ? '흑자' : '적자'} 운영
             </p>
+          </CardBody>
+        </Card>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Monthly Trend Chart */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">월별 수입/지출 추이</h3>
+          </CardHeader>
+          <CardBody>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value) => `${(value / 10000).toFixed(0)}만`} />
+                  <Tooltip 
+                    formatter={(value: number) => [formatCurrency(value), '']}
+                    labelStyle={{ color: '#374151' }}
+                  />
+                  <Bar dataKey="income" fill="#10B981" name="수입" />
+                  <Bar dataKey="expense" fill="#EF4444" name="지출" />
+                  <Bar dataKey="savings" fill="#3B82F6" name="저축" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardBody>
+        </Card>
+
+        {/* Category Pie Chart */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold">이번 달 지출 분류</h3>
+          </CardHeader>
+          <CardBody>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [formatCurrency(value), '금액']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardBody>
         </Card>
       </div>

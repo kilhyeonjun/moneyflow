@@ -68,6 +68,33 @@ export default function TransactionsPage() {
     checkOrganizationAndLoadData()
   }, [])
 
+  useEffect(() => {
+    if (!selectedOrgId) return
+
+    // Realtime 구독 설정
+    const channel = supabase
+      .channel('transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'transactions',
+          filter: `organization_id=eq.${selectedOrgId}`,
+        },
+        (payload) => {
+          console.log('거래 변경 감지:', payload)
+          // 거래 목록 새로고침
+          loadTransactions(selectedOrgId)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [selectedOrgId])
+
   const checkOrganizationAndLoadData = async () => {
     try {
       const storedOrgId = localStorage.getItem('selectedOrganization')
