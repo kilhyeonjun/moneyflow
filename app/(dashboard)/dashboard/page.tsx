@@ -22,7 +22,7 @@ interface DashboardStats {
 interface TransactionWithDetails extends Transaction {
   categories: {
     name: string
-    transaction_type: string
+    type: string
   } | null
   payment_methods: {
     name: string
@@ -107,7 +107,7 @@ export default function DashboardPage() {
         .from('transactions')
         .select(`
           *,
-          categories (name, transaction_type),
+          categories (name, type),
           payment_methods (name)
         `)
         .eq('organization_id', selectedOrgId)
@@ -136,7 +136,7 @@ export default function DashboardPage() {
         .from('transactions')
         .select(`
           *,
-          categories (name, transaction_type),
+          categories (name, type),
           payment_methods (name)
         `)
         .eq('organization_id', selectedOrgId)
@@ -166,15 +166,16 @@ export default function DashboardPage() {
     }
   }
 
-  const calculateStats = (transactions: Transaction[]): Omit<DashboardStats, 'previousMonthIncome' | 'previousMonthExpense' | 'previousMonthSavings'> => {
+  const calculateStats = (transactions: any[]): Omit<DashboardStats, 'previousMonthIncome' | 'previousMonthExpense' | 'previousMonthSavings'> => {
     let monthlyIncome = 0
     let monthlyExpense = 0
     let monthlySavings = 0
 
     transactions.forEach(transaction => {
       const amount = Math.abs(transaction.amount)
+      const type = transaction.categories?.type
       
-      switch (transaction.transaction_type) {
+      switch (type) {
         case 'income':
           monthlyIncome += amount
           break
@@ -209,8 +210,8 @@ export default function DashboardPage() {
     return Math.round(((current - previous) / previous) * 100)
   }
 
-  const getTransactionIcon = (transactionType: string) => {
-    switch (transactionType) {
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
       case 'income':
         return <TrendingUp className="w-4 h-4 text-green-500" />
       case 'expense':
@@ -222,8 +223,8 @@ export default function DashboardPage() {
     }
   }
 
-  const getTransactionColor = (transactionType: string) => {
-    switch (transactionType) {
+  const getTransactionColor = (type: string) => {
+    switch (type) {
       case 'income':
         return 'success'
       case 'expense':
@@ -355,12 +356,12 @@ export default function DashboardPage() {
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex items-center gap-3">
-                    {getTransactionIcon(transaction.transaction_type)}
+                    {getTransactionIcon(transaction.categories?.type || '')}
                     <div>
                       <p className="font-medium">{transaction.description}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Chip
-                          color={getTransactionColor(transaction.transaction_type) as any}
+                          color={getTransactionColor(transaction.categories?.type || '') as any}
                           size="sm"
                           variant="flat"
                         >
@@ -374,13 +375,13 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className={`font-semibold ${
-                      transaction.transaction_type === 'income' 
+                      transaction.categories?.type === 'income' 
                         ? 'text-green-600' 
-                        : transaction.transaction_type === 'expense'
+                        : transaction.categories?.type === 'expense'
                         ? 'text-red-600'
                         : 'text-blue-600'
                     }`}>
-                      {transaction.transaction_type === 'income' ? '+' : '-'}
+                      {transaction.categories?.type === 'income' ? '+' : '-'}
                       {formatCurrency(Math.abs(transaction.amount))}
                     </p>
                     <p className="text-sm text-gray-500">

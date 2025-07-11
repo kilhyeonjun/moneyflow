@@ -85,7 +85,7 @@ export default function TransactionsPage() {
       .from('transactions')
       .select(`
         *,
-        categories (name, transaction_type),
+        categories (name, type),
         payment_methods (name)
       `)
       .eq('organization_id', orgId)
@@ -104,7 +104,7 @@ export default function TransactionsPage() {
       .from('categories')
       .select('*')
       .eq('organization_id', orgId)
-      .order('transaction_type')
+      .order('type')
       .order('name')
 
     if (error) {
@@ -144,7 +144,7 @@ export default function TransactionsPage() {
         return
       }
 
-      // 선택된 카테고리의 transaction_type 가져오기
+      // 선택된 카테고리의 type 가져오기
       const selectedCategory = categories.find(cat => cat.id === formData.category_id)
       if (!selectedCategory) {
         toast.error('유효하지 않은 카테고리입니다.')
@@ -155,11 +155,10 @@ export default function TransactionsPage() {
         amount: parseFloat(formData.amount),
         description: formData.description,
         transaction_date: formData.transaction_date,
-        transaction_type: selectedCategory.transaction_type,
         category_id: formData.category_id,
         payment_method_id: formData.payment_method_id,
         organization_id: selectedOrgId,
-        user_id: user.id,
+        created_by: user.id,
       }
 
       const { error } = await supabase
@@ -196,8 +195,8 @@ export default function TransactionsPage() {
     }).format(amount)
   }
 
-  const getTransactionIcon = (transactionType: string) => {
-    switch (transactionType) {
+  const getTransactionIcon = (type: string) => {
+    switch (type) {
       case 'income':
         return <TrendingUp className="w-4 h-4 text-green-500" />
       case 'expense':
@@ -209,8 +208,8 @@ export default function TransactionsPage() {
     }
   }
 
-  const getTransactionColor = (transactionType: string) => {
-    switch (transactionType) {
+  const getTransactionColor = (type: string) => {
+    switch (type) {
       case 'income':
         return 'success'
       case 'expense':
@@ -291,9 +290,9 @@ export default function TransactionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getTransactionIcon(transaction.categories?.transaction_type)}
+                        {getTransactionIcon(transaction.categories?.type)}
                         <Chip
-                          color={getTransactionColor(transaction.categories?.transaction_type)}
+                          color={getTransactionColor(transaction.categories?.type)}
                           size="sm"
                           variant="flat"
                         >
@@ -305,13 +304,13 @@ export default function TransactionsPage() {
                     <TableCell>{transaction.payment_methods?.name}</TableCell>
                     <TableCell>
                       <span className={`font-semibold ${
-                        transaction.categories?.transaction_type === 'income' 
+                        transaction.categories?.type === 'income' 
                           ? 'text-green-600' 
-                          : transaction.categories?.transaction_type === 'expense'
+                          : transaction.categories?.type === 'expense'
                           ? 'text-red-600'
                           : 'text-blue-600'
                       }`}>
-                        {transaction.categories?.transaction_type === 'income' ? '+' : '-'}
+                        {transaction.categories?.type === 'income' ? '+' : '-'}
                         {formatCurrency(Math.abs(transaction.amount))}
                       </span>
                     </TableCell>
@@ -362,7 +361,7 @@ export default function TransactionsPage() {
                 >
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
-                      {category.name} ({category.transaction_type === 'income' ? '수입' : category.transaction_type === 'expense' ? '지출' : '저축'})
+                      {category.name} ({category.type === 'income' ? '수입' : category.type === 'expense' ? '지출' : '저축'})
                     </SelectItem>
                   ))}
                 </Select>
