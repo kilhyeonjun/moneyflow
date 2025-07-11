@@ -28,7 +28,18 @@ export default function LoginPage() {
       })
 
       if (error) {
-        setError(error.message)
+        // 영어 에러 메시지를 한글로 변환
+        let koreanError = error.message
+        if (error.message.includes('Invalid login credentials')) {
+          koreanError = '이메일 또는 비밀번호가 올바르지 않습니다.'
+        } else if (error.message.includes('Email not confirmed')) {
+          koreanError = '이메일 인증이 완료되지 않았습니다. 이메일을 확인해주세요.'
+        } else if (error.message.includes('Too many requests')) {
+          koreanError = '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.'
+        } else if (error.message.includes('Network')) {
+          koreanError = '네트워크 연결을 확인해주세요.'
+        }
+        setError(koreanError)
       } else {
         router.push('/dashboard')
       }

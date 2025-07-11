@@ -50,7 +50,20 @@ export default function SignupPage() {
       })
 
       if (error) {
-        setError(error.message)
+        // 영어 에러 메시지를 한글로 변환
+        let koreanError = error.message
+        if (error.message.includes('Email address') && error.message.includes('invalid')) {
+          koreanError = '유효하지 않은 이메일 주소입니다.'
+        } else if (error.message.includes('Password should be at least')) {
+          koreanError = '비밀번호는 최소 6자 이상이어야 합니다.'
+        } else if (error.message.includes('User already registered')) {
+          koreanError = '이미 등록된 이메일 주소입니다.'
+        } else if (error.message.includes('Signup requires a valid password')) {
+          koreanError = '유효한 비밀번호를 입력해주세요.'
+        } else if (error.message.includes('Network')) {
+          koreanError = '네트워크 연결을 확인해주세요.'
+        }
+        setError(koreanError)
       } else {
         setSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
         setTimeout(() => {

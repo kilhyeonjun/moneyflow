@@ -18,6 +18,7 @@ import { Plus, Users, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import { createInitialData } from '@/lib/initial-data'
+import toast, { Toaster } from 'react-hot-toast'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 type OrganizationInsert =
@@ -111,8 +112,10 @@ export default function OrganizationsPage() {
       try {
         await createInitialData(org.id)
         console.log('기본 데이터 생성 완료')
+        toast.success('조직이 성공적으로 생성되었습니다!')
       } catch (dataError) {
         console.error('기본 데이터 생성 실패:', dataError)
+        toast.warning('조직은 생성되었지만 기본 데이터 생성에 실패했습니다.')
         // 기본 데이터 생성 실패해도 조직은 생성되었으므로 계속 진행
       }
 
@@ -123,9 +126,17 @@ export default function OrganizationsPage() {
       onClose()
       setNewOrgName('')
       setNewOrgDescription('')
-    } catch (error) {
+    } catch (error: any) {
       console.error('조직 생성 실패:', error)
-      alert('조직 생성에 실패했습니다.')
+      let errorMessage = '조직 생성에 실패했습니다.'
+      if (error?.message?.includes('duplicate')) {
+        errorMessage = '이미 존재하는 조직명입니다.'
+      } else if (error?.message?.includes('permission')) {
+        errorMessage = '조직 생성 권한이 없습니다.'
+      } else if (error?.message?.includes('network')) {
+        errorMessage = '네트워크 연결을 확인해주세요.'
+      }
+      toast.error(errorMessage)
     } finally {
       setCreating(false)
     }
@@ -254,6 +265,32 @@ export default function OrganizationsPage() {
             </ModalFooter>
           </ModalContent>
         </Modal>
+        
+        {/* Toast 알림 */}
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#4ade80',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
       </div>
     </div>
   )
