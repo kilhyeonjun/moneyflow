@@ -17,6 +17,7 @@ import {
 import { Plus, Users, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
+import { createInitialData } from '@/lib/initial-data'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 type OrganizationInsert =
@@ -105,6 +106,15 @@ export default function OrganizationsPage() {
         })
 
       if (memberError) throw memberError
+
+      // 기본 카테고리 및 결제수단 생성
+      try {
+        await createInitialData(org.id)
+        console.log('기본 데이터 생성 완료')
+      } catch (dataError) {
+        console.error('기본 데이터 생성 실패:', dataError)
+        // 기본 데이터 생성 실패해도 조직은 생성되었으므로 계속 진행
+      }
 
       // 목록 새로고침
       await fetchOrganizations()
