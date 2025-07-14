@@ -7,7 +7,7 @@ import toast, { Toaster } from 'react-hot-toast'
 import { Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
-import { checkAndCreateInitialData } from '@/lib/initial-data'
+// checkAndCreateInitialData 함수는 제거됨
 import TransactionForm from '@/components/transactions/TransactionForm'
 import TransactionList from '@/components/transactions/TransactionList'
 import DeleteConfirmModal from '@/components/transactions/DeleteConfirmModal'
@@ -74,13 +74,7 @@ export default function TransactionsPage() {
 
       setSelectedOrgId(storedOrgId)
       
-      // 기본 데이터 확인 및 생성
-      try {
-        await checkAndCreateInitialData(storedOrgId)
-        console.log('기본 데이터 확인/생성 완료')
-      } catch (error) {
-        console.error('기본 데이터 확인/생성 실패:', error)
-      }
+      // 기본 데이터는 조직 생성 시에 이미 생성됨
 
       await Promise.all([
         loadTransactions(storedOrgId),

@@ -103,7 +103,7 @@ export default function DashboardPage() {
 
       const calculateStats = (transactions: Transaction[]) => {
         return transactions.reduce((acc, txn) => {
-          const type = txn.categories?.transaction_type || txn.transaction_type
+          const type = txn.categories?.transaction_type || (txn as any).transaction_type
           const amount = Math.abs(txn.amount)
           
           if (type === 'income') {

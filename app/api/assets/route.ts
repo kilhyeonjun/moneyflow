@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
         categoryId,
         currentValue: parseFloat(currentValue),
         organizationId,
-        createdBy,
+        ...(createdBy && { createdBy }),
       },
       include: {
         category: true,

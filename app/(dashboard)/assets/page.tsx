@@ -437,7 +437,7 @@ export default function AssetsPage() {
                             <p className="text-sm text-gray-500">{asset.description}</p>
                           )}
                           <p className="text-xs text-gray-400">
-                            업데이트: {new Date(asset.updatedAt).toLocaleDateString('ko-KR')}
+                            업데이트: {asset.updatedAt ? new Date(asset.updatedAt).toLocaleDateString('ko-KR') : '-'}
                           </p>
                         </div>
                         <div className="text-right">
@@ -480,7 +480,7 @@ export default function AssetsPage() {
                 isRequired
               >
                 {assetCategories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
+                  <SelectItem key={category.id}>
                     {category.name}
                   </SelectItem>
                 ))}

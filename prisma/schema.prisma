@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,118 +7,203 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// MoneyFlow 프로젝트 스키마
-// 기존 Supabase 테이블 구조를 기반으로 정의
-
 model Organization {
-  id          String   @id @default(uuid()) @db.Uuid
-  name        String   @db.VarChar(255)
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdBy   String   @map("created_by") @db.Uuid
-
-  // Relations
-  members         OrganizationMember[]
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String               @db.VarChar(255)
+  description     String?
+  createdBy       String               @map("created_by") @db.Uuid
+  createdAt       DateTime?            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime?            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   assetCategories AssetCategory[]
   assets          Asset[]
+  categories      categories[]
+  debts           debts[]
   liabilities     Liability[]
+  members         OrganizationMember[]
+  payment_methods payment_methods[]
+  transactions    transactions[]
 
   @@map("organizations")
 }
 
 model OrganizationMember {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  userId         String           @map("user_id") @db.Uuid
-  role           OrganizationRole @default(member)
-  joinedAt       DateTime         @default(now()) @map("joined_at")
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           String       @default("member") @db.VarChar(50)
+  joinedAt       DateTime?    @default(now()) @map("joined_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
+  @@unique([organizationId, userId])
+  @@index([organizationId], map: "idx_organization_members_org_id")
+  @@index([userId], map: "idx_organization_members_user_id")
   @@map("organization_members")
 }
 
 model AssetCategory {
-  id             String       @id @default(uuid()) @db.Uuid
-  name           String       @db.VarChar(255)
-  type           CategoryType
-  icon           String?      @db.VarChar(50)
-  color          String?      @db.VarChar(20)
-  organizationId String       @map("organization_id") @db.Uuid
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String        @db.VarChar(255)
+  type           String        @db.VarChar(50)
+  icon           String?       @db.VarChar(50)
+  color          String?       @db.VarChar(20)
+  organizationId String?       @map("organization_id") @db.Uuid
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  assets         Asset[]
 
-  // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assets       Asset[]
-
+  @@index([organizationId], map: "idx_asset_categories_org_id")
   @@map("asset_categories")
 }
 
 model Asset {
-  id                String    @id @default(uuid()) @db.Uuid
-  name              String    @db.VarChar(255)
-  description       String?
-  categoryId        String    @map("category_id") @db.Uuid
-  currentValue      Decimal   @default(0) @map("current_value") @db.Decimal(15, 2)
-  targetValue       Decimal?  @map("target_value") @db.Decimal(15, 2)
-  lastUpdatedValue  Decimal?  @map("last_updated_value") @db.Decimal(15, 2)
-  lastUpdatedDate   DateTime? @map("last_updated_date") @db.Date
-  organizationId    String    @map("organization_id") @db.Uuid
-  createdBy         String?   @map("created_by") @db.Uuid // Made optional temporarily
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  name           String         @db.VarChar(255)
+  type           String         @db.VarChar(50)
+  currentValue   Decimal        @default(0) @map("current_value") @db.Decimal(15, 2)
+  targetValue    Decimal?       @map("target_value") @db.Decimal(15, 2)
+  bank_name      String?        @db.VarChar(255)
+  account_number String?        @db.VarChar(255)
+  interest_rate  Decimal?       @db.Decimal(5, 4)
+  maturity_date  DateTime?      @db.Date
+  description    String?
+  is_active      Boolean?       @default(true)
+  createdAt      DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  categoryId     String?        @map("category_id") @db.Uuid
+  category       AssetCategory? @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  // Relations
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  category     AssetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-
+  @@index([organizationId], map: "idx_assets_org_id")
+  @@index([type], map: "idx_assets_type")
   @@map("assets")
 }
 
 model Liability {
-  id             String        @id @default(uuid()) @db.Uuid
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String        @db.VarChar(255)
   description    String?
-  type           LiabilityType
+  type           String        @db.VarChar(50)
   currentAmount  Decimal       @default(0) @map("current_amount") @db.Decimal(15, 2)
   originalAmount Decimal?      @map("original_amount") @db.Decimal(15, 2)
   interestRate   Decimal?      @map("interest_rate") @db.Decimal(5, 2)
   monthlyPayment Decimal?      @map("monthly_payment") @db.Decimal(15, 2)
   dueDate        DateTime?     @map("due_date") @db.Date
-  organizationId String        @map("organization_id") @db.Uuid
-  createdBy      String        @map("created_by") @db.Uuid
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  organizationId String?       @map("organization_id") @db.Uuid
+  createdBy      String?       @map("created_by") @db.Uuid
+  createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
+  @@index([organizationId], map: "idx_liabilities_org_id")
   @@map("liabilities")
 }
 
-// Enums
-enum OrganizationRole {
-  owner
-  admin
-  member
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model categories {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String         @db.Uuid
+  name             String         @db.VarChar(255)
+  level            Int
+  parent_id        String?        @db.Uuid
+  transaction_type String         @db.VarChar(20)
+  icon             String?        @db.VarChar(50)
+  color            String?        @db.VarChar(7)
+  is_default       Boolean?       @default(false)
+  created_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  organizations    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  categories       categories?    @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_categories categories[]   @relation("categoriesTocategories")
+  transactions     transactions[]
+
+  @@unique([organization_id, name, parent_id, level])
+  @@index([level], map: "idx_categories_level")
+  @@index([organization_id], map: "idx_categories_org_id")
+  @@index([parent_id], map: "idx_categories_parent_id")
+  @@index([transaction_type], map: "idx_categories_type")
 }
 
-enum CategoryType {
-  real_estate
-  financial
-  investment
-  retirement
-  cash
-  other
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model debts {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String       @db.Uuid
+  name             String       @db.VarChar(255)
+  type             String       @db.VarChar(50)
+  total_amount     Decimal      @db.Decimal(15, 2)
+  remaining_amount Decimal      @db.Decimal(15, 2)
+  interest_rate    Decimal?     @db.Decimal(5, 4)
+  monthly_payment  Decimal?     @db.Decimal(15, 2)
+  due_date         DateTime?    @db.Date
+  bank_name        String?      @db.VarChar(255)
+  account_number   String?      @db.VarChar(255)
+  description      String?
+  is_active        Boolean?     @default(true)
+  created_at       DateTime?    @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?    @default(now()) @db.Timestamptz(6)
+  organizations    Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organization_id], map: "idx_debts_org_id")
+  @@index([type], map: "idx_debts_type")
 }
 
-enum LiabilityType {
-  mortgage
-  personal_loan
-  credit_card
-  student_loan
-  other
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model default_categories {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name             String  @db.VarChar(255)
+  level            Int
+  parent_name      String? @db.VarChar(255)
+  transaction_type String  @db.VarChar(20)
+  icon             String? @db.VarChar(50)
+  color            String? @db.VarChar(7)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model payment_methods {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id  String         @db.Uuid
+  name             String         @db.VarChar(255)
+  type             String         @db.VarChar(50)
+  bank_name        String?        @db.VarChar(255)
+  account_number   String?        @db.VarChar(255)
+  card_company     String?        @db.VarChar(255)
+  last_four_digits String?        @db.VarChar(4)
+  is_active        Boolean?       @default(true)
+  created_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  organizations    Organization   @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  transactions     transactions[]
+
+  @@index([organization_id], map: "idx_payment_methods_org_id")
+  @@index([type], map: "idx_payment_methods_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model transactions {
+  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id   String           @db.Uuid
+  user_id           String           @db.Uuid
+  amount            Decimal          @db.Decimal(15, 2)
+  description       String?
+  transaction_date  DateTime         @default(dbgenerated("CURRENT_DATE")) @db.Date
+  transaction_type  String           @db.VarChar(20)
+  category_id       String?          @db.Uuid
+  payment_method_id String?          @db.Uuid
+  tags              String[]
+  memo              String?
+  receipt_url       String?
+  created_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?        @default(now()) @db.Timestamptz(6)
+  categories        categories?      @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  organizations     Organization     @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  payment_methods   payment_methods? @relation(fields: [payment_method_id], references: [id], onUpdate: NoAction)
+
+  @@index([category_id], map: "idx_transactions_category_id")
+  @@index([transaction_date], map: "idx_transactions_date")
+  @@index([organization_id], map: "idx_transactions_org_id")
+  @@index([payment_method_id], map: "idx_transactions_payment_method_id")
+  @@index([transaction_type], map: "idx_transactions_type")
+  @@index([user_id], map: "idx_transactions_user_id")
 }

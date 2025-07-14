@@ -359,8 +359,8 @@ export default function SettingsPage() {
                   handleSettingChange('preferences', 'language', selectedKey)
                 }}
               >
-                <SelectItem key="ko" value="ko">한국어</SelectItem>
-                <SelectItem key="en" value="en">English</SelectItem>
+                <SelectItem key="ko">한국어</SelectItem>
+                <SelectItem key="en">English</SelectItem>
               </Select>
               
               <Select
@@ -371,9 +371,9 @@ export default function SettingsPage() {
                   handleSettingChange('preferences', 'currency', selectedKey)
                 }}
               >
-                <SelectItem key="KRW" value="KRW">원 (KRW)</SelectItem>
-                <SelectItem key="USD" value="USD">달러 (USD)</SelectItem>
-                <SelectItem key="EUR" value="EUR">유로 (EUR)</SelectItem>
+                <SelectItem key="KRW">원 (KRW)</SelectItem>
+                <SelectItem key="USD">달러 (USD)</SelectItem>
+                <SelectItem key="EUR">유로 (EUR)</SelectItem>
               </Select>
             </div>
           </CardBody>

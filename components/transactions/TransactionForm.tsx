@@ -81,7 +81,7 @@ export default function TransactionForm({
         return
       }
 
-      // 선택된 카테고리의 transaction_type 가져오기
+      // 선택된 카테고리의 type 가져오기
       const selectedCategory = categories.find(cat => cat.id === formData.category_id)
       if (!selectedCategory) {
         toast.error('유효하지 않은 카테고리입니다.')
@@ -97,8 +97,7 @@ export default function TransactionForm({
           category_id: formData.category_id,
           payment_method_id: formData.payment_method_id,
           organization_id: organizationId,
-          user_id: user.id,
-          transaction_type: selectedCategory.transaction_type,
+          created_by: user.id,
         }
 
         const { error } = await supabase
@@ -124,7 +123,6 @@ export default function TransactionForm({
             transaction_date: formData.transaction_date,
             category_id: formData.category_id,
             payment_method_id: formData.payment_method_id,
-            transaction_type: selectedCategory.transaction_type,
             updated_at: new Date().toISOString(),
           })
           .eq('id', editTransaction.id)
@@ -208,8 +206,8 @@ export default function TransactionForm({
                 isRequired
               >
                 {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name} ({getTransactionTypeLabel(category.transaction_type)})
+                  <SelectItem key={category.id}>
+                    {category.name} ({getTransactionTypeLabel(category.type)})
                   </SelectItem>
                 ))}
               </Select>
@@ -225,7 +223,7 @@ export default function TransactionForm({
                 isRequired
               >
                 {paymentMethods.map((method) => (
-                  <SelectItem key={method.id} value={method.id}>
+                  <SelectItem key={method.id}>
                     {method.name}
                   </SelectItem>
                 ))}

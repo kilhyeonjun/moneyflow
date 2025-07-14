@@ -28,7 +28,7 @@ export default function MonthlyTrendChart({ transactions }: MonthlyTrendChartPro
     }
     
     const amount = Math.abs(transaction.amount)
-    const type = transaction.categories?.transaction_type || transaction.transaction_type
+    const type = transaction.categories?.transaction_type || (transaction as any).transaction_type
     
     if (type === 'income') {
       acc[monthKey].income += amount

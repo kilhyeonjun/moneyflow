@@ -136,9 +136,9 @@ export default function AnalyticsPage() {
             onSelectionChange={(keys) => setSelectedYear(Array.from(keys)[0] as string)}
             className="w-32"
           >
-            <SelectItem key="2023" value="2023">2023년</SelectItem>
-            <SelectItem key="2024" value="2024">2024년</SelectItem>
-            <SelectItem key="2025" value="2025">2025년</SelectItem>
+            <SelectItem key="2023">2023년</SelectItem>
+            <SelectItem key="2024">2024년</SelectItem>
+            <SelectItem key="2025">2025년</SelectItem>
           </Select>
           <Select
             label="월"
@@ -147,7 +147,7 @@ export default function AnalyticsPage() {
             className="w-32"
           >
             {Array.from({ length: 12 }, (_, i) => (
-              <SelectItem key={(i + 1).toString()} value={(i + 1).toString()}>
+              <SelectItem key={(i + 1).toString()}>
                 {i + 1}월
               </SelectItem>
             ))}

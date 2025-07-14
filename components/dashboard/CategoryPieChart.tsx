@@ -20,7 +20,7 @@ export default function CategoryPieChart({
   // 카테고리별 데이터 집계
   const categoryData = transactions
     .filter(transaction => {
-      const transactionType = transaction.categories?.transaction_type || transaction.transaction_type
+      const transactionType = transaction.categories?.transaction_type || (transaction as any).transaction_type
       return transactionType === type
     })
     .reduce((acc, transaction) => {
