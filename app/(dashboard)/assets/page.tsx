@@ -19,6 +19,10 @@ import {
   Select,
   SelectItem,
   Textarea,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from '@heroui/react'
 import {
   TrendingUp,
@@ -30,6 +34,9 @@ import {
   Plus,
   AlertCircle,
   CheckCircle,
+  Edit,
+  Trash2,
+  MoreVertical,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -53,15 +60,27 @@ interface AssetSummary {
 export default function AssetsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure()
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  const [selectedAsset, setSelectedAsset] = useState<AssetWithCategory | null>(null)
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     categoryId: '',
     currentValue: '',
+  })
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    description: '',
+    categoryId: '',
+    currentValue: '',
+    targetValue: '',
   })
   const [assetSummary, setAssetSummary] = useState<AssetSummary>({
     totalAssets: 0,
@@ -266,6 +285,114 @@ export default function AssetsPage() {
     }
   }
 
+  const handleEditAsset = (asset: AssetWithCategory) => {
+    setSelectedAsset(asset)
+    setEditFormData({
+      name: asset.name,
+      description: asset.description ?? '',
+      categoryId: asset.categoryId as string,
+      currentValue: asset.currentValue.toString(),
+      targetValue: asset.targetValue ? asset.targetValue.toString() : '',
+    })
+    onEditOpen()
+  }
+
+  const handleUpdateAsset = async () => {
+    if (!selectedAsset || !selectedOrgId) {
+      toast.error('선택된 자산이 없습니다.')
+      return
+    }
+
+    if (!editFormData.name || !editFormData.categoryId || !editFormData.currentValue) {
+      toast.error('모든 필수 필드를 입력해주세요.')
+      return
+    }
+
+    setUpdating(true)
+
+    try {
+      const assetData = {
+        id: selectedAsset.id,
+        name: editFormData.name,
+        description: editFormData.description || null,
+        categoryId: editFormData.categoryId,
+        currentValue: parseFloat(editFormData.currentValue),
+        targetValue: editFormData.targetValue ? parseFloat(editFormData.targetValue) : null,
+        organizationId: selectedOrgId,
+      }
+
+      const response = await fetch('/api/assets', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(assetData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update asset')
+      }
+
+      toast.success('자산이 성공적으로 수정되었습니다! ✅')
+      
+      onEditClose()
+      await loadAssets(selectedOrgId)
+      
+    } catch (error) {
+      console.error('자산 수정 중 오류:', error)
+      
+      if (error instanceof Error) {
+        toast.error(`자산 수정 실패: ${error.message}`)
+      } else {
+        toast.error('자산 수정 중 알 수 없는 오류가 발생했습니다.')
+      }
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteAsset = (asset: AssetWithCategory) => {
+    setSelectedAsset(asset)
+    onDeleteOpen()
+  }
+
+  const confirmDeleteAsset = async () => {
+    if (!selectedAsset || !selectedOrgId) {
+      toast.error('선택된 자산이 없습니다.')
+      return
+    }
+
+    setDeleting(true)
+
+    try {
+      const response = await fetch(`/api/assets?id=${selectedAsset.id}&organizationId=${selectedOrgId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete asset')
+      }
+
+      toast.success('자산이 성공적으로 삭제되었습니다! 🗑️')
+      
+      onDeleteClose()
+      await loadAssets(selectedOrgId)
+      
+    } catch (error) {
+      console.error('자산 삭제 중 오류:', error)
+      
+      if (error instanceof Error) {
+        toast.error(`자산 삭제 실패: ${error.message}`)
+      } else {
+        toast.error('자산 삭제 중 알 수 없는 오류가 발생했습니다.')
+      }
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ko-KR', {
       style: 'currency',
@@ -431,7 +558,7 @@ export default function AssetsPage() {
                   ) : (
                     categoryAssets.map((asset) => (
                       <div key={asset.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium">{asset.name}</p>
                           {asset.description && (
                             <p className="text-sm text-gray-500">{asset.description}</p>
@@ -440,10 +567,42 @@ export default function AssetsPage() {
                             업데이트: {asset.updatedAt ? new Date(asset.updatedAt).toLocaleDateString('ko-KR') : '-'}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-blue-600">
-                            {formatCurrency(Number(asset.currentValue))}
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <p className="font-semibold text-blue-600">
+                              {formatCurrency(Number(asset.currentValue))}
+                            </p>
+                          </div>
+                          <Dropdown>
+                            <DropdownTrigger>
+                              <Button
+                                isIconOnly
+                                size="sm"
+                                variant="light"
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownTrigger>
+                            <DropdownMenu aria-label="자산 관리">
+                              <DropdownItem
+                                key="edit"
+                                startContent={<Edit className="w-4 h-4" />}
+                                onPress={() => handleEditAsset(asset)}
+                              >
+                                수정
+                              </DropdownItem>
+                              <DropdownItem
+                                key="delete"
+                                className="text-danger"
+                                color="danger"
+                                startContent={<Trash2 className="w-4 h-4" />}
+                                onPress={() => handleDeleteAsset(asset)}
+                              >
+                                삭제
+                              </DropdownItem>
+                            </DropdownMenu>
+                          </Dropdown>
                         </div>
                       </div>
                     ))
@@ -514,6 +673,127 @@ export default function AssetsPage() {
               isLoading={creating}
             >
               자산 추가
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 자산 수정 모달 */}
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="2xl">
+        <ModalContent>
+          <ModalHeader>자산 수정</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Input
+                label="자산명"
+                placeholder="예: 우리은행 적금"
+                value={editFormData.name}
+                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                isRequired
+              />
+
+              <Select
+                label="자산 카테고리"
+                placeholder="카테고리를 선택하세요"
+                selectedKeys={editFormData.categoryId ? [editFormData.categoryId] : []}
+                onSelectionChange={(keys) => {
+                  const selectedKey = Array.from(keys)[0] as string
+                  setEditFormData({ ...editFormData, categoryId: selectedKey })
+                }}
+                isRequired
+              >
+                {assetCategories.map((category) => (
+                  <SelectItem key={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </Select>
+
+              <Input
+                label="현재 가치"
+                placeholder="0"
+                type="number"
+                value={editFormData.currentValue}
+                onChange={(e) => setEditFormData({ ...editFormData, currentValue: e.target.value })}
+                startContent={<span className="text-gray-500">₩</span>}
+                isRequired
+              />
+
+              <Input
+                label="목표 가치 (선택사항)"
+                placeholder="0"
+                type="number"
+                value={editFormData.targetValue}
+                onChange={(e) => setEditFormData({ ...editFormData, targetValue: e.target.value })}
+                startContent={<span className="text-gray-500">₩</span>}
+              />
+
+              <Textarea
+                label="설명 (선택사항)"
+                placeholder="자산에 대한 추가 정보를 입력하세요"
+                value={editFormData.description}
+                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onEditClose}>
+              취소
+            </Button>
+            <Button
+              color="primary"
+              onPress={handleUpdateAsset}
+              isLoading={updating}
+            >
+              수정 완료
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 자산 삭제 확인 모달 */}
+      <Modal isOpen={isDeleteOpen} onClose={onDeleteClose}>
+        <ModalContent>
+          <ModalHeader className="text-danger">자산 삭제 확인</ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-red-50 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-red-800">
+                    정말로 이 자산을 삭제하시겠습니까?
+                  </p>
+                  <p className="text-sm text-red-600 mt-1">
+                    이 작업은 되돌릴 수 없습니다.
+                  </p>
+                </div>
+              </div>
+              
+              {selectedAsset && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="font-medium">{selectedAsset.name}</p>
+                  <p className="text-sm text-gray-600">
+                    현재 가치: {formatCurrency(Number(selectedAsset.currentValue))}
+                  </p>
+                  {selectedAsset.description && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      {selectedAsset.description}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onDeleteClose}>
+              취소
+            </Button>
+            <Button
+              color="danger"
+              onPress={confirmDeleteAsset}
+              isLoading={deleting}
+            >
+              삭제
             </Button>
           </ModalFooter>
         </ModalContent>

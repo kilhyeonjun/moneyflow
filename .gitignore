@@ -52,3 +52,7 @@ test-*.js
 dev.log
 *.log
 /generated/prisma
+
+# cursor
+.cursor/mcp.json
+.cursor/mcp_proxy.json
