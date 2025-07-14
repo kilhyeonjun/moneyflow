@@ -9,12 +9,6 @@ import {
   Button,
   Progress,
   Chip,
-  Table,
-  TableHeader,
-  TableColumn,
-  TableBody,
-  TableRow,
-  TableCell,
   Modal,
   ModalContent,
   ModalHeader,
@@ -28,26 +22,24 @@ import {
 } from '@heroui/react'
 import {
   TrendingUp,
-  TrendingDown,
   Target,
   Home,
   PiggyBank,
   Wallet,
   CreditCard,
   Plus,
+  AlertCircle,
+  CheckCircle,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
 
-type AssetCategory = Database['public']['Tables']['asset_categories']['Row']
-type Asset = Database['public']['Tables']['assets']['Row']
-type Liability = Database['public']['Tables']['liabilities']['Row']
-type AssetInsert = Database['public']['Tables']['assets']['Insert']
-type LiabilityInsert = Database['public']['Tables']['liabilities']['Insert']
+// Prisma 타입 import
+import type { Asset, AssetCategory, Liability, Organization } from '@prisma/client'
 
+// 확장된 타입 정의
 interface AssetWithCategory extends Asset {
-  asset_categories: AssetCategory | null
+  category: AssetCategory
 }
 
 interface AssetSummary {
@@ -96,6 +88,21 @@ export default function AssetsPage() {
       }
 
       setSelectedOrgId(storedOrgId)
+      
+      // 사용자 인증 상태 확인 (Supabase Auth 유지)
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        toast.error('사용자 인증에 실패했습니다.')
+        return
+      }
+      
+      if (!user) {
+        toast.error('로그인이 필요합니다.')
+        router.push('/login')
+        return
+      }
+      
       await Promise.all([
         loadAssetCategories(storedOrgId),
         loadAssets(storedOrgId),
@@ -110,76 +117,37 @@ export default function AssetsPage() {
 
   const loadAssetCategories = async (orgId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('asset_categories')
-        .select('*')
-        .eq('organization_id', orgId)
-        .order('name')
-
-      if (error) throw error
+      const response = await fetch(`/api/asset-categories?organizationId=${orgId}`)
       
-      // 카테고리가 없으면 기본 카테고리 생성
-      if (!data || data.length === 0) {
-        await createDefaultAssetCategories(orgId)
-        // 다시 로드
-        const { data: newData, error: newError } = await supabase
-          .from('asset_categories')
-          .select('*')
-          .eq('organization_id', orgId)
-          .order('name')
-        
-        if (newError) throw newError
-        setAssetCategories(newData || [])
-      } else {
-        setAssetCategories(data)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+      
+      const categories = await response.json()
+      setAssetCategories(categories || [])
+      
     } catch (error) {
       console.error('자산 카테고리 로드 실패:', error)
-    }
-  }
-
-  const createDefaultAssetCategories = async (orgId: string) => {
-    try {
-      const defaultCategories = [
-        { name: '현금 및 예금', type: 'cash', icon: 'wallet', color: '#10B981' },
-        { name: '투자 자산', type: 'investment', icon: 'trending-up', color: '#8B5CF6' },
-        { name: '부동산', type: 'real_estate', icon: 'home', color: '#3B82F6' },
-        { name: '퇴직연금', type: 'retirement', icon: 'piggy-bank', color: '#F59E0B' },
-        { name: '기타 자산', type: 'other', icon: 'briefcase', color: '#6B7280' },
-      ]
-
-      const { error } = await supabase
-        .from('asset_categories')
-        .insert(
-          defaultCategories.map(category => ({
-            ...category,
-            organization_id: orgId,
-          }))
-        )
-
-      if (error) throw error
-    } catch (error) {
-      console.error('기본 자산 카테고리 생성 실패:', error)
+      toast.error('자산 카테고리를 불러오는데 실패했습니다.')
     }
   }
 
   const loadAssets = async (orgId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('assets')
-        .select(`
-          *,
-          asset_categories (*)
-        `)
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setAssets(data || [])
+      const response = await fetch(`/api/assets?organizationId=${orgId}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const assetsData = await response.json()
+      setAssets(assetsData || [])
       
       // 자산 요약 계산
-      const totalAssets = (data || []).reduce((sum, asset) => sum + asset.current_value, 0)
+      const totalAssets = (assetsData || []).reduce((sum: number, asset: Asset) => 
+        sum + Number(asset.currentValue), 0)
       updateAssetSummary(totalAssets)
+      
     } catch (error) {
       console.error('자산 로드 실패:', error)
     }
@@ -187,18 +155,20 @@ export default function AssetsPage() {
 
   const loadLiabilities = async (orgId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('liabilities')
-        .select('*')
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setLiabilities(data || [])
+      const response = await fetch(`/api/liabilities?organizationId=${orgId}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const liabilitiesData = await response.json()
+      setLiabilities(liabilitiesData || [])
       
       // 부채 요약 계산
-      const totalLiabilities = (data || []).reduce((sum, liability) => sum + liability.current_amount, 0)
+      const totalLiabilities = (liabilitiesData || []).reduce((sum: number, liability: Liability) => 
+        sum + Number(liability.currentAmount), 0)
       updateLiabilitySummary(totalLiabilities)
+      
     } catch (error) {
       console.error('부채 로드 실패:', error)
     }
@@ -248,37 +218,49 @@ export default function AssetsPage() {
         return
       }
 
-      const assetData: AssetInsert = {
+      const assetData = {
         name: formData.name,
         description: formData.description || null,
-        category_id: formData.categoryId,
-        current_value: parseFloat(formData.currentValue),
-        organization_id: selectedOrgId,
-        created_by: user.id,
+        categoryId: formData.categoryId,
+        currentValue: parseFloat(formData.currentValue),
+        organizationId: selectedOrgId,
+        createdBy: user.id,
       }
 
-      const { error } = await supabase
-        .from('assets')
-        .insert([assetData])
+      const response = await fetch('/api/assets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(assetData),
+      })
 
-      if (error) {
-        console.error('자산 생성 실패:', error)
-        toast.error('자산 생성에 실패했습니다.')
-      } else {
-        toast.success('자산이 성공적으로 추가되었습니다!')
-        
-        setFormData({
-          name: '',
-          description: '',
-          categoryId: '',
-          currentValue: '',
-        })
-        onClose()
-        await loadAssets(selectedOrgId)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create asset')
       }
+
+      const newAsset = await response.json()
+      
+      toast.success('자산이 성공적으로 추가되었습니다! 🎉')
+      
+      setFormData({
+        name: '',
+        description: '',
+        categoryId: '',
+        currentValue: '',
+      })
+      onClose()
+      await loadAssets(selectedOrgId)
+      
     } catch (error) {
       console.error('자산 생성 중 오류:', error)
-      toast.error('자산 생성 중 오류가 발생했습니다.')
+      
+      if (error instanceof Error) {
+        toast.error(`자산 생성 실패: ${error.message}`)
+      } else {
+        toast.error('자산 생성 중 알 수 없는 오류가 발생했습니다.')
+      }
     } finally {
       setCreating(false)
     }
@@ -301,6 +283,8 @@ export default function AssetsPage() {
         return <TrendingUp className="w-5 h-5 text-purple-600" />
       case 'financial':
         return <Wallet className="w-5 h-5 text-orange-600" />
+      case 'cash':
+        return <Wallet className="w-5 h-5 text-green-600" />
       default:
         return <Wallet className="w-5 h-5 text-gray-600" />
     }
@@ -310,7 +294,7 @@ export default function AssetsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <p>자산 현황을 불러오는 중...</p>
         </div>
       </div>
@@ -323,16 +307,39 @@ export default function AssetsPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">자산 관리</h1>
-          <p className="text-gray-600">자산과 부채를 체계적으로 관리하고 목표를 추적하세요</p>
+          <p className="text-gray-600">조직의 자산을 체계적으로 관리하세요</p>
         </div>
         <Button
           color="primary"
           startContent={<Plus className="w-4 h-4" />}
           onPress={onOpen}
+          isDisabled={assetCategories.length === 0}
         >
           자산 추가
         </Button>
       </div>
+
+      {/* 카테고리 없음 경고 */}
+      {assetCategories.length === 0 && (
+        <Card className="mb-6 border-red-200">
+          <CardHeader className="flex flex-row items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <h3 className="text-lg font-semibold text-red-600">자산 카테고리가 없습니다</h3>
+          </CardHeader>
+          <CardBody>
+            <p className="text-gray-700 mb-4">
+              자산을 추가하려면 먼저 자산 카테고리가 필요합니다. 
+              페이지를 새로고침하여 기본 카테고리를 생성하세요.
+            </p>
+            <Button 
+              color="primary" 
+              onClick={() => window.location.reload()}
+            >
+              페이지 새로고침
+            </Button>
+          </CardBody>
+        </Card>
+      )}
 
       {/* 요약 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -393,8 +400,8 @@ export default function AssetsPage() {
       {/* 자산 분류별 현황 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {assetCategories.map((category) => {
-          const categoryAssets = assets.filter(asset => asset.category_id === category.id)
-          const categoryValue = categoryAssets.reduce((sum, asset) => sum + asset.current_value, 0)
+          const categoryAssets = assets.filter(asset => asset.categoryId === category.id)
+          const categoryValue = categoryAssets.reduce((sum, asset) => sum + Number(asset.currentValue), 0)
           
           return (
             <Card key={category.id}>
@@ -417,7 +424,7 @@ export default function AssetsPage() {
                   {categoryAssets.length === 0 ? (
                     <div className="text-center py-4 text-gray-500">
                       <p>등록된 자산이 없습니다</p>
-                      <Button size="sm" color="primary" className="mt-2">
+                      <Button size="sm" color="primary" className="mt-2" onPress={onOpen}>
                         자산 추가
                       </Button>
                     </div>
@@ -426,13 +433,16 @@ export default function AssetsPage() {
                       <div key={asset.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                         <div>
                           <p className="font-medium">{asset.name}</p>
-                          <p className="text-sm text-gray-500">
-                            업데이트: {new Date(asset.updated_at).toLocaleDateString('ko-KR')}
+                          {asset.description && (
+                            <p className="text-sm text-gray-500">{asset.description}</p>
+                          )}
+                          <p className="text-xs text-gray-400">
+                            업데이트: {new Date(asset.updatedAt).toLocaleDateString('ko-KR')}
                           </p>
                         </div>
                         <div className="text-right">
                           <p className="font-semibold text-blue-600">
-                            {formatCurrency(asset.current_value)}
+                            {formatCurrency(Number(asset.currentValue))}
                           </p>
                         </div>
                       </div>
@@ -444,59 +454,6 @@ export default function AssetsPage() {
           )
         })}
       </div>
-
-      {/* 부채 현황 */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-red-600" />
-            <h3 className="text-lg font-semibold">부채 현황</h3>
-          </div>
-        </CardHeader>
-        <CardBody>
-          {liabilities.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p>등록된 부채가 없습니다</p>
-              <Button color="primary" className="mt-4">
-                부채 추가
-              </Button>
-            </div>
-          ) : (
-            <Table aria-label="부채 현황 테이블">
-              <TableHeader>
-                <TableColumn>부채명</TableColumn>
-                <TableColumn>종류</TableColumn>
-                <TableColumn>금액</TableColumn>
-                <TableColumn>최종 업데이트</TableColumn>
-              </TableHeader>
-              <TableBody>
-                {liabilities.map((liability) => (
-                  <TableRow key={liability.id}>
-                    <TableCell>{liability.name}</TableCell>
-                    <TableCell>
-                      <Chip color="danger" size="sm" variant="flat">
-                        {liability.type === 'mortgage' ? '담보대출' : 
-                         liability.type === 'personal_loan' ? '신용대출' :
-                         liability.type === 'credit_card' ? '신용카드' :
-                         liability.type === 'student_loan' ? '학자금대출' : '기타'}
-                      </Chip>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-semibold text-red-600">
-                        {formatCurrency(liability.current_amount)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(liability.updated_at).toLocaleDateString('ko-KR')}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardBody>
-      </Card>
 
       {/* 자산 추가 모달 */}
       <Modal isOpen={isOpen} onClose={onClose} size="2xl">
@@ -566,7 +523,7 @@ export default function AssetsPage() {
       <Toaster
         position="top-right"
         toastOptions={{
-          duration: 3000,
+          duration: 5000,
           style: {
             background: '#363636',
             color: '#fff',

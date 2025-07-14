@@ -1,0 +1,127 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// MoneyFlow 프로젝트 스키마
+// 기존 Supabase 테이블 구조를 기반으로 정의
+
+model Organization {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @db.VarChar(255)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdBy   String   @map("created_by") @db.Uuid
+
+  // Relations
+  members         OrganizationMember[]
+  assetCategories AssetCategory[]
+  assets          Asset[]
+  liabilities     Liability[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole @default(member)
+  joinedAt       DateTime         @default(now()) @map("joined_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_members")
+}
+
+model AssetCategory {
+  id             String       @id @default(uuid()) @db.Uuid
+  name           String       @db.VarChar(255)
+  type           CategoryType
+  icon           String?      @db.VarChar(50)
+  color          String?      @db.VarChar(20)
+  organizationId String       @map("organization_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assets       Asset[]
+
+  @@map("asset_categories")
+}
+
+model Asset {
+  id                String    @id @default(uuid()) @db.Uuid
+  name              String    @db.VarChar(255)
+  description       String?
+  categoryId        String    @map("category_id") @db.Uuid
+  currentValue      Decimal   @default(0) @map("current_value") @db.Decimal(15, 2)
+  targetValue       Decimal?  @map("target_value") @db.Decimal(15, 2)
+  lastUpdatedValue  Decimal?  @map("last_updated_value") @db.Decimal(15, 2)
+  lastUpdatedDate   DateTime? @map("last_updated_date") @db.Date
+  organizationId    String    @map("organization_id") @db.Uuid
+  createdBy         String?   @map("created_by") @db.Uuid // Made optional temporarily
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     AssetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@map("assets")
+}
+
+model Liability {
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String        @db.VarChar(255)
+  description    String?
+  type           LiabilityType
+  currentAmount  Decimal       @default(0) @map("current_amount") @db.Decimal(15, 2)
+  originalAmount Decimal?      @map("original_amount") @db.Decimal(15, 2)
+  interestRate   Decimal?      @map("interest_rate") @db.Decimal(5, 2)
+  monthlyPayment Decimal?      @map("monthly_payment") @db.Decimal(15, 2)
+  dueDate        DateTime?     @map("due_date") @db.Date
+  organizationId String        @map("organization_id") @db.Uuid
+  createdBy      String        @map("created_by") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("liabilities")
+}
+
+// Enums
+enum OrganizationRole {
+  owner
+  admin
+  member
+}
+
+enum CategoryType {
+  real_estate
+  financial
+  investment
+  retirement
+  cash
+  other
+}
+
+enum LiabilityType {
+  mortgage
+  personal_loan
+  credit_card
+  student_loan
+  other
+}
