@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Organization {
-  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id              String               @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   name            String               @db.VarChar(255)
   description     String?
   createdBy       String               @map("created_by") @db.Uuid
@@ -27,7 +27,7 @@ model Organization {
 }
 
 model OrganizationMember {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String       @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   organizationId String       @map("organization_id") @db.Uuid
   userId         String       @map("user_id") @db.Uuid
   role           String       @default("member") @db.VarChar(50)
@@ -41,7 +41,7 @@ model OrganizationMember {
 }
 
 model AssetCategory {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String        @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   name           String        @db.VarChar(255)
   type           String        @db.VarChar(50)
   icon           String?       @db.VarChar(50)
@@ -57,7 +57,7 @@ model AssetCategory {
 }
 
 model Asset {
-  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String         @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   organizationId String         @map("organization_id") @db.Uuid
   name           String         @db.VarChar(255)
   type           String         @db.VarChar(50)
@@ -81,7 +81,7 @@ model Asset {
 }
 
 model Liability {
-  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id             String        @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   name           String        @db.VarChar(255)
   description    String?
   type           String        @db.VarChar(50)
@@ -102,7 +102,7 @@ model Liability {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model categories {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String         @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   organization_id  String         @db.Uuid
   name             String         @db.VarChar(255)
   level            Int
@@ -128,7 +128,7 @@ model categories {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model debts {
-  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String       @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   organization_id  String       @db.Uuid
   name             String       @db.VarChar(255)
   type             String       @db.VarChar(50)
@@ -151,7 +151,7 @@ model debts {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model default_categories {
-  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String  @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   name             String  @db.VarChar(255)
   level            Int
   parent_name      String? @db.VarChar(255)
@@ -162,7 +162,7 @@ model default_categories {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model payment_methods {
-  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String         @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   organization_id  String         @db.Uuid
   name             String         @db.VarChar(255)
   type             String         @db.VarChar(50)
@@ -182,7 +182,7 @@ model payment_methods {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model transactions {
-  id                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                String           @id @default(dbgenerated("gen_random_uuid_v7()")) @db.Uuid
   organization_id   String           @db.Uuid
   user_id           String           @db.Uuid
   amount            Decimal          @db.Decimal(15, 2)
