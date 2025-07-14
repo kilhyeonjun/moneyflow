@@ -54,14 +54,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // 카테고리 존재 확인
+    const category = await prisma.assetCategory.findFirst({
+      where: {
+        id: categoryId,
+        organizationId: organizationId,
+      },
+    })
+
+    if (!category) {
+      return NextResponse.json(
+        { error: 'Invalid category ID' },
+        { status: 400 }
+      )
+    }
+
     const asset = await prisma.asset.create({
       data: {
         name,
         description,
         categoryId,
-        currentValue: parseFloat(currentValue),
+        currentValue: parseFloat(currentValue.toString()),
+        type: 'savings', // 기본 타입 설정
         organizationId,
-        ...(createdBy && { createdBy }),
       },
       include: {
         category: true,
@@ -72,7 +87,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Asset creation error:', error)
     return NextResponse.json(
-      { error: 'Failed to create asset', details: error },
+      { error: 'Failed to create asset' },
       { status: 500 }
     )
   }

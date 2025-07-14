@@ -132,11 +132,44 @@ export default function TransactionsPage() {
       }
       
       const categories = await response.json()
-      setTransactionCategories(categories || [])
+      
+      // 카테고리가 없으면 기본 카테고리 생성
+      if (!categories || categories.length === 0) {
+        await createDefaultCategories(orgId)
+        // 다시 카테고리 로드
+        const retryResponse = await fetch(`/api/transaction-categories?organizationId=${orgId}`)
+        if (retryResponse.ok) {
+          const retryCategories = await retryResponse.json()
+          setTransactionCategories(retryCategories || [])
+        }
+      } else {
+        setTransactionCategories(categories)
+      }
       
     } catch (error) {
       console.error('거래 카테고리 로드 실패:', error)
       toast.error('거래 카테고리를 불러오는데 실패했습니다.')
+    }
+  }
+
+  const createDefaultCategories = async (orgId: string) => {
+    try {
+      const response = await fetch('/api/seed', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ organizationId: orgId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create default categories')
+      }
+
+      toast.success('기본 카테고리가 생성되었습니다!')
+    } catch (error) {
+      console.error('기본 카테고리 생성 실패:', error)
+      toast.error('기본 카테고리 생성에 실패했습니다.')
     }
   }
 
