@@ -265,7 +265,6 @@ export default function OrganizationsPage() {
             </ModalFooter>
           </ModalContent>
         </Modal>
-        
         {/* Toast 알림 */}
         <Toaster
           position="top-right"

@@ -54,7 +54,7 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-        
+
         {/* Features Section */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 max-w-7xl mx-auto">
           <Card className="p-6">
@@ -105,7 +105,7 @@ export default function HomePage() {
             </CardBody>
           </Card>
         </div>
-        
+
         {/* CTA Section */}
         <div className="text-center bg-white rounded-2xl p-12 shadow-lg max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">

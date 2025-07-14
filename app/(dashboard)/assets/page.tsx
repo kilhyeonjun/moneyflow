@@ -42,7 +42,12 @@ import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 
 // Prisma 타입 import
-import type { Asset, AssetCategory, Liability, Organization } from '@prisma/client'
+import type {
+  Asset,
+  AssetCategory,
+  Liability,
+  Organization,
+} from '@prisma/client'
 
 // 확장된 타입 정의
 interface AssetWithCategory extends Asset {
@@ -60,15 +65,25 @@ interface AssetSummary {
 export default function AssetsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure()
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
+  } = useDisclosure()
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure()
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
-  const [selectedAsset, setSelectedAsset] = useState<AssetWithCategory | null>(null)
-  
+  const [selectedAsset, setSelectedAsset] = useState<AssetWithCategory | null>(
+    null
+  )
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -100,32 +115,35 @@ export default function AssetsPage() {
   const checkOrganizationAndLoadData = async () => {
     try {
       const storedOrgId = localStorage.getItem('selectedOrganization')
-      
+
       if (!storedOrgId) {
         router.push('/organizations')
         return
       }
 
       setSelectedOrgId(storedOrgId)
-      
+
       // 사용자 인증 상태 확인 (Supabase Auth 유지)
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
       if (authError) {
         toast.error('사용자 인증에 실패했습니다.')
         return
       }
-      
+
       if (!user) {
         toast.error('로그인이 필요합니다.')
         router.push('/login')
         return
       }
-      
+
       await Promise.all([
         loadAssetCategories(storedOrgId),
         loadAssets(storedOrgId),
-        loadLiabilities(storedOrgId)
+        loadLiabilities(storedOrgId),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -136,19 +154,23 @@ export default function AssetsPage() {
 
   const loadAssetCategories = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/asset-categories?organizationId=${orgId}`)
-      
+      const response = await fetch(
+        `/api/asset-categories?organizationId=${orgId}`
+      )
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const categories = await response.json()
-      
+
       // 카테고리가 없으면 기본 카테고리 생성
       if (!categories || categories.length === 0) {
         await createDefaultCategories(orgId)
         // 다시 카테고리 로드
-        const retryResponse = await fetch(`/api/asset-categories?organizationId=${orgId}`)
+        const retryResponse = await fetch(
+          `/api/asset-categories?organizationId=${orgId}`
+        )
         if (retryResponse.ok) {
           const retryCategories = await retryResponse.json()
           setAssetCategories(retryCategories || [])
@@ -156,7 +178,6 @@ export default function AssetsPage() {
       } else {
         setAssetCategories(categories)
       }
-      
     } catch (error) {
       console.error('자산 카테고리 로드 실패:', error)
       toast.error('자산 카테고리를 불러오는데 실패했습니다.')
@@ -187,19 +208,20 @@ export default function AssetsPage() {
   const loadAssets = async (orgId: string) => {
     try {
       const response = await fetch(`/api/assets?organizationId=${orgId}`)
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const assetsData = await response.json()
       setAssets(assetsData || [])
-      
+
       // 자산 요약 계산
-      const totalAssets = (assetsData || []).reduce((sum: number, asset: Asset) => 
-        sum + Number(asset.currentValue), 0)
+      const totalAssets = (assetsData || []).reduce(
+        (sum: number, asset: Asset) => sum + Number(asset.currentValue),
+        0
+      )
       updateAssetSummary(totalAssets)
-      
     } catch (error) {
       console.error('자산 로드 실패:', error)
     }
@@ -208,19 +230,21 @@ export default function AssetsPage() {
   const loadLiabilities = async (orgId: string) => {
     try {
       const response = await fetch(`/api/liabilities?organizationId=${orgId}`)
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const liabilitiesData = await response.json()
       setLiabilities(liabilitiesData || [])
-      
+
       // 부채 요약 계산
-      const totalLiabilities = (liabilitiesData || []).reduce((sum: number, liability: Liability) => 
-        sum + Number(liability.currentAmount), 0)
+      const totalLiabilities = (liabilitiesData || []).reduce(
+        (sum: number, liability: Liability) =>
+          sum + Number(liability.currentAmount),
+        0
+      )
       updateLiabilitySummary(totalLiabilities)
-      
     } catch (error) {
       console.error('부채 로드 실패:', error)
     }
@@ -229,13 +253,14 @@ export default function AssetsPage() {
   const updateAssetSummary = (totalAssets: number) => {
     setAssetSummary(prev => {
       const netWorth = totalAssets - prev.totalLiabilities
-      const achievementRate = prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal * 100) : 0
-      
+      const achievementRate =
+        prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal) * 100 : 0
+
       return {
         ...prev,
         totalAssets,
         netWorth,
-        achievementRate
+        achievementRate,
       }
     })
   }
@@ -243,19 +268,25 @@ export default function AssetsPage() {
   const updateLiabilitySummary = (totalLiabilities: number) => {
     setAssetSummary(prev => {
       const netWorth = prev.totalAssets - totalLiabilities
-      const achievementRate = prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal * 100) : 0
-      
+      const achievementRate =
+        prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal) * 100 : 0
+
       return {
         ...prev,
         totalLiabilities,
         netWorth,
-        achievementRate
+        achievementRate,
       }
     })
   }
 
   const handleCreateAsset = async () => {
-    if (!selectedOrgId || !formData.name || !formData.categoryId || !formData.currentValue) {
+    if (
+      !selectedOrgId ||
+      !formData.name ||
+      !formData.categoryId ||
+      !formData.currentValue
+    ) {
       toast.error('모든 필수 필드를 입력해주세요.')
       return
     }
@@ -263,8 +294,10 @@ export default function AssetsPage() {
     setCreating(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
         toast.error('로그인이 필요합니다.')
         return
@@ -293,9 +326,9 @@ export default function AssetsPage() {
       }
 
       const newAsset = await response.json()
-      
+
       toast.success('자산이 성공적으로 추가되었습니다! 🎉')
-      
+
       setFormData({
         name: '',
         description: '',
@@ -304,10 +337,9 @@ export default function AssetsPage() {
       })
       onClose()
       await loadAssets(selectedOrgId)
-      
     } catch (error) {
       console.error('자산 생성 중 오류:', error)
-      
+
       if (error instanceof Error) {
         toast.error(`자산 생성 실패: ${error.message}`)
       } else {
@@ -336,7 +368,11 @@ export default function AssetsPage() {
       return
     }
 
-    if (!editFormData.name || !editFormData.categoryId || !editFormData.currentValue) {
+    if (
+      !editFormData.name ||
+      !editFormData.categoryId ||
+      !editFormData.currentValue
+    ) {
       toast.error('모든 필수 필드를 입력해주세요.')
       return
     }
@@ -350,7 +386,9 @@ export default function AssetsPage() {
         description: editFormData.description || null,
         categoryId: editFormData.categoryId,
         currentValue: parseFloat(editFormData.currentValue),
-        targetValue: editFormData.targetValue ? parseFloat(editFormData.targetValue) : null,
+        targetValue: editFormData.targetValue
+          ? parseFloat(editFormData.targetValue)
+          : null,
         organizationId: selectedOrgId,
       }
 
@@ -368,13 +406,12 @@ export default function AssetsPage() {
       }
 
       toast.success('자산이 성공적으로 수정되었습니다! ✅')
-      
+
       onEditClose()
       await loadAssets(selectedOrgId)
-      
     } catch (error) {
       console.error('자산 수정 중 오류:', error)
-      
+
       if (error instanceof Error) {
         toast.error(`자산 수정 실패: ${error.message}`)
       } else {
@@ -399,9 +436,12 @@ export default function AssetsPage() {
     setDeleting(true)
 
     try {
-      const response = await fetch(`/api/assets?id=${selectedAsset.id}&organizationId=${selectedOrgId}`, {
-        method: 'DELETE',
-      })
+      const response = await fetch(
+        `/api/assets?id=${selectedAsset.id}&organizationId=${selectedOrgId}`,
+        {
+          method: 'DELETE',
+        }
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -409,13 +449,12 @@ export default function AssetsPage() {
       }
 
       toast.success('자산이 성공적으로 삭제되었습니다! 🗑️')
-      
+
       onDeleteClose()
       await loadAssets(selectedOrgId)
-      
     } catch (error) {
       console.error('자산 삭제 중 오류:', error)
-      
+
       if (error instanceof Error) {
         toast.error(`자산 삭제 실패: ${error.message}`)
       } else {
@@ -484,17 +523,16 @@ export default function AssetsPage() {
         <Card className="mb-6 border-red-200">
           <CardHeader className="flex flex-row items-center gap-2">
             <AlertCircle className="w-5 h-5 text-red-600" />
-            <h3 className="text-lg font-semibold text-red-600">자산 카테고리가 없습니다</h3>
+            <h3 className="text-lg font-semibold text-red-600">
+              자산 카테고리가 없습니다
+            </h3>
           </CardHeader>
           <CardBody>
             <p className="text-gray-700 mb-4">
-              자산을 추가하려면 먼저 자산 카테고리가 필요합니다. 
-              페이지를 새로고침하여 기본 카테고리를 생성하세요.
+              자산을 추가하려면 먼저 자산 카테고리가 필요합니다. 페이지를
+              새로고침하여 기본 카테고리를 생성하세요.
             </p>
-            <Button 
-              color="primary" 
-              onClick={() => window.location.reload()}
-            >
+            <Button color="primary" onClick={() => window.location.reload()}>
               페이지 새로고침
             </Button>
           </CardBody>
@@ -549,7 +587,10 @@ export default function AssetsPage() {
               {assetSummary.achievementRate.toFixed(1)}%
             </div>
             <Progress
-              value={Math.max(0, Math.min(100, assetSummary.achievementRate + 100))}
+              value={Math.max(
+                0,
+                Math.min(100, assetSummary.achievementRate + 100)
+              )}
               className="mt-2"
               color={assetSummary.achievementRate >= 0 ? 'success' : 'danger'}
             />
@@ -559,10 +600,15 @@ export default function AssetsPage() {
 
       {/* 자산 분류별 현황 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {assetCategories.map((category) => {
-          const categoryAssets = assets.filter(asset => asset.categoryId === category.id)
-          const categoryValue = categoryAssets.reduce((sum, asset) => sum + Number(asset.currentValue), 0)
-          
+        {assetCategories.map(category => {
+          const categoryAssets = assets.filter(
+            asset => asset.categoryId === category.id
+          )
+          const categoryValue = categoryAssets.reduce(
+            (sum, asset) => sum + Number(asset.currentValue),
+            0
+          )
+
           return (
             <Card key={category.id}>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -584,20 +630,35 @@ export default function AssetsPage() {
                   {categoryAssets.length === 0 ? (
                     <div className="text-center py-4 text-gray-500">
                       <p>등록된 자산이 없습니다</p>
-                      <Button size="sm" color="primary" className="mt-2" onPress={onOpen}>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        className="mt-2"
+                        onPress={onOpen}
+                      >
                         자산 추가
                       </Button>
                     </div>
                   ) : (
-                    categoryAssets.map((asset) => (
-                      <div key={asset.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    categoryAssets.map(asset => (
+                      <div
+                        key={asset.id}
+                        className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+                      >
                         <div className="flex-1">
                           <p className="font-medium">{asset.name}</p>
                           {asset.description && (
-                            <p className="text-sm text-gray-500">{asset.description}</p>
+                            <p className="text-sm text-gray-500">
+                              {asset.description}
+                            </p>
                           )}
                           <p className="text-xs text-gray-400">
-                            업데이트: {asset.updatedAt ? new Date(asset.updatedAt).toLocaleDateString('ko-KR') : '-'}
+                            업데이트:{' '}
+                            {asset.updatedAt
+                              ? new Date(asset.updatedAt).toLocaleDateString(
+                                  'ko-KR'
+                                )
+                              : '-'}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -657,7 +718,9 @@ export default function AssetsPage() {
                 label="자산명"
                 placeholder="예: 우리은행 적금"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 isRequired
               />
 
@@ -665,16 +728,14 @@ export default function AssetsPage() {
                 label="자산 카테고리"
                 placeholder="카테고리를 선택하세요"
                 selectedKeys={formData.categoryId ? [formData.categoryId] : []}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, categoryId: selectedKey })
                 }}
                 isRequired
               >
-                {assetCategories.map((category) => (
-                  <SelectItem key={category.id}>
-                    {category.name}
-                  </SelectItem>
+                {assetCategories.map(category => (
+                  <SelectItem key={category.id}>{category.name}</SelectItem>
                 ))}
               </Select>
 
@@ -683,7 +744,9 @@ export default function AssetsPage() {
                 placeholder="0"
                 type="number"
                 value={formData.currentValue}
-                onChange={(e) => setFormData({ ...formData, currentValue: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, currentValue: e.target.value })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
                 isRequired
               />
@@ -692,7 +755,9 @@ export default function AssetsPage() {
                 label="설명 (선택사항)"
                 placeholder="자산에 대한 추가 정보를 입력하세요"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
               />
             </div>
           </ModalBody>
@@ -721,24 +786,26 @@ export default function AssetsPage() {
                 label="자산명"
                 placeholder="예: 우리은행 적금"
                 value={editFormData.name}
-                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                onChange={e =>
+                  setEditFormData({ ...editFormData, name: e.target.value })
+                }
                 isRequired
               />
 
               <Select
                 label="자산 카테고리"
                 placeholder="카테고리를 선택하세요"
-                selectedKeys={editFormData.categoryId ? [editFormData.categoryId] : []}
-                onSelectionChange={(keys) => {
+                selectedKeys={
+                  editFormData.categoryId ? [editFormData.categoryId] : []
+                }
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setEditFormData({ ...editFormData, categoryId: selectedKey })
                 }}
                 isRequired
               >
-                {assetCategories.map((category) => (
-                  <SelectItem key={category.id}>
-                    {category.name}
-                  </SelectItem>
+                {assetCategories.map(category => (
+                  <SelectItem key={category.id}>{category.name}</SelectItem>
                 ))}
               </Select>
 
@@ -747,7 +814,12 @@ export default function AssetsPage() {
                 placeholder="0"
                 type="number"
                 value={editFormData.currentValue}
-                onChange={(e) => setEditFormData({ ...editFormData, currentValue: e.target.value })}
+                onChange={e =>
+                  setEditFormData({
+                    ...editFormData,
+                    currentValue: e.target.value,
+                  })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
                 isRequired
               />
@@ -757,7 +829,12 @@ export default function AssetsPage() {
                 placeholder="0"
                 type="number"
                 value={editFormData.targetValue}
-                onChange={(e) => setEditFormData({ ...editFormData, targetValue: e.target.value })}
+                onChange={e =>
+                  setEditFormData({
+                    ...editFormData,
+                    targetValue: e.target.value,
+                  })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
               />
 
@@ -765,7 +842,12 @@ export default function AssetsPage() {
                 label="설명 (선택사항)"
                 placeholder="자산에 대한 추가 정보를 입력하세요"
                 value={editFormData.description}
-                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                onChange={e =>
+                  setEditFormData({
+                    ...editFormData,
+                    description: e.target.value,
+                  })
+                }
               />
             </div>
           </ModalBody>
@@ -801,12 +883,13 @@ export default function AssetsPage() {
                   </p>
                 </div>
               </div>
-              
+
               {selectedAsset && (
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <p className="font-medium">{selectedAsset.name}</p>
                   <p className="text-sm text-gray-600">
-                    현재 가치: {formatCurrency(Number(selectedAsset.currentValue))}
+                    현재 가치:{' '}
+                    {formatCurrency(Number(selectedAsset.currentValue))}
                   </p>
                   {selectedAsset.description && (
                     <p className="text-sm text-gray-500 mt-1">

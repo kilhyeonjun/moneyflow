@@ -48,20 +48,20 @@ export async function GET(request: NextRequest) {
       // 최근 거래 내역
       recentTransactions,
       // 카테고리별 지출 (이번 달)
-      expensesByCategory
+      expensesByCategory,
     ] = await Promise.all([
       // 자산 총액
       prisma.asset.aggregate({
         where: { organizationId },
-        _sum: { currentValue: true }
+        _sum: { currentValue: true },
       }),
-      
+
       // 부채 총액
       prisma.liability.aggregate({
         where: { organizationId },
-        _sum: { currentAmount: true }
+        _sum: { currentAmount: true },
       }),
-      
+
       // 이번 달 수입
       prisma.transactions.aggregate({
         where: {
@@ -69,12 +69,12 @@ export async function GET(request: NextRequest) {
           transaction_type: 'income',
           transaction_date: {
             gte: currentMonthStart,
-            lte: currentMonthEnd
-          }
+            lte: currentMonthEnd,
+          },
         },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
-      
+
       // 이번 달 지출
       prisma.transactions.aggregate({
         where: {
@@ -82,12 +82,12 @@ export async function GET(request: NextRequest) {
           transaction_type: 'expense',
           transaction_date: {
             gte: currentMonthStart,
-            lte: currentMonthEnd
-          }
+            lte: currentMonthEnd,
+          },
         },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
-      
+
       // 지난 달 수입
       prisma.transactions.aggregate({
         where: {
@@ -95,12 +95,12 @@ export async function GET(request: NextRequest) {
           transaction_type: 'income',
           transaction_date: {
             gte: lastMonthStart,
-            lte: lastMonthEnd
-          }
+            lte: lastMonthEnd,
+          },
         },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
-      
+
       // 지난 달 지출
       prisma.transactions.aggregate({
         where: {
@@ -108,20 +108,20 @@ export async function GET(request: NextRequest) {
           transaction_type: 'expense',
           transaction_date: {
             gte: lastMonthStart,
-            lte: lastMonthEnd
-          }
+            lte: lastMonthEnd,
+          },
         },
-        _sum: { amount: true }
+        _sum: { amount: true },
       }),
-      
+
       // 최근 거래 내역 (최근 10건)
       prisma.transactions.findMany({
         where: { organization_id: organizationId },
         include: { categories: true },
         orderBy: { transaction_date: 'desc' },
-        take: 10
+        take: 10,
       }),
-      
+
       // 카테고리별 지출 (이번 달)
       prisma.transactions.groupBy({
         by: ['category_id'],
@@ -130,19 +130,24 @@ export async function GET(request: NextRequest) {
           transaction_type: 'expense',
           transaction_date: {
             gte: currentMonthStart,
-            lte: currentMonthEnd
-          }
+            lte: currentMonthEnd,
+          },
         },
         _sum: { amount: true },
-        orderBy: { _sum: { amount: 'desc' } }
-      })
+        orderBy: { _sum: { amount: 'desc' } },
+      }),
     ])
 
     // 카테고리 정보 조회 (카테고리별 지출에 사용)
-    const categoryIds = expensesByCategory.map(item => item.category_id).filter(Boolean)
-    const categories = categoryIds.length > 0 ? await prisma.categories.findMany({
-      where: { id: { in: categoryIds } }
-    }) : []
+    const categoryIds = expensesByCategory
+      .map(item => item.category_id)
+      .filter((id): id is string => id !== null)
+    const categories =
+      categoryIds.length > 0
+        ? await prisma.categories.findMany({
+            where: { id: { in: categoryIds } },
+          })
+        : []
 
     // 카테고리 정보와 지출 데이터 결합
     const expensesWithCategories = expensesByCategory.map(expense => {
@@ -152,7 +157,7 @@ export async function GET(request: NextRequest) {
         categoryName: category?.name || '미분류',
         amount: expense._sum.amount || 0,
         icon: category?.icon,
-        color: category?.color
+        color: category?.color,
       }
     })
 
@@ -161,17 +166,21 @@ export async function GET(request: NextRequest) {
       Number(lastMonthIncome._sum.amount || 0),
       Number(currentMonthIncome._sum.amount || 0)
     )
-    
+
     const expenseChange = calculatePercentageChange(
       Number(lastMonthExpenses._sum.amount || 0),
       Number(currentMonthExpenses._sum.amount || 0)
     )
 
     // 순자산 계산
-    const netWorth = Number(totalAssets._sum.currentValue || 0) - Number(totalLiabilities._sum.currentAmount || 0)
+    const netWorth =
+      Number(totalAssets._sum.currentValue || 0) -
+      Number(totalLiabilities._sum.currentAmount || 0)
 
     // 이번 달 순수익 계산
-    const currentMonthNetIncome = Number(currentMonthIncome._sum.amount || 0) - Number(currentMonthExpenses._sum.amount || 0)
+    const currentMonthNetIncome =
+      Number(currentMonthIncome._sum.amount || 0) -
+      Number(currentMonthExpenses._sum.amount || 0)
 
     const dashboardData = {
       // 재정 현황
@@ -183,9 +192,9 @@ export async function GET(request: NextRequest) {
         currentMonthExpenses: Number(currentMonthExpenses._sum.amount || 0),
         currentMonthNetIncome,
         incomeChange,
-        expenseChange
+        expenseChange,
       },
-      
+
       // 최근 거래
       recentTransactions: recentTransactions.map(transaction => ({
         id: transaction.id,
@@ -193,22 +202,25 @@ export async function GET(request: NextRequest) {
         description: transaction.description,
         date: transaction.transaction_date,
         type: transaction.transaction_type,
-        categoryName: transaction.categories?.name || '미분류'
+        categoryName: transaction.categories?.name || '미분류',
       })),
-      
+
       // 카테고리별 지출
       expensesByCategory: expensesWithCategories,
-      
+
       // 메타 정보
       meta: {
         currentMonth: currentMonthStart.toISOString(),
-        lastUpdated: new Date().toISOString()
-      }
+        lastUpdated: new Date().toISOString(),
+      },
     }
 
     return NextResponse.json(dashboardData)
   } catch (error) {
-    console.error('Dashboard data fetch error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error(
+      'Dashboard data fetch error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return NextResponse.json(
       { error: 'Failed to fetch dashboard data' },
       { status: 500 }

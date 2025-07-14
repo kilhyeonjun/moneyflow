@@ -54,19 +54,32 @@ interface TransactionWithCategory extends transactions {
 export default function TransactionsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure()
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure()
-  
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
+  } = useDisclosure()
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure()
+
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
-  const [selectedTransaction, setSelectedTransaction] = useState<TransactionWithCategory | null>(null)
-  
-  const [transactions, setTransactions] = useState<TransactionWithCategory[]>([])
-  const [transactionCategories, setTransactionCategories] = useState<categories[]>([])
-  
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<TransactionWithCategory | null>(null)
+
+  const [transactions, setTransactions] = useState<TransactionWithCategory[]>(
+    []
+  )
+  const [transactionCategories, setTransactionCategories] = useState<
+    categories[]
+  >([])
+
   const [formData, setFormData] = useState({
     categoryId: '',
     amount: '',
@@ -74,7 +87,7 @@ export default function TransactionsPage() {
     transactionDate: new Date().toISOString().split('T')[0],
     transactionType: 'expense',
   })
-  
+
   const [editFormData, setEditFormData] = useState({
     categoryId: '',
     amount: '',
@@ -90,31 +103,34 @@ export default function TransactionsPage() {
   const checkOrganizationAndLoadData = async () => {
     try {
       const storedOrgId = localStorage.getItem('selectedOrganization')
-      
+
       if (!storedOrgId) {
         router.push('/organizations')
         return
       }
 
       setSelectedOrgId(storedOrgId)
-      
+
       // 사용자 인증 상태 확인
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
       if (authError) {
         toast.error('사용자 인증에 실패했습니다.')
         return
       }
-      
+
       if (!user) {
         toast.error('로그인이 필요합니다.')
         router.push('/login')
         return
       }
-      
+
       await Promise.all([
         loadTransactionCategories(storedOrgId),
-        loadTransactions(storedOrgId)
+        loadTransactions(storedOrgId),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -125,19 +141,23 @@ export default function TransactionsPage() {
 
   const loadTransactionCategories = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/transaction-categories?organizationId=${orgId}`)
-      
+      const response = await fetch(
+        `/api/transaction-categories?organizationId=${orgId}`
+      )
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const categories = await response.json()
-      
+
       // 카테고리가 없으면 기본 카테고리 생성
       if (!categories || categories.length === 0) {
         await createDefaultCategories(orgId)
         // 다시 카테고리 로드
-        const retryResponse = await fetch(`/api/transaction-categories?organizationId=${orgId}`)
+        const retryResponse = await fetch(
+          `/api/transaction-categories?organizationId=${orgId}`
+        )
         if (retryResponse.ok) {
           const retryCategories = await retryResponse.json()
           setTransactionCategories(retryCategories || [])
@@ -145,7 +165,6 @@ export default function TransactionsPage() {
       } else {
         setTransactionCategories(categories)
       }
-      
     } catch (error) {
       console.error('거래 카테고리 로드 실패:', error)
       toast.error('거래 카테고리를 불러오는데 실패했습니다.')
@@ -175,15 +194,16 @@ export default function TransactionsPage() {
 
   const loadTransactions = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/transactions?organizationId=${orgId}&limit=50`)
-      
+      const response = await fetch(
+        `/api/transactions?organizationId=${orgId}&limit=50`
+      )
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-      
+
       const transactionsData = await response.json()
       setTransactions(transactionsData || [])
-      
     } catch (error) {
       console.error('거래 내역 로드 실패:', error)
       toast.error('거래 내역을 불러오는데 실패했습니다.')
@@ -191,7 +211,12 @@ export default function TransactionsPage() {
   }
 
   const handleCreateTransaction = async () => {
-    if (!selectedOrgId || !formData.categoryId || !formData.amount || !formData.transactionType) {
+    if (
+      !selectedOrgId ||
+      !formData.categoryId ||
+      !formData.amount ||
+      !formData.transactionType
+    ) {
       toast.error('모든 필수 필드를 입력해주세요.')
       return
     }
@@ -199,8 +224,10 @@ export default function TransactionsPage() {
     setCreating(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
         toast.error('로그인이 필요합니다.')
         return
@@ -230,7 +257,7 @@ export default function TransactionsPage() {
       }
 
       toast.success('거래가 성공적으로 추가되었습니다! 🎉')
-      
+
       setFormData({
         categoryId: '',
         amount: '',
@@ -240,10 +267,9 @@ export default function TransactionsPage() {
       })
       onClose()
       await loadTransactions(selectedOrgId)
-      
     } catch (error) {
       console.error('거래 생성 중 오류:', error)
-      
+
       if (error instanceof Error) {
         toast.error(`거래 생성 실패: ${error.message}`)
       } else {
@@ -272,7 +298,11 @@ export default function TransactionsPage() {
       return
     }
 
-    if (!editFormData.categoryId || !editFormData.amount || !editFormData.transactionType) {
+    if (
+      !editFormData.categoryId ||
+      !editFormData.amount ||
+      !editFormData.transactionType
+    ) {
       toast.error('모든 필수 필드를 입력해주세요.')
       return
     }
@@ -304,13 +334,12 @@ export default function TransactionsPage() {
       }
 
       toast.success('거래가 성공적으로 수정되었습니다! ✅')
-      
+
       onEditClose()
       await loadTransactions(selectedOrgId)
-      
     } catch (error) {
       console.error('거래 수정 중 오류:', error)
-      
+
       if (error instanceof Error) {
         toast.error(`거래 수정 실패: ${error.message}`)
       } else {
@@ -335,9 +364,12 @@ export default function TransactionsPage() {
     setDeleting(true)
 
     try {
-      const response = await fetch(`/api/transactions?id=${selectedTransaction.id}&organizationId=${selectedOrgId}`, {
-        method: 'DELETE',
-      })
+      const response = await fetch(
+        `/api/transactions?id=${selectedTransaction.id}&organizationId=${selectedOrgId}`,
+        {
+          method: 'DELETE',
+        }
+      )
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -345,13 +377,12 @@ export default function TransactionsPage() {
       }
 
       toast.success('거래가 성공적으로 삭제되었습니다! 🗑️')
-      
+
       onDeleteClose()
       await loadTransactions(selectedOrgId)
-      
     } catch (error) {
       console.error('거래 삭제 중 오류:', error)
-      
+
       if (error instanceof Error) {
         toast.error(`거래 삭제 실패: ${error.message}`)
       } else {
@@ -442,17 +473,16 @@ export default function TransactionsPage() {
         <Card className="mb-6 border-red-200">
           <CardHeader className="flex flex-row items-center gap-2">
             <Calendar className="w-5 h-5 text-red-600" />
-            <h3 className="text-lg font-semibold text-red-600">거래 카테고리가 없습니다</h3>
+            <h3 className="text-lg font-semibold text-red-600">
+              거래 카테고리가 없습니다
+            </h3>
           </CardHeader>
           <CardBody>
             <p className="text-gray-700 mb-4">
-              거래를 추가하려면 먼저 거래 카테고리가 필요합니다. 
-              기본 카테고리를 생성하거나 관리자에게 문의하세요.
+              거래를 추가하려면 먼저 거래 카테고리가 필요합니다. 기본 카테고리를
+              생성하거나 관리자에게 문의하세요.
             </p>
-            <Button 
-              color="primary" 
-              onClick={() => window.location.reload()}
-            >
+            <Button color="primary" onClick={() => window.location.reload()}>
               페이지 새로고침
             </Button>
           </CardBody>
@@ -500,10 +530,12 @@ export default function TransactionsPage() {
                 <TableColumn>작업</TableColumn>
               </TableHeader>
               <TableBody>
-                {transactions.map((transaction) => (
+                {transactions.map(transaction => (
                   <TableRow key={transaction.id}>
                     <TableCell>
-                      {new Date(transaction.transaction_date).toLocaleDateString('ko-KR')}
+                      {new Date(
+                        transaction.transaction_date
+                      ).toLocaleDateString('ko-KR')}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -519,20 +551,26 @@ export default function TransactionsPage() {
                     <TableCell>
                       <Chip
                         size="sm"
-                        color={getTransactionTypeColor(transaction.transaction_type) as any}
+                        color={
+                          getTransactionTypeColor(
+                            transaction.transaction_type
+                          ) as any
+                        }
                         variant="flat"
                       >
                         {getTransactionTypeLabel(transaction.transaction_type)}
                       </Chip>
                     </TableCell>
                     <TableCell>
-                      <span className={`font-semibold ${
-                        transaction.transaction_type === 'income' 
-                          ? 'text-green-600' 
-                          : transaction.transaction_type === 'expense'
-                          ? 'text-red-600'
-                          : 'text-blue-600'
-                      }`}>
+                      <span
+                        className={`font-semibold ${
+                          transaction.transaction_type === 'income'
+                            ? 'text-green-600'
+                            : transaction.transaction_type === 'expense'
+                              ? 'text-red-600'
+                              : 'text-blue-600'
+                        }`}
+                      >
                         {transaction.transaction_type === 'expense' ? '-' : '+'}
                         {formatCurrency(Number(transaction.amount))}
                       </span>
@@ -586,8 +624,10 @@ export default function TransactionsPage() {
               <Select
                 label="거래 타입"
                 placeholder="거래 타입을 선택하세요"
-                selectedKeys={formData.transactionType ? [formData.transactionType] : []}
-                onSelectionChange={(keys) => {
+                selectedKeys={
+                  formData.transactionType ? [formData.transactionType] : []
+                }
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, transactionType: selectedKey })
                 }}
@@ -602,18 +642,20 @@ export default function TransactionsPage() {
                 label="카테고리"
                 placeholder="카테고리를 선택하세요"
                 selectedKeys={formData.categoryId ? [formData.categoryId] : []}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, categoryId: selectedKey })
                 }}
                 isRequired
               >
                 {transactionCategories
-                  .filter(cat => !formData.transactionType || cat.transaction_type === formData.transactionType)
-                  .map((category) => (
-                    <SelectItem key={category.id}>
-                      {category.name}
-                    </SelectItem>
+                  .filter(
+                    cat =>
+                      !formData.transactionType ||
+                      cat.transaction_type === formData.transactionType
+                  )
+                  .map(category => (
+                    <SelectItem key={category.id}>{category.name}</SelectItem>
                   ))}
               </Select>
 
@@ -622,7 +664,9 @@ export default function TransactionsPage() {
                 placeholder="0"
                 type="number"
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, amount: e.target.value })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
                 isRequired
               />
@@ -631,7 +675,9 @@ export default function TransactionsPage() {
                 label="거래 날짜"
                 type="date"
                 value={formData.transactionDate}
-                onChange={(e) => setFormData({ ...formData, transactionDate: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, transactionDate: e.target.value })
+                }
                 isRequired
               />
 
@@ -639,7 +685,9 @@ export default function TransactionsPage() {
                 label="설명 (선택사항)"
                 placeholder="거래에 대한 추가 정보를 입력하세요"
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
               />
             </div>
           </ModalBody>
@@ -667,10 +715,17 @@ export default function TransactionsPage() {
               <Select
                 label="거래 타입"
                 placeholder="거래 타입을 선택하세요"
-                selectedKeys={editFormData.transactionType ? [editFormData.transactionType] : []}
-                onSelectionChange={(keys) => {
+                selectedKeys={
+                  editFormData.transactionType
+                    ? [editFormData.transactionType]
+                    : []
+                }
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
-                  setEditFormData({ ...editFormData, transactionType: selectedKey })
+                  setEditFormData({
+                    ...editFormData,
+                    transactionType: selectedKey,
+                  })
                 }}
                 isRequired
               >
@@ -682,19 +737,23 @@ export default function TransactionsPage() {
               <Select
                 label="카테고리"
                 placeholder="카테고리를 선택하세요"
-                selectedKeys={editFormData.categoryId ? [editFormData.categoryId] : []}
-                onSelectionChange={(keys) => {
+                selectedKeys={
+                  editFormData.categoryId ? [editFormData.categoryId] : []
+                }
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setEditFormData({ ...editFormData, categoryId: selectedKey })
                 }}
                 isRequired
               >
                 {transactionCategories
-                  .filter(cat => !editFormData.transactionType || cat.transaction_type === editFormData.transactionType)
-                  .map((category) => (
-                    <SelectItem key={category.id}>
-                      {category.name}
-                    </SelectItem>
+                  .filter(
+                    cat =>
+                      !editFormData.transactionType ||
+                      cat.transaction_type === editFormData.transactionType
+                  )
+                  .map(category => (
+                    <SelectItem key={category.id}>{category.name}</SelectItem>
                   ))}
               </Select>
 
@@ -703,7 +762,9 @@ export default function TransactionsPage() {
                 placeholder="0"
                 type="number"
                 value={editFormData.amount}
-                onChange={(e) => setEditFormData({ ...editFormData, amount: e.target.value })}
+                onChange={e =>
+                  setEditFormData({ ...editFormData, amount: e.target.value })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
                 isRequired
               />
@@ -712,7 +773,12 @@ export default function TransactionsPage() {
                 label="거래 날짜"
                 type="date"
                 value={editFormData.transactionDate}
-                onChange={(e) => setEditFormData({ ...editFormData, transactionDate: e.target.value })}
+                onChange={e =>
+                  setEditFormData({
+                    ...editFormData,
+                    transactionDate: e.target.value,
+                  })
+                }
                 isRequired
               />
 
@@ -720,7 +786,12 @@ export default function TransactionsPage() {
                 label="설명 (선택사항)"
                 placeholder="거래에 대한 추가 정보를 입력하세요"
                 value={editFormData.description}
-                onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                onChange={e =>
+                  setEditFormData({
+                    ...editFormData,
+                    description: e.target.value,
+                  })
+                }
               />
             </div>
           </ModalBody>
@@ -756,26 +827,38 @@ export default function TransactionsPage() {
                   </p>
                 </div>
               </div>
-              
+
               {selectedTransaction && (
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
                     {getTransactionIcon(selectedTransaction.transaction_type)}
-                    <span className="font-medium">{selectedTransaction.categories?.name || '미분류'}</span>
+                    <span className="font-medium">
+                      {selectedTransaction.categories?.name || '미분류'}
+                    </span>
                     <Chip
                       size="sm"
-                      color={getTransactionTypeColor(selectedTransaction.transaction_type) as any}
+                      color={
+                        getTransactionTypeColor(
+                          selectedTransaction.transaction_type
+                        ) as any
+                      }
                       variant="flat"
                     >
-                      {getTransactionTypeLabel(selectedTransaction.transaction_type)}
+                      {getTransactionTypeLabel(
+                        selectedTransaction.transaction_type
+                      )}
                     </Chip>
                   </div>
                   <p className="text-lg font-semibold mb-1">
-                    {selectedTransaction.transaction_type === 'expense' ? '-' : '+'}
+                    {selectedTransaction.transaction_type === 'expense'
+                      ? '-'
+                      : '+'}
                     {formatCurrency(Number(selectedTransaction.amount))}
                   </p>
                   <p className="text-sm text-gray-600">
-                    {new Date(selectedTransaction.transaction_date).toLocaleDateString('ko-KR')}
+                    {new Date(
+                      selectedTransaction.transaction_date
+                    ).toLocaleDateString('ko-KR')}
                   </p>
                   {selectedTransaction.description && (
                     <p className="text-sm text-gray-500 mt-1">

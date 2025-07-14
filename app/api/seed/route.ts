@@ -59,23 +59,77 @@ export async function POST(request: NextRequest) {
       // 수입 카테고리
       { name: '급여', type: 'income', level: 1, icon: '💼', color: '#10B981' },
       { name: '부업', type: 'income', level: 1, icon: '💻', color: '#059669' },
-      { name: '투자 수익', type: 'income', level: 1, icon: '📈', color: '#047857' },
-      { name: '기타 수입', type: 'income', level: 1, icon: '💰', color: '#065F46' },
-      
+      {
+        name: '투자 수익',
+        type: 'income',
+        level: 1,
+        icon: '📈',
+        color: '#047857',
+      },
+      {
+        name: '기타 수입',
+        type: 'income',
+        level: 1,
+        icon: '💰',
+        color: '#065F46',
+      },
+
       // 지출 카테고리
       { name: '식비', type: 'expense', level: 1, icon: '🍽️', color: '#EF4444' },
-      { name: '교통비', type: 'expense', level: 1, icon: '🚗', color: '#DC2626' },
-      { name: '주거비', type: 'expense', level: 1, icon: '🏠', color: '#B91C1C' },
-      { name: '의료비', type: 'expense', level: 1, icon: '🏥', color: '#991B1B' },
-      { name: '교육비', type: 'expense', level: 1, icon: '📚', color: '#7F1D1D' },
-      { name: '문화생활', type: 'expense', level: 1, icon: '🎬', color: '#F97316' },
+      {
+        name: '교통비',
+        type: 'expense',
+        level: 1,
+        icon: '🚗',
+        color: '#DC2626',
+      },
+      {
+        name: '주거비',
+        type: 'expense',
+        level: 1,
+        icon: '🏠',
+        color: '#B91C1C',
+      },
+      {
+        name: '의료비',
+        type: 'expense',
+        level: 1,
+        icon: '🏥',
+        color: '#991B1B',
+      },
+      {
+        name: '교육비',
+        type: 'expense',
+        level: 1,
+        icon: '📚',
+        color: '#7F1D1D',
+      },
+      {
+        name: '문화생활',
+        type: 'expense',
+        level: 1,
+        icon: '🎬',
+        color: '#F97316',
+      },
       { name: '쇼핑', type: 'expense', level: 1, icon: '🛍️', color: '#EA580C' },
-      { name: '기타 지출', type: 'expense', level: 1, icon: '💸', color: '#9A3412' },
-      
+      {
+        name: '기타 지출',
+        type: 'expense',
+        level: 1,
+        icon: '💸',
+        color: '#9A3412',
+      },
+
       // 저축 카테고리
       { name: '저축', type: 'savings', level: 1, icon: '🏦', color: '#3B82F6' },
       { name: '투자', type: 'savings', level: 1, icon: '📊', color: '#2563EB' },
-      { name: '대출 상환', type: 'savings', level: 1, icon: '💳', color: '#1D4ED8' },
+      {
+        name: '대출 상환',
+        type: 'savings',
+        level: 1,
+        icon: '💳',
+        color: '#1D4ED8',
+      },
     ]
 
     const createdTransactionCategories = []
@@ -103,20 +157,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    let sampleAssets = []
-    let sampleTransactions = []
+    const sampleAssets = []
+    const sampleTransactions = []
 
     // 샘플 데이터 생성 (요청 시에만)
     if (includeSampleData) {
       // 샘플 자산 생성
-      const cashCategory = createdAssetCategories.find(cat => cat.type === 'cash')
-      const investmentCategory = createdAssetCategories.find(cat => cat.type === 'financial')
-      
+      const cashCategory = createdAssetCategories.find(
+        cat => cat.type === 'cash'
+      )
+      const investmentCategory = createdAssetCategories.find(
+        cat => cat.type === 'financial'
+      )
+
       if (cashCategory) {
         const existingCashAsset = await prisma.asset.findFirst({
-          where: { organizationId, name: '주거래 통장' }
+          where: { organizationId, name: '주거래 통장' },
         })
-        
+
         if (!existingCashAsset) {
           const cashAsset = await prisma.asset.create({
             data: {
@@ -129,7 +187,7 @@ export async function POST(request: NextRequest) {
               description: '주거래 통장',
               organizationId,
               categoryId: cashCategory.id,
-            }
+            },
           })
           sampleAssets.push(cashAsset)
         }
@@ -137,9 +195,9 @@ export async function POST(request: NextRequest) {
 
       if (investmentCategory) {
         const existingInvestment = await prisma.asset.findFirst({
-          where: { organizationId, name: '주식 투자' }
+          where: { organizationId, name: '주식 투자' },
         })
-        
+
         if (!existingInvestment) {
           const investmentAsset = await prisma.asset.create({
             data: {
@@ -150,16 +208,22 @@ export async function POST(request: NextRequest) {
               description: '국내외 주식 포트폴리오',
               organizationId,
               categoryId: investmentCategory.id,
-            }
+            },
           })
           sampleAssets.push(investmentAsset)
         }
       }
 
       // 샘플 거래 생성 (최근 30일)
-      const salaryCategory = createdTransactionCategories.find(cat => cat.name === '급여')
-      const foodCategory = createdTransactionCategories.find(cat => cat.name === '식비')
-      const transportCategory = createdTransactionCategories.find(cat => cat.name === '교통비')
+      const salaryCategory = createdTransactionCategories.find(
+        cat => cat.name === '급여'
+      )
+      const foodCategory = createdTransactionCategories.find(
+        cat => cat.name === '식비'
+      )
+      const transportCategory = createdTransactionCategories.find(
+        cat => cat.name === '교통비'
+      )
 
       const sampleTransactionData = [
         // 급여 (월초)
@@ -203,8 +267,8 @@ export async function POST(request: NextRequest) {
             where: {
               organization_id: organizationId,
               description: txData.description,
-              amount: txData.amount
-            }
+              amount: txData.amount,
+            },
           })
 
           if (!existingTx) {
@@ -213,7 +277,7 @@ export async function POST(request: NextRequest) {
                 ...txData,
                 organization_id: organizationId,
                 user_id: tempUserId,
-              }
+              },
             })
             sampleTransactions.push(transaction)
           }
@@ -231,7 +295,10 @@ export async function POST(request: NextRequest) {
       }),
     })
   } catch (error) {
-    console.error('Seed data creation error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error(
+      'Seed data creation error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return NextResponse.json(
       { error: 'Failed to create seed data' },
       { status: 500 }

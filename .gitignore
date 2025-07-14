@@ -41,18 +41,29 @@ next-env.d.ts
 .amazonq/temp
 
 # serena
-.serena# development temp files
+.serena
+
+# development temp files
 *-temp.js
 *-test.js
 check-*.js
 fix-*.js
 test-*.js
+test-uuid-*.js
+test-moneyflow-*.js
 
 # development logs
 dev.log
 *.log
+build*.log
+dev-*.log
+baseline.sql
 /generated/prisma
 
 # cursor
 .cursor/mcp.json
 .cursor/mcp_proxy.json
+
+# UUID v7 migration temp files
+uuid-v7-*.js
+migration-*.md

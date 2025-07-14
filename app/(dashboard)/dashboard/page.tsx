@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardHeader, CardBody, Button, Chip } from '@heroui/react'
-import { TrendingUp, TrendingDown, Wallet, Target, Plus, Calendar } from 'lucide-react'
+import {
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Target,
+  Plus,
+  Calendar,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import MonthlyTrendChart from '@/components/dashboard/MonthlyTrendChart'
@@ -37,7 +44,9 @@ export default function DashboardPage() {
     previousMonthExpense: 0,
     previousMonthSavings: 0,
   })
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+    []
+  )
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
 
   useEffect(() => {
@@ -47,7 +56,7 @@ export default function DashboardPage() {
   const checkOrganizationAndLoadData = async () => {
     try {
       const storedOrgId = localStorage.getItem('selectedOrganization')
-      
+
       if (!storedOrgId) {
         router.push('/organizations')
         return
@@ -67,11 +76,13 @@ export default function DashboardPage() {
       // 모든 거래 내역 로드
       const { data: transactions, error: transactionsError } = await supabase
         .from('transactions')
-        .select(`
+        .select(
+          `
           *,
           categories (name, transaction_type),
           payment_methods (name)
-        `)
+        `
+        )
         .eq('organization_id', orgId)
         .order('transaction_date', { ascending: false })
 
@@ -93,29 +104,39 @@ export default function DashboardPage() {
 
       const currentMonthTxns = allTxns.filter(txn => {
         const txnDate = new Date(txn.transaction_date)
-        return txnDate.getMonth() === currentMonth && txnDate.getFullYear() === currentYear
+        return (
+          txnDate.getMonth() === currentMonth &&
+          txnDate.getFullYear() === currentYear
+        )
       })
 
       const previousMonthTxns = allTxns.filter(txn => {
         const txnDate = new Date(txn.transaction_date)
-        return txnDate.getMonth() === previousMonth && txnDate.getFullYear() === previousYear
+        return (
+          txnDate.getMonth() === previousMonth &&
+          txnDate.getFullYear() === previousYear
+        )
       })
 
       const calculateStats = (transactions: Transaction[]) => {
-        return transactions.reduce((acc, txn) => {
-          const type = txn.categories?.transaction_type || (txn as any).transaction_type
-          const amount = Math.abs(txn.amount)
-          
-          if (type === 'income') {
-            acc.income += amount
-          } else if (type === 'expense') {
-            acc.expense += amount
-          } else if (type === 'savings') {
-            acc.savings += amount
-          }
-          
-          return acc
-        }, { income: 0, expense: 0, savings: 0 })
+        return transactions.reduce(
+          (acc, txn) => {
+            const type =
+              txn.categories?.transaction_type || (txn as any).transaction_type
+            const amount = Math.abs(txn.amount)
+
+            if (type === 'income') {
+              acc.income += amount
+            } else if (type === 'expense') {
+              acc.expense += amount
+            } else if (type === 'savings') {
+              acc.savings += amount
+            }
+
+            return acc
+          },
+          { income: 0, expense: 0, savings: 0 }
+        )
       }
 
       const currentStats = calculateStats(currentMonthTxns)
@@ -125,13 +146,13 @@ export default function DashboardPage() {
       const totalBalance = allTxns.reduce((acc, txn) => {
         const type = txn.categories?.transaction_type || txn.transaction_type
         const amount = txn.amount
-        
+
         if (type === 'income') {
           return acc + amount
         } else if (type === 'expense') {
           return acc - Math.abs(amount)
         }
-        
+
         return acc
       }, 0)
 
@@ -144,7 +165,6 @@ export default function DashboardPage() {
         previousMonthExpense: previousStats.expense,
         previousMonthSavings: previousStats.savings,
       })
-
     } catch (error) {
       console.error('대시보드 데이터 처리 실패:', error)
     }
@@ -210,9 +230,22 @@ export default function DashboardPage() {
                   {formatCurrency(stats.monthlyIncome)}
                 </p>
                 <div className="flex items-center mt-2">
-                  <span className={`text-xs ${getChangeColor(getChangePercentage(stats.monthlyIncome, stats.previousMonthIncome))}`}>
-                    {getChangePercentage(stats.monthlyIncome, stats.previousMonthIncome) > 0 ? '↑' : '↓'}
-                    {Math.abs(getChangePercentage(stats.monthlyIncome, stats.previousMonthIncome)).toFixed(1)}%
+                  <span
+                    className={`text-xs ${getChangeColor(getChangePercentage(stats.monthlyIncome, stats.previousMonthIncome))}`}
+                  >
+                    {getChangePercentage(
+                      stats.monthlyIncome,
+                      stats.previousMonthIncome
+                    ) > 0
+                      ? '↑'
+                      : '↓'}
+                    {Math.abs(
+                      getChangePercentage(
+                        stats.monthlyIncome,
+                        stats.previousMonthIncome
+                      )
+                    ).toFixed(1)}
+                    %
                   </span>
                   <span className="text-xs text-gray-500 ml-1">전월 대비</span>
                 </div>
@@ -234,9 +267,22 @@ export default function DashboardPage() {
                   {formatCurrency(stats.monthlyExpense)}
                 </p>
                 <div className="flex items-center mt-2">
-                  <span className={`text-xs ${getChangeColor(getChangePercentage(stats.monthlyExpense, stats.previousMonthExpense), true)}`}>
-                    {getChangePercentage(stats.monthlyExpense, stats.previousMonthExpense) > 0 ? '↑' : '↓'}
-                    {Math.abs(getChangePercentage(stats.monthlyExpense, stats.previousMonthExpense)).toFixed(1)}%
+                  <span
+                    className={`text-xs ${getChangeColor(getChangePercentage(stats.monthlyExpense, stats.previousMonthExpense), true)}`}
+                  >
+                    {getChangePercentage(
+                      stats.monthlyExpense,
+                      stats.previousMonthExpense
+                    ) > 0
+                      ? '↑'
+                      : '↓'}
+                    {Math.abs(
+                      getChangePercentage(
+                        stats.monthlyExpense,
+                        stats.previousMonthExpense
+                      )
+                    ).toFixed(1)}
+                    %
                   </span>
                   <span className="text-xs text-gray-500 ml-1">전월 대비</span>
                 </div>
@@ -258,9 +304,22 @@ export default function DashboardPage() {
                   {formatCurrency(stats.monthlySavings)}
                 </p>
                 <div className="flex items-center mt-2">
-                  <span className={`text-xs ${getChangeColor(getChangePercentage(stats.monthlySavings, stats.previousMonthSavings))}`}>
-                    {getChangePercentage(stats.monthlySavings, stats.previousMonthSavings) > 0 ? '↑' : '↓'}
-                    {Math.abs(getChangePercentage(stats.monthlySavings, stats.previousMonthSavings)).toFixed(1)}%
+                  <span
+                    className={`text-xs ${getChangeColor(getChangePercentage(stats.monthlySavings, stats.previousMonthSavings))}`}
+                  >
+                    {getChangePercentage(
+                      stats.monthlySavings,
+                      stats.previousMonthSavings
+                    ) > 0
+                      ? '↑'
+                      : '↓'}
+                    {Math.abs(
+                      getChangePercentage(
+                        stats.monthlySavings,
+                        stats.previousMonthSavings
+                      )
+                    ).toFixed(1)}
+                    %
                   </span>
                   <span className="text-xs text-gray-500 ml-1">전월 대비</span>
                 </div>
@@ -278,7 +337,9 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">총 잔액</p>
-                <p className={`text-2xl font-bold ${stats.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <p
+                  className={`text-2xl font-bold ${stats.totalBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {formatCurrency(stats.totalBalance)}
                 </p>
                 <p className="text-xs text-gray-500 mt-2">누적 수입 - 지출</p>
@@ -315,21 +376,30 @@ export default function DashboardPage() {
           {recentTransactions.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">거래 내역이 없습니다</h3>
+              <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                거래 내역이 없습니다
+              </h3>
               <p className="text-gray-500 mb-4">첫 번째 거래를 추가해보세요!</p>
-              <Button color="primary" onPress={() => router.push('/transactions')}>
+              <Button
+                color="primary"
+                onPress={() => router.push('/transactions')}
+              >
                 거래 추가하기
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              {recentTransactions.map(transaction => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-full">
                       {transaction.categories?.transaction_type === 'income' ? (
                         <TrendingUp className="w-4 h-4 text-green-500" />
-                      ) : transaction.categories?.transaction_type === 'expense' ? (
+                      ) : transaction.categories?.transaction_type ===
+                        'expense' ? (
                         <TrendingDown className="w-4 h-4 text-red-500" />
                       ) : (
                         <Wallet className="w-4 h-4 text-blue-500" />
@@ -342,20 +412,27 @@ export default function DashboardPage() {
                           {transaction.categories?.name || '기타'}
                         </Chip>
                         <span className="text-xs text-gray-500">
-                          {new Date(transaction.transaction_date).toLocaleDateString('ko-KR')}
+                          {new Date(
+                            transaction.transaction_date
+                          ).toLocaleDateString('ko-KR')}
                         </span>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-semibold ${
-                      transaction.categories?.transaction_type === 'income' 
-                        ? 'text-green-600' 
-                        : transaction.categories?.transaction_type === 'expense'
-                        ? 'text-red-600'
-                        : 'text-blue-600'
-                    }`}>
-                      {transaction.categories?.transaction_type === 'income' ? '+' : '-'}
+                    <p
+                      className={`font-semibold ${
+                        transaction.categories?.transaction_type === 'income'
+                          ? 'text-green-600'
+                          : transaction.categories?.transaction_type ===
+                              'expense'
+                            ? 'text-red-600'
+                            : 'text-blue-600'
+                      }`}
+                    >
+                      {transaction.categories?.transaction_type === 'income'
+                        ? '+'
+                        : '-'}
                       {formatCurrency(Math.abs(transaction.amount))}
                     </p>
                     <p className="text-xs text-gray-500">

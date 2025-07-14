@@ -18,7 +18,16 @@ import {
   DropdownItem,
   Button,
 } from '@heroui/react'
-import { Search, Edit, Trash2, MoreVertical, TrendingUp, TrendingDown, Wallet, Calendar } from 'lucide-react'
+import {
+  Search,
+  Edit,
+  Trash2,
+  MoreVertical,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
+  Calendar,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Database } from '@/types/database'
 
@@ -38,13 +47,13 @@ export default function TransactionList({
   transactions,
   onEdit,
   onDelete,
-  loading = false
+  loading = false,
 }: TransactionListProps) {
   const [searchTerm, setSearchTerm] = useState('')
 
   const filteredTransactions = transactions.filter(transaction => {
     if (!searchTerm) return true
-    
+
     const searchLower = searchTerm.toLowerCase()
     return (
       transaction.description.toLowerCase().includes(searchLower) ||
@@ -109,7 +118,7 @@ export default function TransactionList({
               startContent={<Search className="w-4 h-4" />}
               className="w-64"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
@@ -122,7 +131,9 @@ export default function TransactionList({
               {searchTerm ? '검색 결과가 없습니다' : '거래 내역이 없습니다'}
             </h3>
             <p className="text-gray-500">
-              {searchTerm ? '다른 검색어를 시도해보세요' : '첫 번째 거래를 추가해보세요!'}
+              {searchTerm
+                ? '다른 검색어를 시도해보세요'
+                : '첫 번째 거래를 추가해보세요!'}
             </p>
           </div>
         ) : (
@@ -136,16 +147,22 @@ export default function TransactionList({
               <TableColumn>액션</TableColumn>
             </TableHeader>
             <TableBody>
-              {filteredTransactions.map((transaction) => (
+              {filteredTransactions.map(transaction => (
                 <TableRow key={transaction.id}>
                   <TableCell>
-                    {new Date(transaction.transaction_date).toLocaleDateString('ko-KR')}
+                    {new Date(transaction.transaction_date).toLocaleDateString(
+                      'ko-KR'
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {getTransactionIcon(transaction.categories?.transaction_type || '')}
+                      {getTransactionIcon(
+                        transaction.categories?.transaction_type || ''
+                      )}
                       <Chip
-                        color={getTransactionColor(transaction.categories?.transaction_type || '')}
+                        color={getTransactionColor(
+                          transaction.categories?.transaction_type || ''
+                        )}
                         size="sm"
                         variant="flat"
                       >
@@ -156,25 +173,26 @@ export default function TransactionList({
                   <TableCell>{transaction.description}</TableCell>
                   <TableCell>{transaction.payment_methods?.name}</TableCell>
                   <TableCell>
-                    <span className={`font-semibold ${
-                      transaction.categories?.transaction_type === 'income' 
-                        ? 'text-green-600' 
-                        : transaction.categories?.transaction_type === 'expense'
-                        ? 'text-red-600'
-                        : 'text-blue-600'
-                    }`}>
-                      {transaction.categories?.transaction_type === 'income' ? '+' : '-'}
+                    <span
+                      className={`font-semibold ${
+                        transaction.categories?.transaction_type === 'income'
+                          ? 'text-green-600'
+                          : transaction.categories?.transaction_type ===
+                              'expense'
+                            ? 'text-red-600'
+                            : 'text-blue-600'
+                      }`}
+                    >
+                      {transaction.categories?.transaction_type === 'income'
+                        ? '+'
+                        : '-'}
                       {formatCurrency(Math.abs(transaction.amount))}
                     </span>
                   </TableCell>
                   <TableCell>
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="light"
-                        >
+                        <Button isIconOnly size="sm" variant="light">
                           <MoreVertical className="w-4 h-4" />
                         </Button>
                       </DropdownTrigger>

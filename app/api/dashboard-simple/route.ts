@@ -23,39 +23,41 @@ export async function GET(request: NextRequest) {
     }
 
     // 간단한 데이터만 조회
-    const [
-      totalAssets,
-      totalTransactions,
-      categories
-    ] = await Promise.all([
+    const [totalAssets, totalTransactions, categories] = await Promise.all([
       prisma.asset.count({
-        where: { organizationId }
+        where: { organizationId },
       }),
-      
+
       prisma.transactions.count({
-        where: { organization_id: organizationId }
+        where: { organization_id: organizationId },
       }),
-      
+
       prisma.categories.count({
-        where: { organization_id: organizationId }
-      })
+        where: { organization_id: organizationId },
+      }),
     ])
 
     const dashboardData = {
       counts: {
         assets: totalAssets,
         transactions: totalTransactions,
-        categories: categories
+        categories: categories,
       },
       organizationId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
 
     return NextResponse.json(dashboardData)
   } catch (error) {
-    console.error('Simple dashboard error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error(
+      'Simple dashboard error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard data', details: error instanceof Error ? error.message : 'Unknown error' },
+      {
+        error: 'Failed to fetch dashboard data',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
       { status: 500 }
     )
   }

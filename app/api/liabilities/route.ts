@@ -44,18 +44,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      name, 
-      description, 
-      type, 
-      currentAmount, 
-      organizationId, 
-      createdBy 
+    const {
+      name,
+      description,
+      type,
+      currentAmount,
+      organizationId,
+      createdBy,
     } = body
 
-    if (!name || !type || currentAmount === undefined || !organizationId || !createdBy) {
+    if (
+      !name ||
+      !type ||
+      currentAmount === undefined ||
+      !organizationId ||
+      !createdBy
+    ) {
       return NextResponse.json(
-        { error: 'Name, type, currentAmount, organizationId, and createdBy are required' },
+        {
+          error:
+            'Name, type, currentAmount, organizationId, and createdBy are required',
+        },
         { status: 400 }
       )
     }

@@ -1,7 +1,14 @@
 'use client'
 
 import { Card, CardBody, CardHeader } from '@heroui/react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from 'recharts'
 import { Database } from '@/types/database'
 
 type Transaction = Database['public']['Tables']['transactions']['Row'] & {
@@ -13,28 +20,33 @@ interface CategoryPieChartProps {
   type?: 'expense' | 'income' | 'savings'
 }
 
-export default function CategoryPieChart({ 
-  transactions, 
-  type = 'expense' 
+export default function CategoryPieChart({
+  transactions,
+  type = 'expense',
 }: CategoryPieChartProps) {
   // 카테고리별 데이터 집계
   const categoryData = transactions
     .filter(transaction => {
-      const transactionType = transaction.categories?.transaction_type || (transaction as any).transaction_type
+      const transactionType =
+        transaction.categories?.transaction_type ||
+        (transaction as any).transaction_type
       return transactionType === type
     })
-    .reduce((acc, transaction) => {
-      const categoryName = transaction.categories?.name || '기타'
-      const amount = Math.abs(transaction.amount)
-      
-      if (!acc[categoryName]) {
-        acc[categoryName] = 0
-      }
-      
-      acc[categoryName] += amount
-      
-      return acc
-    }, {} as Record<string, number>)
+    .reduce(
+      (acc, transaction) => {
+        const categoryName = transaction.categories?.name || '기타'
+        const amount = Math.abs(transaction.amount)
+
+        if (!acc[categoryName]) {
+          acc[categoryName] = 0
+        }
+
+        acc[categoryName] += amount
+
+        return acc
+      },
+      {} as Record<string, number>
+    )
 
   // 데이터를 배열로 변환하고 정렬
   const chartData = Object.entries(categoryData)
@@ -44,10 +56,22 @@ export default function CategoryPieChart({
 
   // 색상 팔레트
   const COLORS = [
-    '#ef4444', '#f97316', '#f59e0b', '#eab308',
-    '#84cc16', '#22c55e', '#10b981', '#14b8a6',
-    '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
-    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899'
+    '#ef4444',
+    '#f97316',
+    '#f59e0b',
+    '#eab308',
+    '#84cc16',
+    '#22c55e',
+    '#10b981',
+    '#14b8a6',
+    '#06b6d4',
+    '#0ea5e9',
+    '#3b82f6',
+    '#6366f1',
+    '#8b5cf6',
+    '#a855f7',
+    '#d946ef',
+    '#ec4899',
   ]
 
   const formatCurrency = (value: number) => {
@@ -76,7 +100,9 @@ export default function CategoryPieChart({
     return (
       <Card>
         <CardHeader>
-          <h3 className="text-lg font-semibold">카테고리별 {getTypeLabel(type)} 분석</h3>
+          <h3 className="text-lg font-semibold">
+            카테고리별 {getTypeLabel(type)} 분석
+          </h3>
         </CardHeader>
         <CardBody>
           <div className="flex items-center justify-center h-64 text-gray-500">
@@ -87,20 +113,27 @@ export default function CategoryPieChart({
     )
   }
 
-  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent,
+  }: any) => {
     if (percent < 0.05) return null // 5% 미만은 라벨 숨김
-    
+
     const RADIAN = Math.PI / 180
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5
     const x = cx + radius * Math.cos(-midAngle * RADIAN)
     const y = cy + radius * Math.sin(-midAngle * RADIAN)
 
     return (
-      <text 
-        x={x} 
-        y={y} 
-        fill="white" 
-        textAnchor={x > cx ? 'start' : 'end'} 
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize={12}
         fontWeight="bold"
@@ -113,7 +146,9 @@ export default function CategoryPieChart({
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-lg font-semibold">카테고리별 {getTypeLabel(type)} 분석</h3>
+        <h3 className="text-lg font-semibold">
+          카테고리별 {getTypeLabel(type)} 분석
+        </h3>
       </CardHeader>
       <CardBody>
         <div className="h-64">
@@ -130,20 +165,20 @@ export default function CategoryPieChart({
                 dataKey="value"
               >
                 {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={COLORS[index % COLORS.length]} 
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
                   />
                 ))}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 formatter={(value: number) => [formatCurrency(value), '금액']}
                 labelStyle={{ color: '#000' }}
               />
-              <Legend 
-                verticalAlign="bottom" 
+              <Legend
+                verticalAlign="bottom"
                 height={36}
-                formatter={(value) => (
+                formatter={value => (
                   <span style={{ fontSize: '12px' }}>{value}</span>
                 )}
               />

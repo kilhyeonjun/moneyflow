@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateUUIDv7, isValidUUIDv7, extractTimestampFromUUIDv7, getUUIDVersion } from '@/lib/utils/validation'
+import {
+  generateUUIDv7,
+  isValidUUIDv7,
+  extractTimestampFromUUIDv7,
+  getUUIDVersion,
+} from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +19,7 @@ export async function GET(request: NextRequest) {
           uuid: newUUID,
           version: 7,
           timestamp: extractTimestampFromUUIDv7(newUUID),
-          isValid: true
+          isValid: true,
         })
 
       case 'validate':
@@ -24,13 +29,13 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        
+
         const isValid = isValidUUIDv7(uuid)
-        let result: any = {
+        const result: any = {
           uuid,
           isValid,
           version: null,
-          timestamp: null
+          timestamp: null,
         }
 
         if (isValid) {
@@ -59,7 +64,7 @@ export async function GET(request: NextRequest) {
           uuid,
           version: getUUIDVersion(uuid),
           timestamp: extractTimestampFromUUIDv7(uuid),
-          timestampMs: extractTimestampFromUUIDv7(uuid).getTime()
+          timestampMs: extractTimestampFromUUIDv7(uuid).getTime(),
         })
 
       default:
@@ -69,7 +74,10 @@ export async function GET(request: NextRequest) {
         )
     }
   } catch (error) {
-    console.error('UUID v7 utility error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error(
+      'UUID v7 utility error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return NextResponse.json(
       { error: 'Failed to process UUID v7 request' },
       { status: 500 }
@@ -95,16 +103,19 @@ export async function POST(request: NextRequest) {
       uuids.push({
         uuid,
         version: 7,
-        timestamp: extractTimestampFromUUIDv7(uuid)
+        timestamp: extractTimestampFromUUIDv7(uuid),
       })
     }
 
     return NextResponse.json({
       count: uuids.length,
-      uuids
+      uuids,
     })
   } catch (error) {
-    console.error('UUID v7 batch generation error:', error instanceof Error ? error.message : 'Unknown error')
+    console.error(
+      'UUID v7 batch generation error:',
+      error instanceof Error ? error.message : 'Unknown error'
+    )
     return NextResponse.json(
       { error: 'Failed to generate UUID v7 batch' },
       { status: 500 }

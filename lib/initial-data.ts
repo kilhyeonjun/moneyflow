@@ -21,11 +21,7 @@ async function createCategoriesFromDefaults(organizationId: string) {
 
     // 1. default_categories에서 모든 기본 카테고리 가져오기
     const defaultCategories = await prisma.default_categories.findMany({
-      orderBy: [
-        { transaction_type: 'asc' },
-        { level: 'asc' },
-        { name: 'asc' }
-      ]
+      orderBy: [{ transaction_type: 'asc' }, { level: 'asc' }, { name: 'asc' }],
     })
 
     if (!defaultCategories || defaultCategories.length === 0) {
@@ -60,19 +56,20 @@ async function createCategoriesFromDefaults(organizationId: string) {
           icon: defaultCategory.icon,
           color: defaultCategory.color,
           is_default: true,
-        }
+        },
       })
 
       // 매핑에 추가 (자식 카테고리에서 참조할 수 있도록)
       categoryMap.set(defaultCategory.name, newCategory.id)
       createdCategories.push(newCategory)
 
-      console.log(`카테고리 생성 완료: ${defaultCategory.name} (레벨 ${defaultCategory.level})`)
+      console.log(
+        `카테고리 생성 완료: ${defaultCategory.name} (레벨 ${defaultCategory.level})`
+      )
     }
 
     console.log(`총 ${createdCategories.length}개의 카테고리가 생성되었습니다.`)
     return createdCategories
-
   } catch (error) {
     console.error('카테고리 생성 중 오류 발생:', error)
     throw error
@@ -95,16 +92,17 @@ async function createDefaultPaymentMethods(organizationId: string) {
           name: method.name,
           type: method.type,
           is_active: true,
-        }
+        },
       })
 
       createdPaymentMethods.push(paymentMethod)
       console.log(`결제수단 생성 완료: ${method.name}`)
     }
 
-    console.log(`총 ${createdPaymentMethods.length}개의 결제수단이 생성되었습니다.`)
+    console.log(
+      `총 ${createdPaymentMethods.length}개의 결제수단이 생성되었습니다.`
+    )
     return createdPaymentMethods
-
   } catch (error) {
     console.error('결제수단 생성 중 오류 발생:', error)
     throw error
@@ -121,20 +119,19 @@ export async function createInitialData(organizationId: string) {
     // 병렬로 실행하여 성능 향상
     const [categories, paymentMethods] = await Promise.all([
       createCategoriesFromDefaults(organizationId),
-      createDefaultPaymentMethods(organizationId)
+      createDefaultPaymentMethods(organizationId),
     ])
 
     console.log('모든 초기 데이터 생성 완료')
-    
+
     return {
       categories,
       paymentMethods,
       summary: {
         categoriesCount: categories.length,
-        paymentMethodsCount: paymentMethods.length
-      }
+        paymentMethodsCount: paymentMethods.length,
+      },
     }
-
   } catch (error) {
     console.error('초기 데이터 생성 실패:', error)
     throw error

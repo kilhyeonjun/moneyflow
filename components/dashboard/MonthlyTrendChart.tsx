@@ -1,7 +1,16 @@
 'use client'
 
 import { Card, CardBody, CardHeader } from '@heroui/react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 import { Database } from '@/types/database'
 
 type Transaction = Database['public']['Tables']['transactions']['Row'] & {
@@ -12,43 +21,50 @@ interface MonthlyTrendChartProps {
   transactions: Transaction[]
 }
 
-export default function MonthlyTrendChart({ transactions }: MonthlyTrendChartProps) {
+export default function MonthlyTrendChart({
+  transactions,
+}: MonthlyTrendChartProps) {
   // 월별 데이터 집계
-  const monthlyData = transactions.reduce((acc, transaction) => {
-    const date = new Date(transaction.transaction_date)
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    
-    if (!acc[monthKey]) {
-      acc[monthKey] = {
-        month: monthKey,
-        income: 0,
-        expense: 0,
-        savings: 0,
+  const monthlyData = transactions.reduce(
+    (acc, transaction) => {
+      const date = new Date(transaction.transaction_date)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          month: monthKey,
+          income: 0,
+          expense: 0,
+          savings: 0,
+        }
       }
-    }
-    
-    const amount = Math.abs(transaction.amount)
-    const type = transaction.categories?.transaction_type || (transaction as any).transaction_type
-    
-    if (type === 'income') {
-      acc[monthKey].income += amount
-    } else if (type === 'expense') {
-      acc[monthKey].expense += amount
-    } else if (type === 'savings') {
-      acc[monthKey].savings += amount
-    }
-    
-    return acc
-  }, {} as Record<string, any>)
+
+      const amount = Math.abs(transaction.amount)
+      const type =
+        transaction.categories?.transaction_type ||
+        (transaction as any).transaction_type
+
+      if (type === 'income') {
+        acc[monthKey].income += amount
+      } else if (type === 'expense') {
+        acc[monthKey].expense += amount
+      } else if (type === 'savings') {
+        acc[monthKey].savings += amount
+      }
+
+      return acc
+    },
+    {} as Record<string, any>
+  )
 
   // 데이터를 배열로 변환하고 정렬
   const chartData = Object.values(monthlyData)
     .sort((a: any, b: any) => a.month.localeCompare(b.month))
     .map((item: any) => ({
       ...item,
-      month: new Date(item.month + '-01').toLocaleDateString('ko-KR', { 
-        year: 'numeric', 
-        month: 'short' 
+      month: new Date(item.month + '-01').toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'short',
       }),
     }))
 
@@ -86,39 +102,33 @@ export default function MonthlyTrendChart({ transactions }: MonthlyTrendChartPro
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="month" 
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis 
-                tick={{ fontSize: 12 }}
-                tickFormatter={formatCurrency}
-              />
-              <Tooltip 
+              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} tickFormatter={formatCurrency} />
+              <Tooltip
                 formatter={(value: number) => [formatCurrency(value), '']}
                 labelStyle={{ color: '#000' }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="income" 
-                stroke="#22c55e" 
+              <Line
+                type="monotone"
+                dataKey="income"
+                stroke="#22c55e"
                 strokeWidth={2}
                 name="수입"
                 dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="expense" 
-                stroke="#ef4444" 
+              <Line
+                type="monotone"
+                dataKey="expense"
+                stroke="#ef4444"
                 strokeWidth={2}
                 name="지출"
                 dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="savings" 
-                stroke="#3b82f6" 
+              <Line
+                type="monotone"
+                dataKey="savings"
+                stroke="#3b82f6"
                 strokeWidth={2}
                 name="저축"
                 dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}

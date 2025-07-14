@@ -39,13 +39,15 @@ export default function TransactionForm({
   organizationId,
   onSuccess,
   editTransaction,
-  mode = 'create'
+  mode = 'create',
 }: TransactionFormProps) {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     amount: editTransaction?.amount?.toString() || '',
     description: editTransaction?.description || '',
-    transaction_date: editTransaction?.transaction_date || new Date().toISOString().split('T')[0],
+    transaction_date:
+      editTransaction?.transaction_date ||
+      new Date().toISOString().split('T')[0],
     category_id: editTransaction?.category_id || '',
     payment_method_id: editTransaction?.payment_method_id || '',
   })
@@ -66,7 +68,12 @@ export default function TransactionForm({
   }
 
   const handleSubmit = async () => {
-    if (!formData.amount || !formData.description || !formData.category_id || !formData.payment_method_id) {
+    if (
+      !formData.amount ||
+      !formData.description ||
+      !formData.category_id ||
+      !formData.payment_method_id
+    ) {
       toast.error('모든 필드를 입력해주세요.')
       return
     }
@@ -74,15 +81,19 @@ export default function TransactionForm({
     setLoading(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
         toast.error('로그인이 필요합니다.')
         return
       }
 
       // 선택된 카테고리의 type 가져오기
-      const selectedCategory = categories.find(cat => cat.id === formData.category_id)
+      const selectedCategory = categories.find(
+        cat => cat.id === formData.category_id
+      )
       if (!selectedCategory) {
         toast.error('유효하지 않은 카테고리입니다.')
         return
@@ -173,7 +184,9 @@ export default function TransactionForm({
                 placeholder="0"
                 type="number"
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, amount: e.target.value })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
                 isRequired
               />
@@ -181,16 +194,20 @@ export default function TransactionForm({
                 label="거래 날짜"
                 type="date"
                 value={formData.transaction_date}
-                onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, transaction_date: e.target.value })
+                }
                 isRequired
               />
             </div>
-            
+
             <Input
               label="거래 내용"
               placeholder="거래 내용을 입력하세요"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               isRequired
             />
 
@@ -198,14 +215,16 @@ export default function TransactionForm({
               <Select
                 label="분류"
                 placeholder="분류를 선택하세요"
-                selectedKeys={formData.category_id ? [formData.category_id] : []}
-                onSelectionChange={(keys) => {
+                selectedKeys={
+                  formData.category_id ? [formData.category_id] : []
+                }
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, category_id: selectedKey })
                 }}
                 isRequired
               >
-                {categories.map((category) => (
+                {categories.map(category => (
                   <SelectItem key={category.id}>
                     {category.name} ({getTransactionTypeLabel(category.type)})
                   </SelectItem>
@@ -215,17 +234,17 @@ export default function TransactionForm({
               <Select
                 label="결제수단"
                 placeholder="결제수단을 선택하세요"
-                selectedKeys={formData.payment_method_id ? [formData.payment_method_id] : []}
-                onSelectionChange={(keys) => {
+                selectedKeys={
+                  formData.payment_method_id ? [formData.payment_method_id] : []
+                }
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, payment_method_id: selectedKey })
                 }}
                 isRequired
               >
-                {paymentMethods.map((method) => (
-                  <SelectItem key={method.id}>
-                    {method.name}
-                  </SelectItem>
+                {paymentMethods.map(method => (
+                  <SelectItem key={method.id}>{method.name}</SelectItem>
                 ))}
               </Select>
             </div>
@@ -235,11 +254,7 @@ export default function TransactionForm({
           <Button variant="light" onPress={handleClose}>
             취소
           </Button>
-          <Button
-            color="primary"
-            onPress={handleSubmit}
-            isLoading={loading}
-          >
+          <Button color="primary" onPress={handleSubmit} isLoading={loading}>
             {mode === 'create' ? '추가하기' : '수정하기'}
           </Button>
         </ModalFooter>

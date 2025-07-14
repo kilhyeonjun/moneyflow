@@ -33,7 +33,8 @@ import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 
 type FinancialGoal = Database['public']['Tables']['financial_goals']['Row']
-type FinancialGoalInsert = Database['public']['Tables']['financial_goals']['Insert']
+type FinancialGoalInsert =
+  Database['public']['Tables']['financial_goals']['Insert']
 
 const goalTypes = [
   { key: 'asset_growth', label: '자산 증가' },
@@ -45,17 +46,17 @@ const goalTypes = [
 export default function GoalsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { 
-    isOpen: isEditOpen, 
-    onOpen: onEditOpen, 
-    onClose: onEditClose 
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
   } = useDisclosure()
-  const { 
-    isOpen: isDeleteOpen, 
-    onOpen: onDeleteOpen, 
-    onClose: onDeleteClose 
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
   } = useDisclosure()
-  
+
   const [loading, setLoading] = useState(true)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -78,7 +79,7 @@ export default function GoalsPage() {
   const checkOrganizationAndLoadData = async () => {
     try {
       const storedOrgId = localStorage.getItem('selectedOrganization')
-      
+
       if (!storedOrgId) {
         router.push('/organizations')
         return
@@ -109,7 +110,13 @@ export default function GoalsPage() {
   }
 
   const handleCreateGoal = async () => {
-    if (!selectedOrgId || !formData.title || !formData.type || !formData.targetAmount || !formData.targetDate) {
+    if (
+      !selectedOrgId ||
+      !formData.title ||
+      !formData.type ||
+      !formData.targetAmount ||
+      !formData.targetDate
+    ) {
       toast.error('모든 필드를 입력해주세요.')
       return
     }
@@ -117,8 +124,10 @@ export default function GoalsPage() {
     setCreating(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (!user) {
         toast.error('로그인이 필요합니다.')
         return
@@ -142,7 +151,7 @@ export default function GoalsPage() {
         toast.error('목표 생성에 실패했습니다.')
       } else {
         toast.success('목표가 성공적으로 추가되었습니다!')
-        
+
         setFormData({
           title: '',
           type: '',
@@ -172,7 +181,14 @@ export default function GoalsPage() {
   }
 
   const handleUpdateGoal = async () => {
-    if (!selectedGoal || !selectedOrgId || !formData.title || !formData.type || !formData.targetAmount || !formData.targetDate) {
+    if (
+      !selectedGoal ||
+      !selectedOrgId ||
+      !formData.title ||
+      !formData.type ||
+      !formData.targetAmount ||
+      !formData.targetDate
+    ) {
       toast.error('모든 필드를 입력해주세요.')
       return
     }
@@ -195,7 +211,7 @@ export default function GoalsPage() {
         toast.error('목표 수정에 실패했습니다.')
       } else {
         toast.success('목표가 성공적으로 수정되었습니다!')
-        
+
         setFormData({
           title: '',
           type: '',
@@ -309,7 +325,9 @@ export default function GoalsPage() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">재정 목표</h1>
-          <p className="text-gray-600">재정 목표를 설정하고 달성 과정을 추적하세요</p>
+          <p className="text-gray-600">
+            재정 목표를 설정하고 달성 과정을 추적하세요
+          </p>
         </div>
         <Button
           color="primary"
@@ -353,10 +371,16 @@ export default function GoalsPage() {
           </CardHeader>
           <CardBody className="pt-0">
             <div className="text-2xl font-bold text-purple-600">
-              {goals.length > 0 
-                ? (goals.reduce((sum, goal) => sum + Math.max(0, goal.achievement_rate || 0), 0) / goals.length).toFixed(1)
-                : '0.0'
-              }%
+              {goals.length > 0
+                ? (
+                    goals.reduce(
+                      (sum, goal) =>
+                        sum + Math.max(0, goal.achievement_rate || 0),
+                      0
+                    ) / goals.length
+                  ).toFixed(1)
+                : '0.0'}
+              %
             </div>
           </CardBody>
         </Card>
@@ -364,7 +388,7 @@ export default function GoalsPage() {
 
       {/* 목표 목록 */}
       <div className="space-y-6">
-        {goals.map((goal) => (
+        {goals.map(goal => (
           <Card key={goal.id}>
             <CardHeader className="flex flex-row items-center justify-between">
               <div className="flex items-center gap-4">
@@ -383,24 +407,28 @@ export default function GoalsPage() {
                       size="sm"
                       variant="flat"
                     >
-                      {goal.status === 'active' ? '진행중' : goal.status === 'completed' ? '완료' : '일시정지'}
+                      {goal.status === 'active'
+                        ? '진행중'
+                        : goal.status === 'completed'
+                          ? '완료'
+                          : '일시정지'}
                     </Chip>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  isIconOnly 
-                  size="sm" 
+                <Button
+                  isIconOnly
+                  size="sm"
                   variant="light"
                   onPress={() => handleEditGoal(goal)}
                 >
                   <Edit className="w-4 h-4" />
                 </Button>
-                <Button 
-                  isIconOnly 
-                  size="sm" 
-                  variant="light" 
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
                   color="danger"
                   onPress={() => handleDeleteGoal(goal)}
                 >
@@ -413,21 +441,31 @@ export default function GoalsPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-gray-600">목표 금액</p>
-                    <p className="text-lg font-semibold">{formatCurrency(goal.target_amount)}</p>
+                    <p className="text-lg font-semibold">
+                      {formatCurrency(goal.target_amount)}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">현재 달성</p>
-                    <p className={`text-lg font-semibold ${
-                      (goal.current_amount || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <p
+                      className={`text-lg font-semibold ${
+                        (goal.current_amount || 0) >= 0
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
                       {formatCurrency(Math.abs(goal.current_amount || 0))}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">달성률</p>
-                    <p className={`text-lg font-semibold ${
-                      (goal.achievement_rate || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
+                    <p
+                      className={`text-lg font-semibold ${
+                        (goal.achievement_rate || 0) >= 0
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}
+                    >
                       {(goal.achievement_rate || 0).toFixed(1)}%
                     </p>
                   </div>
@@ -435,20 +473,28 @@ export default function GoalsPage() {
 
                 <Progress
                   value={Math.max(0, Math.min(100, goal.achievement_rate || 0))}
-                  color={(goal.achievement_rate || 0) >= 100 ? 'success' : (goal.achievement_rate || 0) >= 50 ? 'primary' : 'danger'}
+                  color={
+                    (goal.achievement_rate || 0) >= 100
+                      ? 'success'
+                      : (goal.achievement_rate || 0) >= 50
+                        ? 'primary'
+                        : 'danger'
+                  }
                   className="w-full"
                 />
 
                 <div className="flex justify-between items-center text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    <span>목표일: {new Date(goal.target_date).toLocaleDateString('ko-KR')}</span>
+                    <span>
+                      목표일:{' '}
+                      {new Date(goal.target_date).toLocaleDateString('ko-KR')}
+                    </span>
                   </div>
                   <div>
-                    {getDaysRemaining(goal.target_date) > 0 
+                    {getDaysRemaining(goal.target_date) > 0
                       ? `${getDaysRemaining(goal.target_date)}일 남음`
-                      : '기한 만료'
-                    }
+                      : '기한 만료'}
                   </div>
                 </div>
               </div>
@@ -467,22 +513,22 @@ export default function GoalsPage() {
                 label="목표 제목"
                 placeholder="예: 2025년 자산 증가 목표"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
               />
 
               <Select
                 label="목표 유형"
                 placeholder="목표 유형을 선택하세요"
                 selectedKeys={formData.type ? [formData.type] : []}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, type: selectedKey })
                 }}
               >
-                {goalTypes.map((type) => (
-                  <SelectItem key={type.key}>
-                    {type.label}
-                  </SelectItem>
+                {goalTypes.map(type => (
+                  <SelectItem key={type.key}>{type.label}</SelectItem>
                 ))}
               </Select>
 
@@ -491,7 +537,9 @@ export default function GoalsPage() {
                 placeholder="0"
                 type="number"
                 value={formData.targetAmount}
-                onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, targetAmount: e.target.value })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
               />
 
@@ -499,7 +547,9 @@ export default function GoalsPage() {
                 label="목표 달성일"
                 type="date"
                 value={formData.targetDate}
-                onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, targetDate: e.target.value })
+                }
               />
             </div>
           </ModalBody>
@@ -528,22 +578,22 @@ export default function GoalsPage() {
                 label="목표 제목"
                 placeholder="예: 2025년 자산 증가 목표"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
               />
 
               <Select
                 label="목표 유형"
                 placeholder="목표 유형을 선택하세요"
                 selectedKeys={formData.type ? [formData.type] : []}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   setFormData({ ...formData, type: selectedKey })
                 }}
               >
-                {goalTypes.map((type) => (
-                  <SelectItem key={type.key}>
-                    {type.label}
-                  </SelectItem>
+                {goalTypes.map(type => (
+                  <SelectItem key={type.key}>{type.label}</SelectItem>
                 ))}
               </Select>
 
@@ -552,7 +602,9 @@ export default function GoalsPage() {
                 placeholder="0"
                 type="number"
                 value={formData.targetAmount}
-                onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, targetAmount: e.target.value })
+                }
                 startContent={<span className="text-gray-500">₩</span>}
               />
 
@@ -560,7 +612,9 @@ export default function GoalsPage() {
                 label="목표 달성일"
                 type="date"
                 value={formData.targetDate}
-                onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, targetDate: e.target.value })
+                }
               />
             </div>
           </ModalBody>
@@ -587,12 +641,24 @@ export default function GoalsPage() {
             <p>정말로 이 목표를 삭제하시겠습니까?</p>
             {selectedGoal && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p><strong>제목:</strong> {selectedGoal.title}</p>
-                <p><strong>목표 금액:</strong> {formatCurrency(selectedGoal.target_amount)}</p>
-                <p><strong>목표일:</strong> {new Date(selectedGoal.target_date).toLocaleDateString('ko-KR')}</p>
+                <p>
+                  <strong>제목:</strong> {selectedGoal.title}
+                </p>
+                <p>
+                  <strong>목표 금액:</strong>{' '}
+                  {formatCurrency(selectedGoal.target_amount)}
+                </p>
+                <p>
+                  <strong>목표일:</strong>{' '}
+                  {new Date(selectedGoal.target_date).toLocaleDateString(
+                    'ko-KR'
+                  )}
+                </p>
               </div>
             )}
-            <p className="text-red-600 text-sm mt-2">이 작업은 되돌릴 수 없습니다.</p>
+            <p className="text-red-600 text-sm mt-2">
+              이 작업은 되돌릴 수 없습니다.
+            </p>
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={onDeleteClose}>

@@ -57,7 +57,7 @@ export function Sidebar() {
 
   const loadCurrentOrganization = async () => {
     if (typeof window === 'undefined') return
-    
+
     const selectedOrgId = localStorage.getItem('selectedOrganization')
     if (!selectedOrgId) return
 
@@ -176,7 +176,7 @@ export function Sidebar() {
           </Button>
         )}
       </div>
-      
+
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
         {navigation.map(item => {
@@ -196,7 +196,7 @@ export function Sidebar() {
           )
         })}
       </nav>
-      
+
       {/* Logout */}
       <div className="p-4 border-t border-gray-200">
         <Button
@@ -234,7 +234,7 @@ export function Sidebar() {
                 </div>
               </Button>
             </div>
-            
+
             {/* Navigation */}
             <nav className="flex-1 p-4 space-y-2">
               {navigation.map(item => (
@@ -248,7 +248,7 @@ export function Sidebar() {
                 </Button>
               ))}
             </nav>
-            
+
             {/* Logout */}
             <div className="p-4 border-t border-gray-200">
               <Button

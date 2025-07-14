@@ -3,16 +3,23 @@
  * Updated to support UUID v7 (time-ordered UUIDs)
  */
 
-import { v7 as uuidv7, validate as uuidValidate, version as uuidVersion } from 'uuid'
+import {
+  v7 as uuidv7,
+  validate as uuidValidate,
+  version as uuidVersion,
+} from 'uuid'
 
 // UUID v4 validation regex (legacy support)
-export const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+export const UUID_V4_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 // UUID v7 validation regex
-export const UUID_V7_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+export const UUID_V7_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 // General UUID validation regex (any version)
-export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+export const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 /**
  * Validates if a string is a valid UUID (any version)
@@ -59,7 +66,10 @@ export function validateUUID(uuid: string, fieldName: string = 'ID'): void {
  * @param fieldName - Name of the field for error message
  * @returns boolean indicating if all UUIDs are valid
  */
-export function validateUUIDs(uuids: string[], fieldName: string = 'IDs'): boolean {
+export function validateUUIDs(
+  uuids: string[],
+  fieldName: string = 'IDs'
+): boolean {
   return uuids.every(uuid => isValidUUID(uuid))
 }
 
@@ -80,11 +90,11 @@ export function extractTimestampFromUUIDv7(uuidv7: string): Date {
   if (!isValidUUIDv7(uuidv7)) {
     throw new Error('Invalid UUID v7 format')
   }
-  
+
   // UUID v7의 첫 48비트가 타임스탬프 (밀리초)
   const hex = uuidv7.replace(/-/g, '').substring(0, 12)
   const timestamp = parseInt(hex, 16)
-  
+
   return new Date(timestamp)
 }
 

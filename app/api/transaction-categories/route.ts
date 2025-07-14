@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(categories)
   } catch (error) {
-    console.error('Transaction categories fetch error:', error || 'Unknown error')
+    console.error(
+      'Transaction categories fetch error:',
+      error || 'Unknown error'
+    )
     return NextResponse.json(
       { error: 'Failed to fetch transaction categories' },
       { status: 500 }
@@ -89,7 +92,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
-    console.error('Transaction category creation error:', error || 'Unknown error')
+    console.error(
+      'Transaction category creation error:',
+      error || 'Unknown error'
+    )
     return NextResponse.json(
       { error: 'Failed to create transaction category' },
       { status: 500 }

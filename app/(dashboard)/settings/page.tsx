@@ -40,7 +40,8 @@ import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
-type OrganizationMember = Database['public']['Tables']['organization_members']['Row']
+type OrganizationMember =
+  Database['public']['Tables']['organization_members']['Row']
 
 interface UserProfile {
   id: string
@@ -57,7 +58,7 @@ export default function SettingsPage() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [members, setMembers] = useState<OrganizationMember[]>([])
-  
+
   const [settings, setSettings] = useState({
     notifications: {
       email: true,
@@ -74,7 +75,7 @@ export default function SettingsPage() {
       language: 'ko',
       currency: 'KRW',
       theme: 'light',
-    }
+    },
   })
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function SettingsPage() {
   const checkOrganizationAndLoadData = async () => {
     try {
       const storedOrgId = localStorage.getItem('selectedOrganization')
-      
+
       if (!storedOrgId) {
         router.push('/organizations')
         return
@@ -94,7 +95,7 @@ export default function SettingsPage() {
       await Promise.all([
         loadUserProfile(),
         loadOrganization(storedOrgId),
-        loadMembers(storedOrgId)
+        loadMembers(storedOrgId),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -105,8 +106,10 @@ export default function SettingsPage() {
 
   const loadUserProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
       if (user) {
         setUserProfile({
           id: user.id,
@@ -154,10 +157,10 @@ export default function SettingsPage() {
       ...prev,
       [category]: {
         ...prev[category as keyof typeof prev],
-        [key]: value
-      }
+        [key]: value,
+      },
     }))
-    
+
     // 실제로는 여기서 서버에 설정을 저장해야 함
     toast.success('설정이 저장되었습니다.')
   }
@@ -217,14 +220,20 @@ export default function SettingsPage() {
                 size="lg"
               />
               <div>
-                <h3 className="font-semibold">{userProfile?.full_name || '사용자'}</h3>
+                <h3 className="font-semibold">
+                  {userProfile?.full_name || '사용자'}
+                </h3>
                 <p className="text-gray-600">{userProfile?.email}</p>
               </div>
-              <Button size="sm" variant="light" startContent={<Edit className="w-4 h-4" />}>
+              <Button
+                size="sm"
+                variant="light"
+                startContent={<Edit className="w-4 h-4" />}
+              >
                 편집
               </Button>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="이름"
@@ -255,37 +264,63 @@ export default function SettingsPage() {
                   <h3 className="font-semibold">{organization?.name}</h3>
                   <p className="text-gray-600">{organization?.description}</p>
                 </div>
-                <Button size="sm" variant="light" startContent={<Edit className="w-4 h-4" />}>
+                <Button
+                  size="sm"
+                  variant="light"
+                  startContent={<Edit className="w-4 h-4" />}
+                >
                   편집
                 </Button>
               </div>
-              
+
               <Divider />
-              
+
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-medium">조직 멤버</h4>
-                  <Button size="sm" color="primary" startContent={<Plus className="w-4 h-4" />}>
+                  <Button
+                    size="sm"
+                    color="primary"
+                    startContent={<Plus className="w-4 h-4" />}
+                  >
                     멤버 초대
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  {members.map(member => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
                       <div className="flex items-center gap-3">
                         <Avatar size="sm" />
                         <div>
-                          <p className="font-medium">멤버 {member.user_id.slice(0, 8)}</p>
+                          <p className="font-medium">
+                            멤버 {member.user_id.slice(0, 8)}
+                          </p>
                           <p className="text-sm text-gray-600">
-                            {new Date(member.joined_at).toLocaleDateString('ko-KR')} 가입
+                            {new Date(member.joined_at).toLocaleDateString(
+                              'ko-KR'
+                            )}{' '}
+                            가입
                           </p>
                         </div>
                       </div>
                       <Chip
-                        color={member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'secondary' : 'default'}
+                        color={
+                          member.role === 'owner'
+                            ? 'primary'
+                            : member.role === 'admin'
+                              ? 'secondary'
+                              : 'default'
+                        }
                         size="sm"
                       >
-                        {member.role === 'owner' ? '소유자' : member.role === 'admin' ? '관리자' : '멤버'}
+                        {member.role === 'owner'
+                          ? '소유자'
+                          : member.role === 'admin'
+                            ? '관리자'
+                            : '멤버'}
                       </Chip>
                     </div>
                   ))}
@@ -308,33 +343,45 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">이메일 알림</p>
-                  <p className="text-sm text-gray-600">중요한 업데이트를 이메일로 받습니다</p>
+                  <p className="text-sm text-gray-600">
+                    중요한 업데이트를 이메일로 받습니다
+                  </p>
                 </div>
                 <Switch
                   isSelected={settings.notifications.email}
-                  onValueChange={(value) => handleSettingChange('notifications', 'email', value)}
+                  onValueChange={value =>
+                    handleSettingChange('notifications', 'email', value)
+                  }
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">거래 알림</p>
-                  <p className="text-sm text-gray-600">새로운 거래가 추가될 때 알림을 받습니다</p>
+                  <p className="text-sm text-gray-600">
+                    새로운 거래가 추가될 때 알림을 받습니다
+                  </p>
                 </div>
                 <Switch
                   isSelected={settings.notifications.transactions}
-                  onValueChange={(value) => handleSettingChange('notifications', 'transactions', value)}
+                  onValueChange={value =>
+                    handleSettingChange('notifications', 'transactions', value)
+                  }
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">목표 달성 알림</p>
-                  <p className="text-sm text-gray-600">재정 목표 달성 시 알림을 받습니다</p>
+                  <p className="text-sm text-gray-600">
+                    재정 목표 달성 시 알림을 받습니다
+                  </p>
                 </div>
                 <Switch
                   isSelected={settings.notifications.goals}
-                  onValueChange={(value) => handleSettingChange('notifications', 'goals', value)}
+                  onValueChange={value =>
+                    handleSettingChange('notifications', 'goals', value)
+                  }
                 />
               </div>
             </div>
@@ -354,7 +401,7 @@ export default function SettingsPage() {
               <Select
                 label="언어"
                 selectedKeys={[settings.preferences.language]}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   handleSettingChange('preferences', 'language', selectedKey)
                 }}
@@ -362,11 +409,11 @@ export default function SettingsPage() {
                 <SelectItem key="ko">한국어</SelectItem>
                 <SelectItem key="en">English</SelectItem>
               </Select>
-              
+
               <Select
                 label="통화"
                 selectedKeys={[settings.preferences.currency]}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const selectedKey = Array.from(keys)[0] as string
                   handleSettingChange('preferences', 'currency', selectedKey)
                 }}
@@ -392,7 +439,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">데이터 내보내기</p>
-                  <p className="text-sm text-gray-600">모든 데이터를 JSON 형식으로 다운로드합니다</p>
+                  <p className="text-sm text-gray-600">
+                    모든 데이터를 JSON 형식으로 다운로드합니다
+                  </p>
                 </div>
                 <Button
                   variant="light"
@@ -402,13 +451,15 @@ export default function SettingsPage() {
                   내보내기
                 </Button>
               </div>
-              
+
               <Divider />
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-red-600">계정 삭제</p>
-                  <p className="text-sm text-gray-600">계정과 모든 데이터가 영구적으로 삭제됩니다</p>
+                  <p className="text-sm text-gray-600">
+                    계정과 모든 데이터가 영구적으로 삭제됩니다
+                  </p>
                 </div>
                 <Button
                   color="danger"

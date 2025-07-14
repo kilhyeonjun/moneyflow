@@ -52,7 +52,10 @@ export default function SignupPage() {
       if (error) {
         // 영어 에러 메시지를 한글로 변환
         let koreanError = error.message
-        if (error.message.includes('Email address') && error.message.includes('invalid')) {
+        if (
+          error.message.includes('Email address') &&
+          error.message.includes('invalid')
+        ) {
           koreanError = '유효하지 않은 이메일 주소입니다.'
         } else if (error.message.includes('Password should be at least')) {
           koreanError = '비밀번호는 최소 6자 이상이어야 합니다.'

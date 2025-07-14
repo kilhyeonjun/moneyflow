@@ -144,7 +144,13 @@ export interface Database {
         Row: {
           id: string
           name: string
-          type: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash' | 'other'
+          type:
+            | 'real_estate'
+            | 'financial'
+            | 'investment'
+            | 'retirement'
+            | 'cash'
+            | 'other'
           icon: string | null
           color: string | null
           organization_id: string
@@ -154,7 +160,13 @@ export interface Database {
         Insert: {
           id?: string
           name: string
-          type: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash' | 'other'
+          type:
+            | 'real_estate'
+            | 'financial'
+            | 'investment'
+            | 'retirement'
+            | 'cash'
+            | 'other'
           icon?: string | null
           color?: string | null
           organization_id: string
@@ -164,7 +176,13 @@ export interface Database {
         Update: {
           id?: string
           name?: string
-          type?: 'real_estate' | 'financial' | 'investment' | 'retirement' | 'cash' | 'other'
+          type?:
+            | 'real_estate'
+            | 'financial'
+            | 'investment'
+            | 'retirement'
+            | 'cash'
+            | 'other'
           icon?: string | null
           color?: string | null
           organization_id?: string
@@ -221,7 +239,12 @@ export interface Database {
           id: string
           name: string
           description: string | null
-          type: 'mortgage' | 'personal_loan' | 'credit_card' | 'student_loan' | 'other'
+          type:
+            | 'mortgage'
+            | 'personal_loan'
+            | 'credit_card'
+            | 'student_loan'
+            | 'other'
           current_amount: number
           original_amount: number | null
           interest_rate: number | null
@@ -236,7 +259,12 @@ export interface Database {
           id?: string
           name: string
           description?: string | null
-          type: 'mortgage' | 'personal_loan' | 'credit_card' | 'student_loan' | 'other'
+          type:
+            | 'mortgage'
+            | 'personal_loan'
+            | 'credit_card'
+            | 'student_loan'
+            | 'other'
           current_amount?: number
           original_amount?: number | null
           interest_rate?: number | null
@@ -251,7 +279,12 @@ export interface Database {
           id?: string
           name?: string
           description?: string | null
-          type?: 'mortgage' | 'personal_loan' | 'credit_card' | 'student_loan' | 'other'
+          type?:
+            | 'mortgage'
+            | 'personal_loan'
+            | 'credit_card'
+            | 'student_loan'
+            | 'other'
           current_amount?: number
           original_amount?: number | null
           interest_rate?: number | null
@@ -268,7 +301,11 @@ export interface Database {
           id: string
           title: string
           description: string | null
-          type: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
+          type:
+            | 'asset_growth'
+            | 'savings'
+            | 'debt_reduction'
+            | 'expense_reduction'
           target_amount: number
           current_amount: number
           target_date: string
@@ -283,7 +320,11 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
-          type: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
+          type:
+            | 'asset_growth'
+            | 'savings'
+            | 'debt_reduction'
+            | 'expense_reduction'
           target_amount: number
           current_amount?: number
           target_date: string
@@ -297,7 +338,11 @@ export interface Database {
           id?: string
           title?: string
           description?: string | null
-          type?: 'asset_growth' | 'savings' | 'debt_reduction' | 'expense_reduction'
+          type?:
+            | 'asset_growth'
+            | 'savings'
+            | 'debt_reduction'
+            | 'expense_reduction'
           target_amount?: number
           current_amount?: number
           target_date?: string

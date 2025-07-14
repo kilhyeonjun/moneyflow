@@ -47,18 +47,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
-      name, 
-      description, 
-      categoryId, 
-      currentValue, 
-      organizationId, 
-      createdBy 
+    const {
+      name,
+      description,
+      categoryId,
+      currentValue,
+      organizationId,
+      createdBy,
     } = body
 
-    if (!name || !categoryId || currentValue === undefined || !organizationId || !createdBy) {
+    if (
+      !name ||
+      !categoryId ||
+      currentValue === undefined ||
+      !organizationId ||
+      !createdBy
+    ) {
       return NextResponse.json(
-        { error: 'Name, categoryId, currentValue, organizationId, and createdBy are required' },
+        {
+          error:
+            'Name, categoryId, currentValue, organizationId, and createdBy are required',
+        },
         { status: 400 }
       )
     }
@@ -127,14 +136,14 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
+    const {
       id,
-      name, 
-      description, 
-      categoryId, 
-      currentValue, 
+      name,
+      description,
+      categoryId,
+      currentValue,
       targetValue,
-      organizationId 
+      organizationId,
     } = body
 
     if (!id || !organizationId) {
@@ -187,8 +196,12 @@ export async function PUT(request: NextRequest) {
         ...(name && { name }),
         ...(description !== undefined && { description }),
         ...(categoryId && { categoryId }),
-        ...(currentValue !== undefined && { currentValue: parseFloat(currentValue) }),
-        ...(targetValue !== undefined && { targetValue: parseFloat(targetValue) }),
+        ...(currentValue !== undefined && {
+          currentValue: parseFloat(currentValue),
+        }),
+        ...(targetValue !== undefined && {
+          targetValue: parseFloat(targetValue),
+        }),
       },
       include: {
         category: true,

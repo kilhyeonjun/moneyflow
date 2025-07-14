@@ -84,19 +84,28 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
+    const {
       categoryId,
       amount,
       description,
       transactionDate,
       transactionType,
       organizationId,
-      userId
+      userId,
     } = body
 
-    if (!categoryId || !amount || !transactionType || !organizationId || !userId) {
+    if (
+      !categoryId ||
+      !amount ||
+      !transactionType ||
+      !organizationId ||
+      !userId
+    ) {
       return NextResponse.json(
-        { error: 'CategoryId, amount, transactionType, organizationId, and userId are required' },
+        {
+          error:
+            'CategoryId, amount, transactionType, organizationId, and userId are required',
+        },
         { status: 400 }
       )
     }
@@ -104,7 +113,10 @@ export async function POST(request: NextRequest) {
     // 거래 타입 검증
     if (!['income', 'expense', 'transfer'].includes(transactionType)) {
       return NextResponse.json(
-        { error: 'Invalid transaction type. Must be income, expense, or transfer' },
+        {
+          error:
+            'Invalid transaction type. Must be income, expense, or transfer',
+        },
         { status: 400 }
       )
     }
@@ -114,7 +126,9 @@ export async function POST(request: NextRequest) {
         category_id: categoryId,
         amount: parseFloat(amount),
         description,
-        transaction_date: transactionDate ? new Date(transactionDate) : new Date(),
+        transaction_date: transactionDate
+          ? new Date(transactionDate)
+          : new Date(),
         transaction_type: transactionType,
         organization_id: organizationId,
         user_id: userId,
@@ -137,14 +151,14 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
-    const { 
+    const {
       id,
       categoryId,
       amount,
       description,
       transactionDate,
       transactionType,
-      organizationId 
+      organizationId,
     } = body
 
     if (!id || !organizationId) {
@@ -170,9 +184,15 @@ export async function PUT(request: NextRequest) {
     }
 
     // 거래 타입 검증 (제공된 경우)
-    if (transactionType && !['income', 'expense', 'transfer'].includes(transactionType)) {
+    if (
+      transactionType &&
+      !['income', 'expense', 'transfer'].includes(transactionType)
+    ) {
       return NextResponse.json(
-        { error: 'Invalid transaction type. Must be income, expense, or transfer' },
+        {
+          error:
+            'Invalid transaction type. Must be income, expense, or transfer',
+        },
         { status: 400 }
       )
     }
