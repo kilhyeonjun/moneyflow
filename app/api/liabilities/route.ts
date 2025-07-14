@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isValidUUID } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,14 @@ export async function GET(request: NextRequest) {
     if (!organizationId) {
       return NextResponse.json(
         { error: 'Organization ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -24,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(liabilities)
   } catch (error) {
-    console.error('Liabilities fetch error:', error)
+    console.error('Liabilities fetch error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to fetch liabilities' },
       { status: 500 }
@@ -51,6 +60,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate UUID formats
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidUUID(createdBy)) {
+      return NextResponse.json(
+        { error: 'Invalid createdBy ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
     const liability = await prisma.liability.create({
       data: {
         name,
@@ -64,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(liability, { status: 201 })
   } catch (error) {
-    console.error('Liability creation error:', error)
+    console.error('Liability creation error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to create liability' },
       { status: 500 }

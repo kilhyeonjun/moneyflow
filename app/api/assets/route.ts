@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isValidUUID } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,14 @@ export async function GET(request: NextRequest) {
     if (!organizationId) {
       return NextResponse.json(
         { error: 'Organization ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -27,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(assets)
   } catch (error) {
-    console.error('Assets fetch error:', error)
+    console.error('Assets fetch error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to fetch assets' },
       { status: 500 }
@@ -50,6 +59,28 @@ export async function POST(request: NextRequest) {
     if (!name || !categoryId || currentValue === undefined || !organizationId || !createdBy) {
       return NextResponse.json(
         { error: 'Name, categoryId, currentValue, organizationId, and createdBy are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID formats
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidUUID(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidUUID(createdBy)) {
+      return NextResponse.json(
+        { error: 'Invalid createdBy ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -85,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(asset, { status: 201 })
   } catch (error) {
-    console.error('Asset creation error:', error)
+    console.error('Asset creation error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to create asset' },
       { status: 500 }
@@ -109,6 +140,28 @@ export async function PUT(request: NextRequest) {
     if (!id || !organizationId) {
       return NextResponse.json(
         { error: 'Asset ID and organizationId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID formats
+    if (!isValidUUID(id)) {
+      return NextResponse.json(
+        { error: 'Invalid asset ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    if (categoryId && !isValidUUID(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -144,9 +197,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updatedAsset)
   } catch (error) {
-    console.error('Asset update error:', error)
+    console.error('Asset update error:', error || 'Unknown error')
     return NextResponse.json(
-      { error: 'Failed to update asset', details: error },
+      { error: 'Failed to update asset' },
       { status: 500 }
     )
   }
@@ -161,6 +214,21 @@ export async function DELETE(request: NextRequest) {
     if (!id || !organizationId) {
       return NextResponse.json(
         { error: 'Asset ID and organizationId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID formats
+    if (!isValidUUID(id)) {
+      return NextResponse.json(
+        { error: 'Invalid asset ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -186,9 +254,9 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ message: 'Asset deleted successfully' })
   } catch (error) {
-    console.error('Asset deletion error:', error)
+    console.error('Asset deletion error:', error || 'Unknown error')
     return NextResponse.json(
-      { error: 'Failed to delete asset', details: error },
+      { error: 'Failed to delete asset' },
       { status: 500 }
     )
   }

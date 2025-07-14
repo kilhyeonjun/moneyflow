@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isValidUUID } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,14 @@ export async function GET(request: NextRequest) {
     if (!organizationId) {
       return NextResponse.json(
         { error: 'Organization ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -24,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(categories)
   } catch (error) {
-    console.error('Asset categories fetch error:', error)
+    console.error('Asset categories fetch error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to fetch asset categories' },
       { status: 500 }
@@ -44,6 +53,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
     const category = await prisma.assetCategory.create({
       data: {
         name,
@@ -56,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
-    console.error('Asset category creation error:', error)
+    console.error('Asset category creation error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to create asset category' },
       { status: 500 }

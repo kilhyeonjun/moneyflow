@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isValidUUID } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +16,22 @@ export async function GET(request: NextRequest) {
     if (!organizationId) {
       return NextResponse.json(
         { error: 'Organization ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    // Validate categoryId if provided
+    if (categoryId && !isValidUUID(categoryId)) {
+      return NextResponse.json(
+        { error: 'Invalid category ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -56,7 +73,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transactions)
   } catch (error) {
-    console.error('Transactions fetch error:', error)
+    console.error('Transactions fetch error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to fetch transactions' },
       { status: 500 }

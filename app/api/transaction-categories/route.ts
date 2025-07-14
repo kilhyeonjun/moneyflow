@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { isValidUUID } from '@/lib/utils/validation'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,6 +11,14 @@ export async function GET(request: NextRequest) {
     if (!organizationId) {
       return NextResponse.json(
         { error: 'Organization ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -31,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(categories)
   } catch (error) {
-    console.error('Transaction categories fetch error:', error)
+    console.error('Transaction categories fetch error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to fetch transaction categories' },
       { status: 500 }
@@ -47,6 +56,14 @@ export async function POST(request: NextRequest) {
     if (!name || !type || !organizationId) {
       return NextResponse.json(
         { error: 'Name, type, and organizationId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format
+    if (!isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid organization ID format. Must be a valid UUID.' },
         { status: 400 }
       )
     }
@@ -72,7 +89,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
-    console.error('Transaction category creation error:', error)
+    console.error('Transaction category creation error:', error || 'Unknown error')
     return NextResponse.json(
       { error: 'Failed to create transaction category' },
       { status: 500 }
