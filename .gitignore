@@ -66,6 +66,9 @@ baseline.sql
 .cursor/mcp.json
 .cursor/mcp_proxy.json
 
+# kiro settings (contains sensitive tokens)
+.kiro/settings/
+
 # UUID v7 migration temp files
 uuid-v7-*.js
 migration-*.md
