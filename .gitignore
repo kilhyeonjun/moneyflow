@@ -68,6 +68,7 @@ baseline.sql
 
 # kiro settings (contains sensitive tokens)
 .kiro/settings/
+.kiro/specs/*
 
 # UUID v7 migration temp files
 uuid-v7-*.js
