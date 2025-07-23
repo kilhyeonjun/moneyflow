@@ -5,10 +5,10 @@ import { isValidUUID } from '@/lib/utils/validation'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organizationId')
+    const organizationId = searchParams.get('organization_id')
     const limit = searchParams.get('limit')
     const offset = searchParams.get('offset')
-    const categoryId = searchParams.get('categoryId')
+    const categoryId = searchParams.get('category_id')
     const transactionType = searchParams.get('type')
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
@@ -38,34 +38,34 @@ export async function GET(request: NextRequest) {
 
     // 필터 조건 구성
     const where: any = {
-      organization_id: organizationId,
+      organizationId: organizationId,
     }
 
     if (categoryId) {
-      where.category_id = categoryId
+      where.categoryId = categoryId
     }
 
     if (transactionType) {
-      where.transaction_type = transactionType
+      where.transactionType = transactionType
     }
 
     if (startDate || endDate) {
-      where.transaction_date = {}
+      where.transactionDate = {}
       if (startDate) {
-        where.transaction_date.gte = new Date(startDate)
+        where.transactionDate.gte = new Date(startDate)
       }
       if (endDate) {
-        where.transaction_date.lte = new Date(endDate)
+        where.transactionDate.lte = new Date(endDate)
       }
     }
 
-    const transactions = await prisma.transactions.findMany({
+    const transactions = await prisma.transaction.findMany({
       where,
       include: {
-        categories: true,
+        category: true,
       },
       orderBy: {
-        transaction_date: 'desc',
+        transactionDate: 'desc',
       },
       ...(limit && { take: parseInt(limit) }),
       ...(offset && { skip: parseInt(offset) }),
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'CategoryId, amount, transactionType, organizationId, and userId are required',
+            'categoryId, amount, transactionType, organizationId, and userId are required',
         },
         { status: 400 }
       )
@@ -121,20 +121,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const transaction = await prisma.transactions.create({
+    const transaction = await prisma.transaction.create({
       data: {
-        category_id: categoryId,
+        categoryId: categoryId,
         amount: parseFloat(amount),
         description,
-        transaction_date: transactionDate
+        transactionDate: transactionDate
           ? new Date(transactionDate)
           : new Date(),
-        transaction_type: transactionType,
-        organization_id: organizationId,
-        user_id: userId,
+        transactionType: transactionType,
+        organizationId: organizationId,
+        userId: userId,
       },
       include: {
-        categories: true,
+        category: true,
       },
     })
 
@@ -169,10 +169,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // 권한 확인: 해당 조직의 거래인지 검증
-    const existingTransaction = await prisma.transactions.findFirst({
+    const existingTransaction = await prisma.transaction.findFirst({
       where: {
         id: id,
-        organization_id: organizationId,
+        organizationId: organizationId,
       },
     })
 
@@ -197,17 +197,19 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    const updatedTransaction = await prisma.transactions.update({
+    const updatedTransaction = await prisma.transaction.update({
       where: { id: id },
       data: {
-        ...(categoryId && { category_id: categoryId }),
+        ...(categoryId && { categoryId: categoryId }),
         ...(amount !== undefined && { amount: parseFloat(amount) }),
         ...(description !== undefined && { description }),
-        ...(transactionDate && { transaction_date: new Date(transactionDate) }),
-        ...(transactionType && { transaction_type: transactionType }),
+        ...(transactionDate && {
+          transactionDate: new Date(transactionDate),
+        }),
+        ...(transactionType && { transactionType: transactionType }),
       },
       include: {
-        categories: true,
+        category: true,
       },
     })
 
@@ -225,7 +227,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    const organizationId = searchParams.get('organizationId')
+    const organizationId = searchParams.get('organization_id')
 
     if (!id || !organizationId) {
       return NextResponse.json(
@@ -235,10 +237,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 권한 확인: 해당 조직의 거래인지 검증
-    const existingTransaction = await prisma.transactions.findFirst({
+    const existingTransaction = await prisma.transaction.findFirst({
       where: {
         id: id,
-        organization_id: organizationId,
+        organizationId: organizationId,
       },
     })
 
@@ -249,7 +251,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    await prisma.transactions.delete({
+    await prisma.transaction.delete({
       where: { id: id },
     })
 

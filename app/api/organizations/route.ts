@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           description,
-          createdBy,
+          createdBy: createdBy,
         },
       })
 

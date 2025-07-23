@@ -20,8 +20,8 @@ async function createCategoriesFromDefaults(organizationId: string) {
     console.log('기본 카테고리 템플릿 조회 시작')
 
     // 1. default_categories에서 모든 기본 카테고리 가져오기
-    const defaultCategories = await prisma.default_categories.findMany({
-      orderBy: [{ transaction_type: 'asc' }, { level: 'asc' }, { name: 'asc' }],
+    const defaultCategories = await prisma.defaultCategory.findMany({
+      orderBy: [{ transactionType: 'asc' }, { level: 'asc' }, { name: 'asc' }],
     })
 
     if (!defaultCategories || defaultCategories.length === 0) {
@@ -41,21 +41,21 @@ async function createCategoriesFromDefaults(organizationId: string) {
     for (const defaultCategory of sortedCategories) {
       // 부모 카테고리 ID 찾기
       let parentId: string | null = null
-      if (defaultCategory.parent_name) {
-        parentId = categoryMap.get(defaultCategory.parent_name) || null
+      if (defaultCategory.parentName) {
+        parentId = categoryMap.get(defaultCategory.parentName) || null
       }
 
       // 카테고리 생성
-      const newCategory = await prisma.categories.create({
+      const newCategory = await prisma.category.create({
         data: {
-          organization_id: organizationId,
+          organizationId: organizationId,
           name: defaultCategory.name,
           level: defaultCategory.level,
-          parent_id: parentId,
-          transaction_type: defaultCategory.transaction_type,
+          parentId: parentId,
+          transactionType: defaultCategory.transactionType,
           icon: defaultCategory.icon,
           color: defaultCategory.color,
-          is_default: true,
+          isDefault: true,
         },
       })
 
@@ -86,12 +86,12 @@ async function createDefaultPaymentMethods(organizationId: string) {
     const createdPaymentMethods = []
 
     for (const method of defaultPaymentMethods) {
-      const paymentMethod = await prisma.payment_methods.create({
+      const paymentMethod = await prisma.paymentMethod.create({
         data: {
-          organization_id: organizationId,
+          organizationId: organizationId,
           name: method.name,
           type: method.type,
-          is_active: true,
+          isActive: true,
         },
       })
 

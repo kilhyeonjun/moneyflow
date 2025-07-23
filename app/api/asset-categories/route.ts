@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         type,
         icon,
         color,
-        organizationId,
+        organizationId: organizationId,
       },
     })
 

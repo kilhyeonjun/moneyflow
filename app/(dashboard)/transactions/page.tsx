@@ -44,11 +44,11 @@ import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 
 // Prisma 타입 import
-import type { transactions, categories } from '@prisma/client'
+import type { Transaction, Category } from '@prisma/client'
 
 // 확장된 타입 정의
-interface TransactionWithCategory extends transactions {
-  categories: categories | null
+interface TransactionWithCategory extends Transaction {
+  category: Category | null
 }
 
 export default function TransactionsPage() {
@@ -77,7 +77,7 @@ export default function TransactionsPage() {
     []
   )
   const [transactionCategories, setTransactionCategories] = useState<
-    categories[]
+    Category[]
   >([])
 
   const [formData, setFormData] = useState({
@@ -283,11 +283,11 @@ export default function TransactionsPage() {
   const handleEditTransaction = (transaction: TransactionWithCategory) => {
     setSelectedTransaction(transaction)
     setEditFormData({
-      categoryId: transaction.category_id || '',
+      categoryId: transaction.categoryId || '',
       amount: transaction.amount.toString(),
       description: transaction.description || '',
-      transactionDate: transaction.transaction_date.toISOString().split('T')[0],
-      transactionType: transaction.transaction_type,
+      transactionDate: transaction.transactionDate.toISOString().split('T')[0],
+      transactionType: transaction.transactionType,
     })
     onEditOpen()
   }
@@ -533,14 +533,14 @@ export default function TransactionsPage() {
                 {transactions.map(transaction => (
                   <TableRow key={transaction.id}>
                     <TableCell>
-                      {new Date(
-                        transaction.transaction_date
-                      ).toLocaleDateString('ko-KR')}
+                      {new Date(transaction.transactionDate).toLocaleDateString(
+                        'ko-KR'
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getTransactionIcon(transaction.transaction_type)}
-                        <span>{transaction.categories?.name || '미분류'}</span>
+                        {getTransactionIcon(transaction.transactionType)}
+                        <span>{transaction.category?.name || '미분류'}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -553,25 +553,25 @@ export default function TransactionsPage() {
                         size="sm"
                         color={
                           getTransactionTypeColor(
-                            transaction.transaction_type
+                            transaction.transactionType
                           ) as any
                         }
                         variant="flat"
                       >
-                        {getTransactionTypeLabel(transaction.transaction_type)}
+                        {getTransactionTypeLabel(transaction.transactionType)}
                       </Chip>
                     </TableCell>
                     <TableCell>
                       <span
                         className={`font-semibold ${
-                          transaction.transaction_type === 'income'
+                          transaction.transactionType === 'income'
                             ? 'text-green-600'
-                            : transaction.transaction_type === 'expense'
+                            : transaction.transactionType === 'expense'
                               ? 'text-red-600'
                               : 'text-blue-600'
                         }`}
                       >
-                        {transaction.transaction_type === 'expense' ? '-' : '+'}
+                        {transaction.transactionType === 'expense' ? '-' : '+'}
                         {formatCurrency(Number(transaction.amount))}
                       </span>
                     </TableCell>
@@ -652,7 +652,7 @@ export default function TransactionsPage() {
                   .filter(
                     cat =>
                       !formData.transactionType ||
-                      cat.transaction_type === formData.transactionType
+                      cat.transactionType === formData.transactionType
                   )
                   .map(category => (
                     <SelectItem key={category.id}>{category.name}</SelectItem>
@@ -750,7 +750,7 @@ export default function TransactionsPage() {
                   .filter(
                     cat =>
                       !editFormData.transactionType ||
-                      cat.transaction_type === editFormData.transactionType
+                      cat.transactionType === editFormData.transactionType
                   )
                   .map(category => (
                     <SelectItem key={category.id}>{category.name}</SelectItem>
@@ -831,33 +831,33 @@ export default function TransactionsPage() {
               {selectedTransaction && (
                 <div className="p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    {getTransactionIcon(selectedTransaction.transaction_type)}
+                    {getTransactionIcon(selectedTransaction.transactionType)}
                     <span className="font-medium">
-                      {selectedTransaction.categories?.name || '미분류'}
+                      {selectedTransaction.category?.name || '미분류'}
                     </span>
                     <Chip
                       size="sm"
                       color={
                         getTransactionTypeColor(
-                          selectedTransaction.transaction_type
+                          selectedTransaction.transactionType
                         ) as any
                       }
                       variant="flat"
                     >
                       {getTransactionTypeLabel(
-                        selectedTransaction.transaction_type
+                        selectedTransaction.transactionType
                       )}
                     </Chip>
                   </div>
                   <p className="text-lg font-semibold mb-1">
-                    {selectedTransaction.transaction_type === 'expense'
+                    {selectedTransaction.transactionType === 'expense'
                       ? '-'
                       : '+'}
                     {formatCurrency(Number(selectedTransaction.amount))}
                   </p>
                   <p className="text-sm text-gray-600">
                     {new Date(
-                      selectedTransaction.transaction_date
+                      selectedTransaction.transactionDate
                     ).toLocaleDateString('ko-KR')}
                   </p>
                   {selectedTransaction.description && (

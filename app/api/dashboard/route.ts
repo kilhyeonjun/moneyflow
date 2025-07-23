@@ -52,22 +52,22 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       // 자산 총액
       prisma.asset.aggregate({
-        where: { organizationId },
+        where: { organizationId: organizationId },
         _sum: { currentValue: true },
       }),
 
       // 부채 총액
       prisma.liability.aggregate({
-        where: { organizationId },
+        where: { organizationId: organizationId },
         _sum: { currentAmount: true },
       }),
 
       // 이번 달 수입
-      prisma.transactions.aggregate({
+      prisma.transaction.aggregate({
         where: {
-          organization_id: organizationId,
-          transaction_type: 'income',
-          transaction_date: {
+          organizationId: organizationId,
+          transactionType: 'income',
+          transactionDate: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
           },
@@ -76,11 +76,11 @@ export async function GET(request: NextRequest) {
       }),
 
       // 이번 달 지출
-      prisma.transactions.aggregate({
+      prisma.transaction.aggregate({
         where: {
-          organization_id: organizationId,
-          transaction_type: 'expense',
-          transaction_date: {
+          organizationId: organizationId,
+          transactionType: 'expense',
+          transactionDate: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
           },
@@ -89,11 +89,11 @@ export async function GET(request: NextRequest) {
       }),
 
       // 지난 달 수입
-      prisma.transactions.aggregate({
+      prisma.transaction.aggregate({
         where: {
-          organization_id: organizationId,
-          transaction_type: 'income',
-          transaction_date: {
+          organizationId: organizationId,
+          transactionType: 'income',
+          transactionDate: {
             gte: lastMonthStart,
             lte: lastMonthEnd,
           },
@@ -102,11 +102,11 @@ export async function GET(request: NextRequest) {
       }),
 
       // 지난 달 지출
-      prisma.transactions.aggregate({
+      prisma.transaction.aggregate({
         where: {
-          organization_id: organizationId,
-          transaction_type: 'expense',
-          transaction_date: {
+          organizationId: organizationId,
+          transactionType: 'expense',
+          transactionDate: {
             gte: lastMonthStart,
             lte: lastMonthEnd,
           },
@@ -115,20 +115,20 @@ export async function GET(request: NextRequest) {
       }),
 
       // 최근 거래 내역 (최근 10건)
-      prisma.transactions.findMany({
-        where: { organization_id: organizationId },
-        include: { categories: true },
-        orderBy: { transaction_date: 'desc' },
+      prisma.transaction.findMany({
+        where: { organizationId: organizationId },
+        include: { category: true },
+        orderBy: { transactionDate: 'desc' },
         take: 10,
       }),
 
       // 카테고리별 지출 (이번 달)
-      prisma.transactions.groupBy({
-        by: ['category_id'],
+      prisma.transaction.groupBy({
+        by: ['categoryId'],
         where: {
-          organization_id: organizationId,
-          transaction_type: 'expense',
-          transaction_date: {
+          organizationId: organizationId,
+          transactionType: 'expense',
+          transactionDate: {
             gte: currentMonthStart,
             lte: currentMonthEnd,
           },
@@ -140,20 +140,20 @@ export async function GET(request: NextRequest) {
 
     // 카테고리 정보 조회 (카테고리별 지출에 사용)
     const categoryIds = expensesByCategory
-      .map(item => item.category_id)
-      .filter((id): id is string => id !== null)
+      .map((item: any) => item.categoryId)
+      .filter((id: any): id is string => id !== null)
     const categories =
       categoryIds.length > 0
-        ? await prisma.categories.findMany({
+        ? await prisma.category.findMany({
             where: { id: { in: categoryIds } },
           })
         : []
 
     // 카테고리 정보와 지출 데이터 결합
-    const expensesWithCategories = expensesByCategory.map(expense => {
-      const category = categories.find(cat => cat.id === expense.category_id)
+    const expensesWithCategories = expensesByCategory.map((expense: any) => {
+      const category = categories.find(cat => cat.id === expense.categoryId)
       return {
-        categoryId: expense.category_id,
+        categoryId: expense.categoryId,
         categoryName: category?.name || '미분류',
         amount: expense._sum.amount || 0,
         icon: category?.icon,
@@ -196,13 +196,13 @@ export async function GET(request: NextRequest) {
       },
 
       // 최근 거래
-      recentTransactions: recentTransactions.map(transaction => ({
+      recentTransactions: recentTransactions.map((transaction: any) => ({
         id: transaction.id,
         amount: Number(transaction.amount),
         description: transaction.description,
-        date: transaction.transaction_date,
-        type: transaction.transaction_type,
-        categoryName: transaction.categories?.name || '미분류',
+        date: transaction.transactionDate,
+        type: transaction.transactionType,
+        categoryName: transaction.category?.name || '미분류',
       })),
 
       // 카테고리별 지출

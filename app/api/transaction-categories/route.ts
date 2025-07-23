@@ -5,7 +5,7 @@ import { isValidUUID } from '@/lib/utils/validation'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organizationId')
+    const organizationId = searchParams.get('organization_id')
     const type = searchParams.get('type') // income, expense, transfer
 
     if (!organizationId) {
@@ -24,14 +24,14 @@ export async function GET(request: NextRequest) {
     }
 
     const where: any = {
-      organization_id: organizationId,
+      organizationId: organizationId,
     }
 
     if (type) {
-      where.transaction_type = type
+      where.transactionType = type
     }
 
-    const categories = await prisma.categories.findMany({
+    const categories = await prisma.category.findMany({
       where,
       orderBy: {
         name: 'asc',
@@ -79,13 +79,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const category = await prisma.categories.create({
+    const category = await prisma.category.create({
       data: {
         name,
-        transaction_type: type,
+        transactionType: type,
         icon,
         color,
-        organization_id: organizationId,
+        organizationId: organizationId,
         level: 1, // 기본 레벨
       },
     })

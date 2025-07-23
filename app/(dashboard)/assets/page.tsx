@@ -155,7 +155,7 @@ export default function AssetsPage() {
   const loadAssetCategories = async (orgId: string) => {
     try {
       const response = await fetch(
-        `/api/asset-categories?organizationId=${orgId}`
+        `/api/asset-categories?organization_id=${orgId}`
       )
 
       if (!response.ok) {
@@ -169,7 +169,7 @@ export default function AssetsPage() {
         await createDefaultCategories(orgId)
         // 다시 카테고리 로드
         const retryResponse = await fetch(
-          `/api/asset-categories?organizationId=${orgId}`
+          `/api/asset-categories?organization_id=${orgId}`
         )
         if (retryResponse.ok) {
           const retryCategories = await retryResponse.json()
@@ -191,7 +191,7 @@ export default function AssetsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ organizationId: orgId }),
+        body: JSON.stringify({ organization_id: orgId }),
       })
 
       if (!response.ok) {
@@ -207,7 +207,7 @@ export default function AssetsPage() {
 
   const loadAssets = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/assets?organizationId=${orgId}`)
+      const response = await fetch(`/api/assets?organization_id=${orgId}`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -229,7 +229,7 @@ export default function AssetsPage() {
 
   const loadLiabilities = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/liabilities?organizationId=${orgId}`)
+      const response = await fetch(`/api/liabilities?organization_id=${orgId}`)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -306,10 +306,10 @@ export default function AssetsPage() {
       const assetData = {
         name: formData.name,
         description: formData.description || null,
-        categoryId: formData.categoryId,
-        currentValue: parseFloat(formData.currentValue),
-        organizationId: selectedOrgId,
-        createdBy: user.id,
+        category_id: formData.categoryId,
+        current_value: parseFloat(formData.currentValue),
+        organization_id: selectedOrgId,
+        created_by: user.id,
       }
 
       const response = await fetch('/api/assets', {
@@ -384,12 +384,12 @@ export default function AssetsPage() {
         id: selectedAsset.id,
         name: editFormData.name,
         description: editFormData.description || null,
-        categoryId: editFormData.categoryId,
-        currentValue: parseFloat(editFormData.currentValue),
-        targetValue: editFormData.targetValue
+        category_id: editFormData.categoryId,
+        current_value: parseFloat(editFormData.currentValue),
+        target_value: editFormData.targetValue
           ? parseFloat(editFormData.targetValue)
           : null,
-        organizationId: selectedOrgId,
+        organization_id: selectedOrgId,
       }
 
       const response = await fetch('/api/assets', {
@@ -437,7 +437,7 @@ export default function AssetsPage() {
 
     try {
       const response = await fetch(
-        `/api/assets?id=${selectedAsset.id}&organizationId=${selectedOrgId}`,
+        `/api/assets?id=${selectedAsset.id}&organization_id=${selectedOrgId}`,
         {
           method: 'DELETE',
         }

@@ -113,10 +113,10 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         description,
-        categoryId,
+        categoryId: categoryId,
         currentValue: parseFloat(currentValue.toString()),
         type: 'savings', // 기본 타입 설정
-        organizationId,
+        organizationId: organizationId,
       },
       include: {
         category: true,
@@ -195,7 +195,7 @@ export async function PUT(request: NextRequest) {
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
-        ...(categoryId && { categoryId }),
+        ...(categoryId && { categoryId: categoryId }),
         ...(currentValue !== undefined && {
           currentValue: parseFloat(currentValue),
         }),

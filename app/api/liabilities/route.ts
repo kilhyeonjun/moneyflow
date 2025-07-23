@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
         description,
         type,
         currentAmount: parseFloat(currentAmount),
-        organizationId,
-        createdBy,
+        organizationId: organizationId,
+        createdBy: createdBy,
       },
     })
 

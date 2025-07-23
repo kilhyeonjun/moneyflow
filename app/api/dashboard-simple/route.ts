@@ -25,15 +25,15 @@ export async function GET(request: NextRequest) {
     // 간단한 데이터만 조회
     const [totalAssets, totalTransactions, categories] = await Promise.all([
       prisma.asset.count({
-        where: { organizationId },
+        where: { organizationId: organizationId },
       }),
 
-      prisma.transactions.count({
-        where: { organization_id: organizationId },
+      prisma.transaction.count({
+        where: { organizationId: organizationId },
       }),
 
-      prisma.categories.count({
-        where: { organization_id: organizationId },
+      prisma.category.count({
+        where: { organizationId: organizationId },
       }),
     ])
 

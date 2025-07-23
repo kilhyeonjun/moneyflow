@@ -134,23 +134,23 @@ export async function POST(request: NextRequest) {
 
     const createdTransactionCategories = []
     for (const category of transactionCategories) {
-      const existing = await prisma.categories.findFirst({
+      const existing = await prisma.category.findFirst({
         where: {
           name: category.name,
-          organization_id: organizationId,
-          transaction_type: category.type,
+          organizationId: organizationId,
+          transactionType: category.type,
         },
       })
 
       if (!existing) {
-        const created = await prisma.categories.create({
+        const created = await prisma.category.create({
           data: {
             name: category.name,
-            transaction_type: category.type,
+            transactionType: category.type,
             level: category.level,
             icon: category.icon,
             color: category.color,
-            organization_id: organizationId,
+            organizationId: organizationId,
           },
         })
         createdTransactionCategories.push(created)
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
 
       if (cashCategory) {
         const existingCashAsset = await prisma.asset.findFirst({
-          where: { organizationId, name: '주거래 통장' },
+          where: { organizationId: organizationId, name: '주거래 통장' },
         })
 
         if (!existingCashAsset) {
@@ -182,10 +182,10 @@ export async function POST(request: NextRequest) {
               type: 'savings',
               currentValue: 3000000,
               targetValue: 5000000,
-              bank_name: '국민은행',
-              account_number: '****-**-****-123',
+              bankName: '국민은행',
+              accountNumber: '****-**-****-123',
               description: '주거래 통장',
-              organizationId,
+              organizationId: organizationId,
               categoryId: cashCategory.id,
             },
           })
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 
       if (investmentCategory) {
         const existingInvestment = await prisma.asset.findFirst({
-          where: { organizationId, name: '주식 투자' },
+          where: { organizationId: organizationId, name: '주식 투자' },
         })
 
         if (!existingInvestment) {
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
               currentValue: 1500000,
               targetValue: 3000000,
               description: '국내외 주식 포트폴리오',
-              organizationId,
+              organizationId: organizationId,
               categoryId: investmentCategory.id,
             },
           })
@@ -230,31 +230,31 @@ export async function POST(request: NextRequest) {
         {
           amount: 3500000,
           description: '12월 급여',
-          transaction_type: 'income',
-          category_id: salaryCategory?.id,
-          transaction_date: new Date(2024, 11, 25), // 12월 25일
+          transactionType: 'income',
+          categoryId: salaryCategory?.id,
+          transactionDate: new Date(2024, 11, 25), // 12월 25일
         },
         // 지출들
         {
           amount: 45000,
           description: '마트 장보기',
-          transaction_type: 'expense',
-          category_id: foodCategory?.id,
-          transaction_date: new Date(2024, 11, 28),
+          transactionType: 'expense',
+          categoryId: foodCategory?.id,
+          transactionDate: new Date(2024, 11, 28),
         },
         {
           amount: 15000,
           description: '지하철 교통카드 충전',
-          transaction_type: 'expense',
-          category_id: transportCategory?.id,
-          transaction_date: new Date(2024, 11, 27),
+          transactionType: 'expense',
+          categoryId: transportCategory?.id,
+          transactionDate: new Date(2024, 11, 27),
         },
         {
           amount: 25000,
           description: '점심 회식',
-          transaction_type: 'expense',
-          category_id: foodCategory?.id,
-          transaction_date: new Date(2024, 11, 26),
+          transactionType: 'expense',
+          categoryId: foodCategory?.id,
+          transactionDate: new Date(2024, 11, 26),
         },
       ]
 
@@ -262,21 +262,21 @@ export async function POST(request: NextRequest) {
       const tempUserId = '550e8400-e29b-41d4-a716-446655440001'
 
       for (const txData of sampleTransactionData) {
-        if (txData.category_id) {
-          const existingTx = await prisma.transactions.findFirst({
+        if (txData.categoryId) {
+          const existingTx = await prisma.transaction.findFirst({
             where: {
-              organization_id: organizationId,
+              organizationId: organizationId,
               description: txData.description,
               amount: txData.amount,
             },
           })
 
           if (!existingTx) {
-            const transaction = await prisma.transactions.create({
+            const transaction = await prisma.transaction.create({
               data: {
                 ...txData,
-                organization_id: organizationId,
-                user_id: tempUserId,
+                organizationId: organizationId,
+                userId: tempUserId,
               },
             })
             sampleTransactions.push(transaction)
