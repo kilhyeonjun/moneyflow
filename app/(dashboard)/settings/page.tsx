@@ -50,6 +50,27 @@ interface UserProfile {
   avatar_url?: string
 }
 
+type SettingsType = {
+  notifications: {
+    email: boolean
+    push: boolean
+    transactions: boolean
+    goals: boolean
+    reports: boolean
+  }
+  privacy: {
+    profileVisible: boolean
+    dataSharing: boolean
+  }
+  preferences: {
+    language: string
+    currency: string
+    theme: string
+  }
+}
+
+type SettingValue = boolean | string
+
 export default function SettingsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
@@ -152,7 +173,7 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSettingChange = (category: string, key: string, value: any) => {
+  const handleSettingChange = (category: keyof SettingsType, key: string, value: SettingValue) => {
     setSettings(prev => ({
       ...prev,
       [category]: {

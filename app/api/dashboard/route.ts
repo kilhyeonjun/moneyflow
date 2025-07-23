@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isValidUUID } from '@/lib/utils/validation'
+import { Prisma, Transaction, Category } from '@prisma/client'
+
+type ExpensesByCategoryResult = {
+  categoryId: string | null
+  _sum: {
+    amount: Prisma.Decimal | null
+  }
+}
+
+type TransactionWithCategory = Transaction & {
+  category: Category | null
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -140,8 +152,8 @@ export async function GET(request: NextRequest) {
 
     // 카테고리 정보 조회 (카테고리별 지출에 사용)
     const categoryIds = expensesByCategory
-      .map((item: any) => item.categoryId)
-      .filter((id: any): id is string => id !== null)
+      .map((item: ExpensesByCategoryResult) => item.categoryId)
+      .filter((id): id is string => id !== null)
     const categories =
       categoryIds.length > 0
         ? await prisma.category.findMany({
@@ -150,12 +162,12 @@ export async function GET(request: NextRequest) {
         : []
 
     // 카테고리 정보와 지출 데이터 결합
-    const expensesWithCategories = expensesByCategory.map((expense: any) => {
+    const expensesWithCategories = expensesByCategory.map((expense: ExpensesByCategoryResult) => {
       const category = categories.find(cat => cat.id === expense.categoryId)
       return {
         categoryId: expense.categoryId,
         categoryName: category?.name || '미분류',
-        amount: expense._sum.amount || 0,
+        amount: Number(expense._sum.amount || 0),
         icon: category?.icon,
         color: category?.color,
       }
@@ -196,7 +208,7 @@ export async function GET(request: NextRequest) {
       },
 
       // 최근 거래
-      recentTransactions: recentTransactions.map((transaction: any) => ({
+      recentTransactions: recentTransactions.map((transaction: TransactionWithCategory) => ({
         id: transaction.id,
         amount: Number(transaction.amount),
         description: transaction.description,

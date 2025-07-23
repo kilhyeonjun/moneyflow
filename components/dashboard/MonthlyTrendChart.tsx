@@ -21,6 +21,13 @@ interface MonthlyTrendChartProps {
   transactions: Transaction[]
 }
 
+type MonthlyDataItem = {
+  month: string
+  income: number
+  expense: number
+  savings: number
+}
+
 export default function MonthlyTrendChart({
   transactions,
 }: MonthlyTrendChartProps) {
@@ -42,7 +49,7 @@ export default function MonthlyTrendChart({
       const amount = Math.abs(transaction.amount)
       const type =
         transaction.categories?.transaction_type ||
-        (transaction as any).transaction_type
+        (transaction as Transaction & { transaction_type?: string }).transaction_type
 
       if (type === 'income') {
         acc[monthKey].income += amount
@@ -54,13 +61,13 @@ export default function MonthlyTrendChart({
 
       return acc
     },
-    {} as Record<string, any>
+    {} as Record<string, MonthlyDataItem>
   )
 
   // 데이터를 배열로 변환하고 정렬
   const chartData = Object.values(monthlyData)
-    .sort((a: any, b: any) => a.month.localeCompare(b.month))
-    .map((item: any) => ({
+    .sort((a: MonthlyDataItem, b: MonthlyDataItem) => a.month.localeCompare(b.month))
+    .map((item: MonthlyDataItem) => ({
       ...item,
       month: new Date(item.month + '-01').toLocaleDateString('ko-KR', {
         year: 'numeric',

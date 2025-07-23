@@ -27,6 +27,8 @@ import { Database } from '@/types/database'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 
+type DropdownMenuItemType = Organization | { id: 'manage'; name: '조직 관리' }
+
 const navigation = [
   { name: '대시보드', href: '/dashboard', icon: Home },
   { name: '거래 관리', href: '/transactions', icon: CreditCard },
@@ -144,7 +146,7 @@ export function Sidebar() {
               aria-label="조직 선택"
               items={[...userOrgs, { id: 'manage', name: '조직 관리' }]}
             >
-              {(item: any) => (
+              {(item: DropdownMenuItemType) => (
                 <DropdownItem
                   key={item.id}
                   onPress={() =>

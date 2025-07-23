@@ -19,6 +19,7 @@ import { Database } from '@/types/database'
 type Category = Database['public']['Tables']['categories']['Row']
 type PaymentMethod = Database['public']['Tables']['payment_methods']['Row']
 type TransactionInsert = Database['public']['Tables']['transactions']['Insert']
+type Transaction = Database['public']['Tables']['transactions']['Row']
 
 interface TransactionFormProps {
   isOpen: boolean
@@ -27,7 +28,7 @@ interface TransactionFormProps {
   paymentMethods: PaymentMethod[]
   organizationId: string
   onSuccess: () => void
-  editTransaction?: any
+  editTransaction?: Transaction
   mode?: 'create' | 'edit'
 }
 
@@ -124,7 +125,7 @@ export default function TransactionForm({
           onSuccess()
           onClose()
         }
-      } else {
+      } else if (editTransaction) {
         // 거래 수정
         const { error } = await supabase
           .from('transactions')
@@ -148,6 +149,8 @@ export default function TransactionForm({
           onSuccess()
           onClose()
         }
+      } else {
+        toast.error('편집할 거래 정보가 없습니다.')
       }
     } catch (error) {
       console.error('거래 처리 중 오류:', error)

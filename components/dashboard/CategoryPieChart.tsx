@@ -29,7 +29,7 @@ export default function CategoryPieChart({
     .filter(transaction => {
       const transactionType =
         transaction.categories?.transaction_type ||
-        (transaction as any).transaction_type
+        (transaction as Transaction & { transaction_type?: string }).transaction_type
       return transactionType === type
     })
     .reduce(
@@ -120,7 +120,14 @@ export default function CategoryPieChart({
     innerRadius,
     outerRadius,
     percent,
-  }: any) => {
+  }: {
+    cx: number
+    cy: number
+    midAngle: number
+    innerRadius: number
+    outerRadius: number
+    percent: number
+  }) => {
     if (percent < 0.05) return null // 5% 미만은 라벨 숨김
 
     const RADIAN = Math.PI / 180

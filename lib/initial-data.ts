@@ -1,6 +1,7 @@
 // 조직 생성 시 기본 카테고리와 결제수단을 생성하는 유틸리티
 
 import { prisma } from './prisma'
+import { Category, PaymentMethod } from '@prisma/client'
 
 // 기본 결제수단 데이터
 const defaultPaymentMethods = [
@@ -33,7 +34,7 @@ async function createCategoriesFromDefaults(organizationId: string) {
 
     // 2. 계층 구조를 고려하여 카테고리 생성
     const categoryMap = new Map<string, string>() // parent_name -> category_id 매핑
-    const createdCategories: any[] = []
+    const createdCategories: Category[] = []
 
     // 레벨별로 정렬하여 부모 카테고리부터 생성
     const sortedCategories = defaultCategories.sort((a, b) => a.level - b.level)
@@ -83,7 +84,7 @@ async function createDefaultPaymentMethods(organizationId: string) {
   try {
     console.log('기본 결제수단 생성 시작')
 
-    const createdPaymentMethods = []
+    const createdPaymentMethods: PaymentMethod[] = []
 
     for (const method of defaultPaymentMethods) {
       const paymentMethod = await prisma.paymentMethod.create({
