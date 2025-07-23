@@ -169,13 +169,7 @@ const nextConfig = {
 
   // 리다이렉트 설정
   async redirects() {
-    return [
-      {
-        source: '/dashboard',
-        destination: '/dashboard/dashboard',
-        permanent: false,
-      },
-    ]
+    return []
   },
 
   // 빌드 최적화
