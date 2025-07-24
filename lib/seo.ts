@@ -1,4 +1,16 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+
+// 기본 뷰포트 설정
+export const defaultViewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#3B82F6' },
+    { media: '(prefers-color-scheme: dark)', color: '#1E40AF' },
+  ],
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
 
 // 기본 SEO 설정
 export const defaultSEO: Metadata = {
@@ -105,16 +117,6 @@ export const defaultSEO: Metadata = {
     ],
   },
   manifest: '/manifest.json',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#3B82F6' },
-    { media: '(prefers-color-scheme: dark)', color: '#1E40AF' },
-  ],
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
-  },
   verification: {
     google: 'your-google-verification-code',
     yandex: 'your-yandex-verification-code',

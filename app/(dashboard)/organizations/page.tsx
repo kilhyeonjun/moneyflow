@@ -43,32 +43,19 @@ export default function OrganizationsPage() {
       } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase
-        .from('organization_members')
-        .select(
-          `
-          organization_id,
-          role,
-          organizations (
-            id,
-            name,
-            description,
-            created_at,
-            updated_at,
-            created_by
-          )
-        `
-        )
-        .eq('user_id', user.id)
+      // API 라우트를 통해 조직 목록 조회
+      const response = await fetch(`/api/organizations?userId=${user.id}`)
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '조직 목록을 불러오는데 실패했습니다')
+      }
 
-      if (error) throw error
-
-      const orgs = data
-        ?.map(item => item.organizations)
-        .filter(Boolean) as any[]
-      setOrganizations(orgs || [])
+      const data = await response.json()
+      setOrganizations(data || [])
     } catch (error) {
       console.error('조직 목록 조회 실패:', error)
+      toast.error('조직 목록을 불러오는데 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -84,29 +71,25 @@ export default function OrganizationsPage() {
       } = await supabase.auth.getUser()
       if (!user) throw new Error('사용자 인증이 필요합니다')
 
-      // 조직 생성
-      const { data: org, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
+      // API 라우트를 통해 조직 생성
+      const response = await fetch('/api/organizations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: newOrgName.trim(),
           description: newOrgDescription.trim() || null,
-          created_by: user.id,
-        })
-        .select()
-        .single()
+          createdBy: user.id,
+        }),
+      })
 
-      if (orgError) throw orgError
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '조직 생성에 실패했습니다')
+      }
 
-      // 조직 멤버로 추가 (owner 권한)
-      const { error: memberError } = await supabase
-        .from('organization_members')
-        .insert({
-          organization_id: org.id,
-          user_id: user.id,
-          role: 'owner',
-        })
-
-      if (memberError) throw memberError
+      const org = await response.json()
 
       // 기본 카테고리 및 결제수단 생성
       try {

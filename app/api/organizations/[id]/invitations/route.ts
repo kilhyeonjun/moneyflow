@@ -80,8 +80,11 @@ export async function POST(
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    // 이메일 형식 검증
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    // 이메일 형식 검증 (개발 환경에서는 .test 도메인 허용)
+    const emailRegex = process.env.NODE_ENV === 'development' 
+      ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/ 
+      : /^[^\s@]+@[^\s@]+\.(?!test$)[^\s@]+$/
+    
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
