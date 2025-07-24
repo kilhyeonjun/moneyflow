@@ -80,34 +80,62 @@ export function Sidebar() {
         return
       }
 
-      // 사용자가 속한 조직인지 확인하며 조직 정보 가져오기
-      const { data, error } = await supabase
-        .from('organization_members')
-        .select(`
-          organization_id,
-          organizations (
-            id,
-            name,
-            description,
-            created_at
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('organization_id', selectedOrgId)
-        .single()
-
-      if (error || !data?.organizations) {
+      // API를 통해 사용자가 속한 조직인지 확인하며 조직 정보 가져오기
+      const response = await fetch(`/api/organizations/${selectedOrgId}/check-membership?userId=${user.id}`)
+      
+      if (!response.ok) {
         console.warn('선택된 조직에 접근할 수 없습니다. 다른 조직을 선택합니다.')
         localStorage.removeItem('selectedOrganization')
         await loadUserOrganizations()
         return
       }
 
-      setCurrentOrg(data.organizations as Organization)
+      const orgData = await response.json()
+      setCurrentOrg(orgData)
     } catch (error) {
       console.error('현재 조직 정보 로드 실패:', error)
       localStorage.removeItem('selectedOrganization')
       await loadUserOrganizations()
+    }
+  }
+
+  const createDefaultOrganization = async (user: any) => {
+    try {
+      // 기본 조직 생성
+      const response = await fetch('/api/organizations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: '개인 가계부',
+          description: '개인 재정 관리를 위한 기본 조직입니다.',
+          createdBy: user.id,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('조직 생성 실패')
+      }
+
+      const newOrg = await response.json()
+
+      // 기본 데이터 생성 (카테고리, 결제수단 등)
+      const initResponse = await fetch(`/api/organizations/${newOrg.id}/initial-data`, {
+        method: 'POST',
+      })
+
+      if (!initResponse.ok) {
+        console.warn('기본 데이터 생성 실패, 조직은 생성되었습니다.')
+      }
+
+      // 조직 목록 다시 로드
+      await loadUserOrganizations()
+    } catch (error) {
+      console.error('기본 조직 생성 실패:', error)
+      // 조직 생성에 실패해도 앱은 계속 사용할 수 있도록 함
+      setCurrentOrg(null)
+      setUserOrgs([])
     }
   }
 
@@ -123,40 +151,42 @@ export function Sidebar() {
         return
       }
 
-      const { data, error } = await supabase
-        .from('organization_members')
-        .select(
-          `
-          organization_id,
-          organizations (
-            id,
-            name,
-            description,
-            created_at
-          )
-        `
-        )
-        .eq('user_id', user.id)
-
-      if (error) {
-        console.error('사용자 조직 목록 로드 실패:', error)
+      // API를 통해 사용자 조직 목록 조회
+      const response = await fetch(`/api/organizations?userId=${user.id}`)
+      
+      if (!response.ok) {
+        console.error('사용자 조직 목록 조회 실패:', response.status, response.statusText)
+        setUserOrgs([])
         return
       }
 
-      const orgs = data
-        ?.map(item => item.organizations)
-        .filter(Boolean) as Organization[]
+      const orgs = await response.json()
       
-      setUserOrgs(orgs || [])
+      // API 응답에서 필요한 조직 정보만 추출
+      const organizationList = orgs.map((org: any) => ({
+        id: org.id,
+        name: org.name,
+        description: org.description,
+        created_at: org.createdAt,
+      }))
+      
+      setUserOrgs(organizationList || [])
+
+      // 조직이 없는 경우 기본 조직 생성
+      if (!organizationList || organizationList.length === 0) {
+        console.info('사용자가 속한 조직이 없습니다. 기본 조직을 생성합니다.')
+        await createDefaultOrganization(user)
+        return
+      }
 
       // 현재 선택된 조직이 없고 조직이 존재한다면 첫 번째 조직을 자동 선택
-      if (!currentOrg && orgs && orgs.length > 0 && typeof window !== 'undefined') {
-        const firstOrg = orgs[0]
+      if (!currentOrg && organizationList.length > 0 && typeof window !== 'undefined') {
+        const firstOrg = organizationList[0]
         localStorage.setItem('selectedOrganization', firstOrg.id)
         setCurrentOrg(firstOrg)
       }
     } catch (error) {
-      console.error('사용자 조직 목록 로드 실패:', error)
+      console.error('사용자 조직 목록 로드 중 예상치 못한 오류:', error)
     }
   }
 
