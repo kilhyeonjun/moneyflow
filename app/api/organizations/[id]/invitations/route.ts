@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { prisma } from '@/lib/prisma'
+import { randomBytes } from 'crypto'
 
 // 초대 목록 조회
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organizationId = params.id
+    const { id: organizationId } = await params
 
     // 사용자 인증 확인
     const authHeader = request.headers.get('authorization')
@@ -20,44 +22,54 @@ export async function GET(
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // 조직 멤버 권한 확인
-    const { data: member, error: memberError } = await supabaseClient
-      .from('organization_members')
-      .select('role')
-      .eq('organization_id', organizationId)
-      .single()
+    // 사용자 정보 가져오기 - Supabase Auth 유지
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
 
-    if (memberError || !member) {
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // 조직 멤버 권한 확인 - Prisma 사용
+    const member = await prisma.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId,
+          userId: user.id,
+        },
+      },
+      select: { role: true },
+    })
+
+    if (!member) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // 초대 목록 조회
-    const { data: invitations, error } = await supabaseClient
-      .from('organization_invitations')
-      .select(
-        `
-        id,
-        email,
-        role,
-        status,
-        created_at,
-        expires_at,
-        invited_by,
-        organizations!inner(name)
-      `
-      )
-      .eq('organization_id', organizationId)
-      .order('created_at', { ascending: false })
+    // 초대 목록 조회 - Prisma 사용
+    const invitations = await prisma.organizationInvitation.findMany({
+      where: { organizationId },
+      include: {
+        organization: {
+          select: { name: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
 
-    if (error) {
-      console.error('초대 목록 조회 실패:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch invitations' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({ invitations })
+    return NextResponse.json({ 
+      invitations: invitations.map(invitation => ({
+        id: invitation.id,
+        email: invitation.email,
+        role: invitation.role,
+        status: invitation.status,
+        created_at: invitation.createdAt,
+        expires_at: invitation.expiresAt,
+        invited_by: null, // This field wasn't in our schema, keeping for compatibility
+        organizations: { name: invitation.organization.name },
+      }))
+    })
   } catch (error) {
     console.error('초대 목록 조회 에러:', error)
     return NextResponse.json(
@@ -70,10 +82,10 @@ export async function GET(
 // 새 초대 생성
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organizationId = params.id
+    const { id: organizationId } = await params
     const { email, role = 'member' } = await request.json()
 
     if (!email) {
@@ -103,27 +115,38 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // 조직 존재 확인
-    const { data: organization, error: orgError } = await supabaseClient
-      .from('organizations')
-      .select('id, name')
-      .eq('id', organizationId)
-      .single()
+    // 사용자 정보 가져오기 - Supabase Auth 유지
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
 
-    if (orgError || !organization) {
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    // 조직 존재 확인 - Prisma 사용
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { id: true, name: true },
+    })
+
+    if (!organization) {
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 404 }
       )
     }
 
-    // 이미 멤버인지 확인
-    const { data: existingMember } = await supabaseClient
-      .from('organization_members')
-      .select('id')
-      .eq('organization_id', organizationId)
-      .eq('user_id', (await supabaseClient.auth.getUser()).data.user?.id)
-      .single()
+    // 이미 멤버인지 확인 - Prisma 사용
+    const existingMember = await prisma.organizationMember.findUnique({
+      where: { 
+        organizationId_userId: {
+          organizationId,
+          userId: user.id,
+        },
+      },
+    })
 
     if (existingMember) {
       return NextResponse.json(
@@ -132,14 +155,14 @@ export async function POST(
       )
     }
 
-    // 기존 대기 중인 초대 확인
-    const { data: existingInvitation } = await supabaseClient
-      .from('organization_invitations')
-      .select('id, status')
-      .eq('organization_id', organizationId)
-      .eq('email', email)
-      .eq('status', 'pending')
-      .single()
+    // 기존 대기 중인 초대 확인 - Prisma 사용
+    const existingInvitation = await prisma.organizationInvitation.findFirst({
+      where: {
+        organizationId,
+        email,
+        status: 'pending',
+      },
+    })
 
     if (existingInvitation) {
       return NextResponse.json(
@@ -148,32 +171,31 @@ export async function POST(
       )
     }
 
-    // 만료된 초대 정리
-    await supabaseClient.rpc('cleanup_expired_invitations')
+    // 만료된 초대 정리 - Prisma 사용 (RPC 대신 직접 처리)
+    await prisma.organizationInvitation.updateMany({
+      where: {
+        expiresAt: { lt: new Date() },
+        status: 'pending',
+      },
+      data: { status: 'expired' },
+    })
 
-    // 새 초대 생성
+    // 새 초대 생성 - Prisma 사용
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7) // 7일 후 만료
 
-    const { data: invitation, error: inviteError } = await supabaseClient
-      .from('organization_invitations')
-      .insert({
-        organization_id: organizationId,
+    // Generate random token
+    const token = randomBytes(32).toString('hex')
+
+    const invitation = await prisma.organizationInvitation.create({
+      data: {
+        organizationId,
         email,
         role,
-        expires_at: expiresAt.toISOString(),
-        invited_by: (await supabaseClient.auth.getUser()).data.user?.id,
-      })
-      .select()
-      .single()
-
-    if (inviteError) {
-      console.error('초대 생성 실패:', inviteError)
-      return NextResponse.json(
-        { error: 'Failed to create invitation' },
-        { status: 500 }
-      )
-    }
+        token,
+        expiresAt,
+      },
+    })
 
     // 이메일 발송 (실제 구현에서는 이메일 서비스 사용)
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitation.token}`
@@ -189,7 +211,7 @@ export async function POST(
         email: invitation.email,
         role: invitation.role,
         inviteUrl,
-        expiresAt: invitation.expires_at,
+        expiresAt: invitation.expiresAt,
       },
     })
   } catch (error) {
@@ -204,10 +226,10 @@ export async function POST(
 // 초대 취소/삭제
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organizationId = params.id
+    const { id: organizationId } = await params
     const { searchParams } = new URL(request.url)
     const invitationId = searchParams.get('invitationId')
 
@@ -218,26 +240,15 @@ export async function DELETE(
       )
     }
 
-    const supabaseClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // 초대 삭제 (상태를 'cancelled'로 변경)
-    const { error } = await supabaseClient
-      .from('organization_invitations')
-      .update({ status: 'cancelled' })
-      .eq('id', invitationId)
-      .eq('organization_id', organizationId)
-      .eq('status', 'pending')
-
-    if (error) {
-      console.error('초대 취소 실패:', error)
-      return NextResponse.json(
-        { error: 'Failed to cancel invitation' },
-        { status: 500 }
-      )
-    }
+    // 초대 삭제 (상태를 'cancelled'로 변경) - Prisma 사용
+    await prisma.organizationInvitation.updateMany({
+      where: {
+        id: invitationId,
+        organizationId,
+        status: 'pending',
+      },
+      data: { status: 'cancelled' },
+    })
 
     return NextResponse.json({ message: 'Invitation cancelled successfully' })
   } catch (error) {

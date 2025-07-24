@@ -85,25 +85,40 @@ export default function InvitationManager({
   }
 
   const loadMembers = async () => {
-    const { data, error } = await supabase
-      .from('organization_members')
-      .select(
-        `
-        id,
-        user_id,
-        role,
-        joined_at
-      `
-      )
-      .eq('organization_id', organizationId)
-      .order('joined_at', { ascending: false })
+    try {
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.error('사용자 세션이 없습니다')
+        return
+      }
 
-    if (error) {
+      // API 경로를 통해 멤버 데이터 로드
+      const response = await fetch(`/api/settings?organizationId=${organizationId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch members data')
+      }
+
+      const { members } = await response.json()
+      
+      // 응답 형식을 기존 형식에 맞게 변환
+      const formattedMembers = (members || []).map((member: any) => ({
+        id: member.id,
+        user_id: member.user_id,
+        role: member.role,
+        joined_at: member.joined_at,
+      }))
+
+      setMembers(formattedMembers)
+    } catch (error) {
       console.error('멤버 목록 로드 실패:', error)
-      return
     }
-
-    setMembers(data || [])
   }
 
   const loadInvitations = async () => {

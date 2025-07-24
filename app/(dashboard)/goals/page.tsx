@@ -96,14 +96,31 @@ export default function GoalsPage() {
 
   const loadGoals = async (orgId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('financial_goals')
-        .select('*')
-        .eq('organization_id', orgId)
-        .order('created_at', { ascending: false })
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/login')
+        return
+      }
 
-      if (error) throw error
-      setGoals(data || [])
+      // API 경로를 통해 목표 로드
+      const response = await fetch(`/api/financial-goals?organizationId=${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        throw new Error('Failed to fetch goals')
+      }
+
+      const { goals } = await response.json()
+      setGoals(goals || [])
     } catch (error) {
       console.error('목표 로드 실패:', error)
     }
@@ -124,43 +141,50 @@ export default function GoalsPage() {
     setCreating(true)
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
         toast.error('로그인이 필요합니다.')
+        router.push('/login')
         return
       }
 
-      const goalData: FinancialGoalInsert = {
+      const goalData = {
         title: formData.title,
-        type: formData.type as any,
+        type: formData.type,
         target_amount: parseFloat(formData.targetAmount),
         target_date: formData.targetDate,
         organization_id: selectedOrgId,
-        created_by: user.id,
       }
 
-      const { error } = await supabase
-        .from('financial_goals')
-        .insert([goalData])
+      const response = await fetch('/api/financial-goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(goalData),
+      })
 
-      if (error) {
-        console.error('목표 생성 실패:', error)
-        toast.error('목표 생성에 실패했습니다.')
-      } else {
-        toast.success('목표가 성공적으로 추가되었습니다!')
-
-        setFormData({
-          title: '',
-          type: '',
-          targetAmount: '',
-          targetDate: '',
-        })
-        onClose()
-        await loadGoals(selectedOrgId)
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        throw new Error('Failed to create goal')
       }
+
+      toast.success('목표가 성공적으로 추가되었습니다!')
+
+      setFormData({
+        title: '',
+        type: '',
+        targetAmount: '',
+        targetDate: '',
+      })
+      onClose()
+      await loadGoals(selectedOrgId)
     } catch (error) {
       console.error('목표 생성 중 오류:', error)
       toast.error('목표 생성 중 오류가 발생했습니다.')
@@ -196,32 +220,50 @@ export default function GoalsPage() {
     setUpdating(true)
 
     try {
-      const { error } = await supabase
-        .from('financial_goals')
-        .update({
-          title: formData.title,
-          type: formData.type as any,
-          target_amount: parseFloat(formData.targetAmount),
-          target_date: formData.targetDate,
-        })
-        .eq('id', selectedGoal.id)
-
-      if (error) {
-        console.error('목표 수정 실패:', error)
-        toast.error('목표 수정에 실패했습니다.')
-      } else {
-        toast.success('목표가 성공적으로 수정되었습니다!')
-
-        setFormData({
-          title: '',
-          type: '',
-          targetAmount: '',
-          targetDate: '',
-        })
-        setSelectedGoal(null)
-        onEditClose()
-        await loadGoals(selectedOrgId)
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('로그인이 필요합니다.')
+        router.push('/login')
+        return
       }
+
+      const goalData = {
+        title: formData.title,
+        type: formData.type,
+        target_amount: parseFloat(formData.targetAmount),
+        target_date: formData.targetDate,
+      }
+
+      const response = await fetch(`/api/financial-goals/${selectedGoal.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(goalData),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        throw new Error('Failed to update goal')
+      }
+
+      toast.success('목표가 성공적으로 수정되었습니다!')
+
+      setFormData({
+        title: '',
+        type: '',
+        targetAmount: '',
+        targetDate: '',
+      })
+      setSelectedGoal(null)
+      onEditClose()
+      await loadGoals(selectedOrgId)
     } catch (error) {
       console.error('목표 수정 중 오류:', error)
       toast.error('목표 수정 중 오류가 발생했습니다.')
@@ -241,20 +283,34 @@ export default function GoalsPage() {
     setDeleting(true)
 
     try {
-      const { error } = await supabase
-        .from('financial_goals')
-        .delete()
-        .eq('id', selectedGoal.id)
-
-      if (error) {
-        console.error('목표 삭제 실패:', error)
-        toast.error('목표 삭제에 실패했습니다.')
-      } else {
-        toast.success('목표가 성공적으로 삭제되었습니다!')
-        setSelectedGoal(null)
-        onDeleteClose()
-        await loadGoals(selectedOrgId)
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('로그인이 필요합니다.')
+        router.push('/login')
+        return
       }
+
+      const response = await fetch(`/api/financial-goals/${selectedGoal.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        throw new Error('Failed to delete goal')
+      }
+
+      toast.success('목표가 성공적으로 삭제되었습니다!')
+      setSelectedGoal(null)
+      onDeleteClose()
+      await loadGoals(selectedOrgId)
     } catch (error) {
       console.error('목표 삭제 중 오류:', error)
       toast.error('목표 삭제 중 오류가 발생했습니다.')

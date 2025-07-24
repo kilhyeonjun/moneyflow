@@ -4,12 +4,12 @@ import { isValidUUID } from '@/lib/utils/validation'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
-    const organizationId = params.id
+    const { id: organizationId } = await params
 
     if (!userId || !organizationId) {
       return NextResponse.json(

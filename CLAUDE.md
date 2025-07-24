@@ -46,7 +46,7 @@ pnpm uuid:test        # Test UUID v7 generation with timestamp
 ### Tech Stack
 - **Framework**: Next.js 15 with App Router and React 19
 - **Database**: PostgreSQL via Supabase with Prisma ORM
-- **Authentication**: Supabase Auth with Row Level Security (RLS)
+- **Authentication**: Supabase Auth (hybrid approach with Prisma for data operations)
 - **UI**: HeroUI components with Tailwind CSS
 - **State Management**: TanStack Query for server state, TanStack Form for form state
 - **Charts**: Recharts for data visualization
@@ -56,22 +56,23 @@ pnpm uuid:test        # Test UUID v7 generation with timestamp
 #### Multi-Tenant Organization System
 The application uses a multi-tenant architecture where:
 - Every data model (except `organizations`) has an `organization_id` foreign key
-- RLS policies ensure users only access data from their organization
+- Organization-based access control is enforced through API routes and Prisma queries
 - Organization membership is managed through `organization_members` table
 - Invitation system uses token-based links with 7-day expiration
 
-#### Authentication Flow
+#### Authentication Flow (Hybrid Architecture)
 1. **Server-side protection**: `middleware.ts` intercepts requests and validates Supabase sessions
 2. **Client-side verification**: Dashboard layout performs additional auth checks
 3. **Protected routes**: `/dashboard`, `/analytics`, `/transactions`, `/assets`, `/settings`
 4. **Auto-redirect**: Unauthenticated users → `/login`, Authenticated users on auth pages → `/dashboard`
+5. **API route protection**: All API routes verify Supabase Auth tokens before processing Prisma operations
 
 #### Database Schema Design
 - **UUID v7 identifiers**: Time-ordered UUIDs for better performance and debugging
 - **Hierarchical categories**: Self-referencing `categories` table with `parent_id`
 - **Transaction system**: Core `transactions` table linked to categories, payment methods, and organizations
 - **Asset management**: Separate `assets` and `debts` tables with category classification
-- **RLS enforcement**: All tables have organization-based access control
+- **Organization-based access control**: Enforced through API routes and Prisma queries with organization membership validation
 
 ### Critical File Structure
 
@@ -106,14 +107,14 @@ The application uses a multi-tenant architecture where:
 
 ### Authentication & Security
 - **Supabase Auth**: Email/password authentication with session management
-- **RLS Policies**: Database-level security ensuring data isolation
+- **API Route Protection**: All database operations protected by Supabase Auth token verification
 - **Middleware Protection**: Server-side route protection before page rendering
 - **Client Verification**: Additional auth checks in protected layouts
-- **Organization Isolation**: All user data scoped to organization membership
+- **Organization Isolation**: All user data scoped to organization membership via Prisma queries
 
 ### Data Flow Patterns
-1. **API Routes**: Use Supabase server client for database operations
-2. **Client Components**: Use browser Supabase client for real-time subscriptions
+1. **API Routes**: Use Prisma for database operations with Supabase Auth for authorization
+2. **Client Components**: Use fetch API to call backend routes, with Supabase Auth tokens for authentication
 3. **Form Handling**: TanStack Form for complex forms with validation
 4. **Server State**: TanStack Query for caching and synchronization
 5. **Optimistic Updates**: Immediate UI updates with server reconciliation

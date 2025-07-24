@@ -73,24 +73,30 @@ export default function DashboardPage() {
 
   const loadDashboardData = async (orgId: string) => {
     try {
-      // 모든 거래 내역 로드
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('transactions')
-        .select(
-          `
-          *,
-          categories (name, transaction_type),
-          payment_methods (name)
-        `
-        )
-        .eq('organization_id', orgId)
-        .order('transaction_date', { ascending: false })
-
-      if (transactionsError) {
-        console.error('거래 내역 로드 실패:', transactionsError)
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/login')
         return
       }
 
+      // API 경로를 통해 거래 내역 로드
+      const response = await fetch(`/api/dashboard?organizationId=${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        throw new Error('Failed to fetch dashboard data')
+      }
+
+      const { transactions } = await response.json()
       const allTxns = transactions || []
       setAllTransactions(allTxns)
       setRecentTransactions(allTxns.slice(0, 5))
@@ -102,7 +108,7 @@ export default function DashboardPage() {
       const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
       const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
 
-      const currentMonthTxns = allTxns.filter(txn => {
+      const currentMonthTxns = allTxns.filter((txn: Transaction) => {
         const txnDate = new Date(txn.transaction_date)
         return (
           txnDate.getMonth() === currentMonth &&
@@ -110,7 +116,7 @@ export default function DashboardPage() {
         )
       })
 
-      const previousMonthTxns = allTxns.filter(txn => {
+      const previousMonthTxns = allTxns.filter((txn: Transaction) => {
         const txnDate = new Date(txn.transaction_date)
         return (
           txnDate.getMonth() === previousMonth &&
@@ -143,8 +149,8 @@ export default function DashboardPage() {
       const previousStats = calculateStats(previousMonthTxns)
 
       // 총 잔액 계산 (수입 - 지출)
-      const totalBalance = allTxns.reduce((acc, txn) => {
-        const type = txn.categories?.transaction_type || txn.transaction_type
+      const totalBalance = allTxns.reduce((acc: number, txn: Transaction) => {
+        const type = txn.categories?.transaction_type || 'expense' // default to expense if no category
         const amount = txn.amount
 
         if (type === 'income') {

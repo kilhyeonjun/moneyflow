@@ -116,7 +116,6 @@ export default function SettingsPage() {
       await Promise.all([
         loadUserProfile(),
         loadOrganization(storedOrgId),
-        loadMembers(storedOrgId),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -146,31 +145,40 @@ export default function SettingsPage() {
 
   const loadOrganization = async (orgId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', orgId)
-        .single()
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/login')
+        return
+      }
 
-      if (error) throw error
-      setOrganization(data)
+      // API 경로를 통해 조직 및 멤버 데이터 로드
+      const response = await fetch(`/api/settings?organizationId=${orgId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        throw new Error('Failed to fetch settings data')
+      }
+
+      const { organization, members } = await response.json()
+      setOrganization(organization)
+      setMembers(members || [])
     } catch (error) {
-      console.error('조직 정보 로드 실패:', error)
+      console.error('설정 데이터 로드 실패:', error)
     }
   }
 
   const loadMembers = async (orgId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('organization_members')
-        .select('*')
-        .eq('organization_id', orgId)
-
-      if (error) throw error
-      setMembers(data || [])
-    } catch (error) {
-      console.error('멤버 목록 로드 실패:', error)
-    }
+    // 멤버 로드는 이제 loadOrganization에서 함께 처리됨
+    // 호환성을 위해 빈 함수로 유지
   }
 
   const handleSettingChange = (category: keyof SettingsType, key: string, value: SettingValue) => {

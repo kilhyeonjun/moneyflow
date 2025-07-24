@@ -3,10 +3,10 @@ import { createInitialData } from '@/lib/initial-data'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const organizationId = params.id
+    const { id: organizationId } = await params
 
     if (!organizationId) {
       return NextResponse.json(
