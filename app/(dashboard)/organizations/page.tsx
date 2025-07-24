@@ -17,7 +17,6 @@ import {
 import { Plus, Users, Building2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
-import { createInitialData } from '@/lib/initial-data'
 import toast, { Toaster } from 'react-hot-toast'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
@@ -93,8 +92,20 @@ export default function OrganizationsPage() {
 
       // 기본 카테고리 및 결제수단 생성
       try {
-        await createInitialData(org.id)
-        console.log('기본 데이터 생성 완료')
+        const initialDataResponse = await fetch(`/api/organizations/${org.id}/initial-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!initialDataResponse.ok) {
+          const errorData = await initialDataResponse.json()
+          throw new Error(errorData.error || '기본 데이터 생성에 실패했습니다')
+        }
+
+        const initialDataResult = await initialDataResponse.json()
+        console.log('기본 데이터 생성 완료:', initialDataResult)
         toast.success('조직이 성공적으로 생성되었습니다!')
       } catch (dataError) {
         console.error('기본 데이터 생성 실패:', dataError)
