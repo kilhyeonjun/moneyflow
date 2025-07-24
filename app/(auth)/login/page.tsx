@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button, Card, CardBody, CardHeader, Input, Link } from '@heroui/react'
 import { BarChart3, Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -13,6 +13,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
+
+  // 페이지 로드 시 만료된 토큰 정리
+  useEffect(() => {
+    const clearExpiredTokens = async () => {
+      try {
+        // 현재 세션 확인
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error || !session) {
+          // 만료된 토큰이나 오류가 있으면 로그아웃 처리
+          await supabase.auth.signOut()
+          // localStorage 정리
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('selectedOrganization')
+          }
+        }
+      } catch (err) {
+        // 토큰 관련 오류 발생 시 강제 로그아웃
+        console.warn('토큰 정리 중 오류:', err)
+        await supabase.auth.signOut()
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('selectedOrganization')
+        }
+      }
+    }
+
+    clearExpiredTokens()
+  }, [])
 
   const toggleVisibility = () => setIsVisible(!isVisible)
 

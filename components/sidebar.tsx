@@ -61,19 +61,53 @@ export function Sidebar() {
     if (typeof window === 'undefined') return
 
     const selectedOrgId = localStorage.getItem('selectedOrganization')
-    if (!selectedOrgId) return
+    if (!selectedOrgId) {
+      // 선택된 조직이 없으면 사용자 조직 목록을 먼저 로드하고 첫 번째 조직을 선택
+      await loadUserOrganizations()
+      return
+    }
 
     try {
+      // 현재 사용자 정보 가져오기
+      const {
+        data: { user },
+        error: userError
+      } = await supabase.auth.getUser()
+      
+      if (userError || !user) {
+        console.error('사용자 정보를 가져올 수 없습니다:', userError)
+        localStorage.removeItem('selectedOrganization')
+        return
+      }
+
+      // 사용자가 속한 조직인지 확인하며 조직 정보 가져오기
       const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', selectedOrgId)
+        .from('organization_members')
+        .select(`
+          organization_id,
+          organizations (
+            id,
+            name,
+            description,
+            created_at
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('organization_id', selectedOrgId)
         .single()
 
-      if (error) throw error
-      setCurrentOrg(data)
+      if (error || !data?.organizations) {
+        console.warn('선택된 조직에 접근할 수 없습니다. 다른 조직을 선택합니다.')
+        localStorage.removeItem('selectedOrganization')
+        await loadUserOrganizations()
+        return
+      }
+
+      setCurrentOrg(data.organizations as Organization)
     } catch (error) {
       console.error('현재 조직 정보 로드 실패:', error)
+      localStorage.removeItem('selectedOrganization')
+      await loadUserOrganizations()
     }
   }
 
@@ -81,8 +115,13 @@ export function Sidebar() {
     try {
       const {
         data: { user },
+        error: userError
       } = await supabase.auth.getUser()
-      if (!user) return
+      
+      if (userError || !user) {
+        console.error('사용자 정보를 가져올 수 없습니다:', userError)
+        return
+      }
 
       const { data, error } = await supabase
         .from('organization_members')
@@ -99,12 +138,23 @@ export function Sidebar() {
         )
         .eq('user_id', user.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('사용자 조직 목록 로드 실패:', error)
+        return
+      }
 
       const orgs = data
         ?.map(item => item.organizations)
-        .filter(Boolean) as any[]
+        .filter(Boolean) as Organization[]
+      
       setUserOrgs(orgs || [])
+
+      // 현재 선택된 조직이 없고 조직이 존재한다면 첫 번째 조직을 자동 선택
+      if (!currentOrg && orgs && orgs.length > 0 && typeof window !== 'undefined') {
+        const firstOrg = orgs[0]
+        localStorage.setItem('selectedOrganization', firstOrg.id)
+        setCurrentOrg(firstOrg)
+      }
     } catch (error) {
       console.error('사용자 조직 목록 로드 실패:', error)
     }
