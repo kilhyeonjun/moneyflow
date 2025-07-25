@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organization_id')
+    const organizationId = searchParams.get('organizationId')
     const limit = searchParams.get('limit')
     const offset = searchParams.get('offset')
     const categoryId = searchParams.get('category_id')
@@ -228,7 +228,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    const organizationId = searchParams.get('organization_id')
+    const organizationId = searchParams.get('organizationId')
 
     if (!id || !organizationId) {
       return NextResponse.json(

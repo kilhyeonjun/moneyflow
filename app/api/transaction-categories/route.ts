@@ -6,7 +6,7 @@ import { Prisma } from '@prisma/client'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const organizationId = searchParams.get('organization_id')
+    const organizationId = searchParams.get('organizationId')
     const type = searchParams.get('type') // income, expense, transfer
 
     if (!organizationId) {
