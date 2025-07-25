@@ -7,16 +7,24 @@
   --foreground: 222.2 84% 4.9%;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-  }
-}
-
 body {
   color: hsl(var(--foreground));
   background: hsl(var(--background));
+}
+
+/* Arc 브라우저 호환성을 위한 명시적 색상 설정 */
+* {
+  color: inherit;
+}
+
+/* 입력 필드와 텍스트 요소들의 기본 색상 강제 설정 */
+input, textarea, select, button {
+  color: #374151 !important;
+}
+
+/* 모달과 카드 내부 텍스트 색상 보장 */
+.bg-white, [data-slot="base"] {
+  color: #374151 !important;
 }
 
 @layer utilities {

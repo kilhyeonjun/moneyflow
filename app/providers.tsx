@@ -7,7 +7,6 @@ import { Toaster } from 'react-hot-toast'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { useState } from 'react'
-
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>

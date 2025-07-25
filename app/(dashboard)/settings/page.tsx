@@ -190,6 +190,8 @@ export default function SettingsPage() {
       },
     }))
 
+    // 테마 설정은 현재 비활성화됨
+
     // 실제로는 여기서 서버에 설정을 저장해야 함
     toast.success('설정이 저장되었습니다.')
   }
@@ -450,6 +452,14 @@ export default function SettingsPage() {
                 <SelectItem key="KRW">원 (KRW)</SelectItem>
                 <SelectItem key="USD">달러 (USD)</SelectItem>
                 <SelectItem key="EUR">유로 (EUR)</SelectItem>
+              </Select>
+
+              <Select
+                label="테마"
+                selectedKeys={['light']}
+                isDisabled
+              >
+                <SelectItem key="light">라이트 모드 (고정)</SelectItem>
               </Select>
             </div>
           </CardBody>
