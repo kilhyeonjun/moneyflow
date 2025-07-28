@@ -117,6 +117,29 @@ model DefaultCategory {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model FinancialGoal {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String       @db.VarChar(255)
+  category       String?      @db.VarChar(100)
+  targetAmount   Decimal      @map("target_amount") @db.Decimal(15, 2)
+  currentAmount  Decimal      @default(0) @map("current_amount") @db.Decimal(15, 2)
+  targetDate     DateTime?    @map("target_date") @db.Date
+  priority       String       @default("medium") @db.VarChar(20)
+  status         String       @default("active") @db.VarChar(20)
+  description    String?
+  createdBy      String?      @map("created_by") @db.Uuid
+  createdAt      DateTime?    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime?    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([organizationId], map: "idx_financial_goals_org_id")
+  @@index([status], map: "idx_financial_goals_status")
+  @@map("financial_goals")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model Liability {
   id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name           String        @db.VarChar(255)
@@ -163,6 +186,7 @@ model Organization {
   assets          Asset[]
   categories      Category[]
   debts           Debt[]
+  financialGoals  FinancialGoal[]
   liabilities     Liability[]
   members         OrganizationMember[]
   paymentMethods  PaymentMethod[]

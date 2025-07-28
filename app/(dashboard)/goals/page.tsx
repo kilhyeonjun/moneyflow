@@ -116,13 +116,39 @@ export default function GoalsPage() {
           router.push('/login')
           return
         }
-        throw new Error('Failed to fetch goals')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
       }
 
       const { goals } = await response.json()
+      
+      // 새로 달성된 목표가 있는지 확인
+      const previousGoals = goals || []
+      const newlyCompletedGoals = previousGoals.filter((goal: any) => 
+        goal.status === 'completed' && 
+        goal.achievement_rate >= 100 &&
+        !goals?.find((existingGoal: any) => 
+          existingGoal.id === goal.id && existingGoal.status === 'completed'
+        )
+      )
+
+      // 달성 축하 메시지 표시
+      newlyCompletedGoals.forEach((goal: any) => {
+        toast.success(`🎉 축하합니다! "${goal.title}" 목표를 달성했습니다!`, {
+          duration: 6000,
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontSize: '16px',
+          },
+        })
+      })
+
       setGoals(goals || [])
     } catch (error) {
       console.error('목표 로드 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      toast.error(`목표 로드 실패: ${errorMessage}`)
     }
   }
 
@@ -175,7 +201,21 @@ export default function GoalsPage() {
         throw new Error('Failed to create goal')
       }
 
-      toast.success('목표가 성공적으로 추가되었습니다!')
+      const { goal } = await response.json()
+      
+      // 새로 생성된 목표가 바로 달성된 경우 축하 메시지
+      if (goal.status === 'completed' && goal.achievement_rate >= 100) {
+        toast.success(`🎉 축하합니다! "${goal.title}" 목표를 바로 달성했습니다!`, {
+          duration: 6000,
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontSize: '16px',
+          },
+        })
+      } else {
+        toast.success('목표가 성공적으로 추가되었습니다!')
+      }
 
       setFormData({
         title: '',
@@ -253,7 +293,21 @@ export default function GoalsPage() {
         throw new Error('Failed to update goal')
       }
 
-      toast.success('목표가 성공적으로 수정되었습니다!')
+      const { goal } = await response.json()
+      
+      // 수정된 목표가 달성된 경우 축하 메시지
+      if (goal.status === 'completed' && goal.achievement_rate >= 100 && selectedGoal?.status !== 'completed') {
+        toast.success(`🎉 축하합니다! "${goal.title}" 목표를 달성했습니다!`, {
+          duration: 6000,
+          style: {
+            background: '#10B981',
+            color: '#fff',
+            fontSize: '16px',
+          },
+        })
+      } else {
+        toast.success('목표가 성공적으로 수정되었습니다!')
+      }
 
       setFormData({
         title: '',

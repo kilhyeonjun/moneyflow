@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { prisma } from '@/lib/prisma'
+import { isValidUUID } from '@/lib/utils/validation'
 
 // 목표 수정
 export async function PUT(
@@ -11,6 +12,13 @@ export async function PUT(
     const { id: goalId } = await params
     const body = await request.json()
     const { title, type, target_amount, target_date } = body
+
+    if (!goalId || !isValidUUID(goalId)) {
+      return NextResponse.json(
+        { error: 'Valid goal ID is required' },
+        { status: 400 }
+      )
+    }
 
     if (!title || !target_amount) {
       return NextResponse.json(
@@ -72,19 +80,36 @@ export async function PUT(
       },
     })
 
-    // 응답 형식을 기존 Supabase 형식과 맞추기
+    // 달성률 계산 및 상태 자동 업데이트
+    const achievementRate = updatedGoal.targetAmount > 0 
+      ? (Number(updatedGoal.currentAmount) / Number(updatedGoal.targetAmount)) * 100 
+      : 0
+
+    // 목표 달성시 상태 자동 업데이트
+    let finalGoal = updatedGoal
+    if (achievementRate >= 100 && updatedGoal.status === 'active') {
+      finalGoal = await prisma.financialGoal.update({
+        where: { id: updatedGoal.id },
+        data: { 
+          status: 'completed',
+          updatedAt: new Date()
+        },
+      })
+    }
+
     const formattedGoal = {
-      id: updatedGoal.id,
-      organization_id: updatedGoal.organizationId,
-      title: updatedGoal.name, // 매핑: name -> title
-      type: updatedGoal.category, // 매핑: category -> type
-      target_amount: updatedGoal.targetAmount,
-      current_amount: updatedGoal.currentAmount,
-      target_date: updatedGoal.targetDate,
-      priority: updatedGoal.priority,
-      status: updatedGoal.status,
-      created_at: updatedGoal.createdAt,
-      updated_at: updatedGoal.updatedAt,
+      id: finalGoal.id,
+      organization_id: finalGoal.organizationId,
+      title: finalGoal.name, // 매핑: name -> title
+      type: finalGoal.category, // 매핑: category -> type
+      target_amount: finalGoal.targetAmount,
+      current_amount: finalGoal.currentAmount,
+      target_date: finalGoal.targetDate,
+      priority: finalGoal.priority,
+      status: finalGoal.status,
+      achievement_rate: achievementRate,
+      created_at: finalGoal.createdAt,
+      updated_at: finalGoal.updatedAt,
     }
 
     return NextResponse.json({ goal: formattedGoal })
@@ -104,6 +129,13 @@ export async function DELETE(
 ) {
   try {
     const { id: goalId } = await params
+
+    if (!goalId || !isValidUUID(goalId)) {
+      return NextResponse.json(
+        { error: 'Valid goal ID is required' },
+        { status: 400 }
+      )
+    }
 
     // 사용자 인증 확인
     const authHeader = request.headers.get('authorization')

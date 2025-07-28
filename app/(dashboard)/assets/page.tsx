@@ -155,11 +155,12 @@ export default function AssetsPage() {
   const loadAssetCategories = async (orgId: string) => {
     try {
       const response = await fetch(
-        `/api/asset-categories?organization_id=${orgId}`
+        `/api/asset-categories?organizationId=${orgId}`
       )
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
       }
 
       const categories = await response.json()
@@ -169,7 +170,7 @@ export default function AssetsPage() {
         await createDefaultCategories(orgId)
         // 다시 카테고리 로드
         const retryResponse = await fetch(
-          `/api/asset-categories?organization_id=${orgId}`
+          `/api/asset-categories?organizationId=${orgId}`
         )
         if (retryResponse.ok) {
           const retryCategories = await retryResponse.json()
@@ -180,7 +181,8 @@ export default function AssetsPage() {
       }
     } catch (error) {
       console.error('자산 카테고리 로드 실패:', error)
-      toast.error('자산 카테고리를 불러오는데 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      toast.error(`자산 카테고리 로드 실패: ${errorMessage}`)
     }
   }
 
@@ -191,7 +193,7 @@ export default function AssetsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ organization_id: orgId }),
+        body: JSON.stringify({ organizationId: orgId }),
       })
 
       if (!response.ok) {
@@ -207,10 +209,11 @@ export default function AssetsPage() {
 
   const loadAssets = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/assets?organization_id=${orgId}`)
+      const response = await fetch(`/api/assets?organizationId=${orgId}`)
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
       }
 
       const assetsData = await response.json()
@@ -224,15 +227,18 @@ export default function AssetsPage() {
       updateAssetSummary(totalAssets)
     } catch (error) {
       console.error('자산 로드 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      toast.error(`자산 로드 실패: ${errorMessage}`)
     }
   }
 
   const loadLiabilities = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/liabilities?organization_id=${orgId}`)
+      const response = await fetch(`/api/liabilities?organizationId=${orgId}`)
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
       }
 
       const liabilitiesData = await response.json()
@@ -247,6 +253,8 @@ export default function AssetsPage() {
       updateLiabilitySummary(totalLiabilities)
     } catch (error) {
       console.error('부채 로드 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      toast.error(`부채 로드 실패: ${errorMessage}`)
     }
   }
 
@@ -306,10 +314,10 @@ export default function AssetsPage() {
       const assetData = {
         name: formData.name,
         description: formData.description || null,
-        category_id: formData.categoryId,
-        current_value: parseFloat(formData.currentValue),
-        organization_id: selectedOrgId,
-        created_by: user.id,
+        categoryId: formData.categoryId,
+        currentValue: parseFloat(formData.currentValue),
+        organizationId: selectedOrgId,
+        createdBy: user.id,
       }
 
       const response = await fetch('/api/assets', {
@@ -384,12 +392,12 @@ export default function AssetsPage() {
         id: selectedAsset.id,
         name: editFormData.name,
         description: editFormData.description || null,
-        category_id: editFormData.categoryId,
-        current_value: parseFloat(editFormData.currentValue),
-        target_value: editFormData.targetValue
+        categoryId: editFormData.categoryId,
+        currentValue: parseFloat(editFormData.currentValue),
+        targetValue: editFormData.targetValue
           ? parseFloat(editFormData.targetValue)
           : null,
-        organization_id: selectedOrgId,
+        organizationId: selectedOrgId,
       }
 
       const response = await fetch('/api/assets', {
@@ -437,7 +445,7 @@ export default function AssetsPage() {
 
     try {
       const response = await fetch(
-        `/api/assets?id=${selectedAsset.id}&organization_id=${selectedOrgId}`,
+        `/api/assets?id=${selectedAsset.id}&organizationId=${selectedOrgId}`,
         {
           method: 'DELETE',
         }
