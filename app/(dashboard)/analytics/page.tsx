@@ -35,99 +35,82 @@ import {
   Area,
   AreaChart,
 } from 'recharts'
-import { Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
+import { Calendar, TrendingUp, TrendingDown, DollarSign, RefreshCw } from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
+import { supabase } from '@/lib/supabase'
 
-const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884D8',
-  '#82CA9D',
-  '#FFC658',
-  '#FF7C7C',
-]
+interface MonthlyData {
+  month: string
+  monthNumber: number
+  income: number
+  expense: number
+  savings: number
+  netWorth: number
+  transactionCount: number
+}
+
+interface CategoryAnalysis {
+  name: string
+  amount: number
+  count: number
+  percentage: number
+  color: string
+}
+
+interface YearlyData {
+  year: string
+  income: number
+  expense: number
+  savings: number
+  netWorth: number
+  transactionCount: number
+  incomeGrowth: number
+  netWorthGrowth: number
+}
+
+interface AnalyticsData {
+  monthlyData?: MonthlyData[]
+  categoryAnalysis?: CategoryAnalysis[]
+  currentMonthData?: MonthlyData
+  yearlyTrend?: YearlyData[]
+  summary?: {
+    totalIncome: number
+    totalExpense: number
+    totalSavings: number
+    averageMonthlyIncome: number
+    averageMonthlyExpense: number
+    currentNetWorth: number
+    averageAnnualIncome?: number
+    averageAnnualExpense?: number
+    totalNetWorthGrowth?: number
+    averageIncomeGrowth?: number
+  }
+}
 
 export default function AnalyticsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [selectedYear, setSelectedYear] = useState('2025')
-  const [selectedMonth, setSelectedMonth] = useState('1')
-
-  // 월별 데이터 (Google Sheets 스타일)
-  const [monthlyData] = useState([
-    {
-      month: '1월',
-      income: 3500000,
-      expense: 2800000,
-      savings: 500000,
-      netWorth: 24380685,
-    },
-    {
-      month: '2월',
-      income: 3500000,
-      expense: 2900000,
-      savings: 400000,
-      netWorth: 24780685,
-    },
-    {
-      month: '3월',
-      income: 3600000,
-      expense: 2700000,
-      savings: 600000,
-      netWorth: 25680685,
-    },
-    {
-      month: '4월',
-      income: 3500000,
-      expense: 3000000,
-      savings: 300000,
-      netWorth: 25480685,
-    },
-    {
-      month: '5월',
-      income: 3700000,
-      expense: 2600000,
-      savings: 800000,
-      netWorth: 26680685,
-    },
-    {
-      month: '6월',
-      income: 3500000,
-      expense: 2800000,
-      savings: 500000,
-      netWorth: 27380685,
-    },
-    { month: '7월', income: 0, expense: 0, savings: 0, netWorth: 0 },
-    { month: '8월', income: 0, expense: 0, savings: 0, netWorth: 0 },
-    { month: '9월', income: 0, expense: 0, savings: 0, netWorth: 0 },
-    { month: '10월', income: 0, expense: 0, savings: 0, netWorth: 0 },
-    { month: '11월', income: 0, expense: 0, savings: 0, netWorth: 0 },
-    { month: '12월', income: 0, expense: 0, savings: 0, netWorth: 0 },
-  ])
-
-  // 카테고리별 지출 분석
-  const [categoryAnalysis] = useState([
-    { name: '식비', amount: 800000, percentage: 28.6, color: '#0088FE' },
-    { name: '교통비', amount: 300000, percentage: 10.7, color: '#00C49F' },
-    { name: '주거비', amount: 500000, percentage: 17.9, color: '#FFBB28' },
-    { name: '문화생활', amount: 400000, percentage: 14.3, color: '#FF8042' },
-    { name: '쇼핑', amount: 350000, percentage: 12.5, color: '#8884D8' },
-    { name: '기타', amount: 450000, percentage: 16.1, color: '#82CA9D' },
-  ])
-
-  // 연간 추이 데이터
-  const [yearlyTrend] = useState([
-    { year: '2021', netWorth: 15000000, income: 40000000, expense: 32000000 },
-    { year: '2022', netWorth: 18500000, income: 42000000, expense: 33500000 },
-    { year: '2023', netWorth: 21200000, income: 44000000, expense: 35000000 },
-    { year: '2024', netWorth: 24380685, income: 45000000, expense: 36000000 },
-    { year: '2025', netWorth: 27000000, income: 46000000, expense: 37000000 }, // 예상
-  ])
+  const [refreshing, setRefreshing] = useState(false)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString())
+  const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString())
+  
+  // 실제 데이터 상태
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({})
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
+  const [categoryAnalysis, setCategoryAnalysis] = useState<CategoryAnalysis[]>([])
+  const [yearlyTrend, setYearlyTrend] = useState<YearlyData[]>([])
+  const [currentMonthData, setCurrentMonthData] = useState<MonthlyData | null>(null)
 
   useEffect(() => {
     checkOrganizationAndLoadData()
   }, [])
+
+  useEffect(() => {
+    if (selectedOrgId) {
+      loadAnalyticsData('monthly')
+    }
+  }, [selectedOrgId, selectedYear, selectedMonth])
 
   const checkOrganizationAndLoadData = async () => {
     try {
@@ -138,12 +121,79 @@ export default function AnalyticsPage() {
         return
       }
 
-      // TODO: Load actual analytics data from database
+      setSelectedOrgId(storedOrgId)
     } catch (error) {
       console.error('데이터 로드 실패:', error)
+      toast.error('데이터 로드 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadAnalyticsData = async (period: 'monthly' | 'yearly') => {
+    if (!selectedOrgId) return
+    
+    try {
+      setRefreshing(true)
+
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.push('/login')
+        return
+      }
+
+      // API 파라미터 구성
+      const params = new URLSearchParams({
+        organizationId: selectedOrgId,
+        period,
+        year: selectedYear,
+      })
+
+      if (period === 'monthly' && selectedMonth) {
+        params.append('month', selectedMonth)
+      }
+
+      const response = await fetch(`/api/analytics?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push('/login')
+          return
+        }
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setAnalyticsData(data)
+
+      if (period === 'monthly') {
+        setMonthlyData(data.monthlyData || [])
+        setCategoryAnalysis(data.categoryAnalysis || [])
+        setCurrentMonthData(data.currentMonthData || null)
+      } else {
+        setYearlyTrend(data.yearlyTrend || [])
+      }
+
+      console.log('📊 분석 데이터 로드 완료:', data)
+    } catch (error) {
+      console.error('분석 데이터 로드 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      toast.error(`분석 데이터 로드 실패: ${errorMessage}`)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    loadAnalyticsData('monthly')
+    loadAnalyticsData('yearly')
   }
 
   const formatCurrency = (amount: number) => {
@@ -153,7 +203,9 @@ export default function AnalyticsPage() {
     }).format(amount)
   }
 
-  const currentMonthData = monthlyData[parseInt(selectedMonth) - 1]
+  const getCurrentMonthData = () => {
+    return currentMonthData || monthlyData.find(m => m.monthNumber === parseInt(selectedMonth))
+  }
 
   if (loading) {
     return (
@@ -177,6 +229,14 @@ export default function AnalyticsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            isIconOnly
+            variant="light"
+            onPress={handleRefresh}
+            isLoading={refreshing}
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
           <Select
             label="연도"
             selectedKeys={[selectedYear]}
@@ -184,6 +244,18 @@ export default function AnalyticsPage() {
               setSelectedYear(Array.from(keys)[0] as string)
             }
             className="w-32"
+            classNames={{
+              trigger: "text-gray-900 bg-white",
+              value: "text-gray-900",
+              label: "text-gray-600"
+            }}
+            renderValue={(items) => {
+              return items.map((item) => (
+                <span key={item.key} className="text-gray-900">
+                  {item.key}년
+                </span>
+              ))
+            }}
           >
             <SelectItem key="2023">2023년</SelectItem>
             <SelectItem key="2024">2024년</SelectItem>
@@ -191,11 +263,28 @@ export default function AnalyticsPage() {
           </Select>
           <Select
             label="월"
-            selectedKeys={[selectedMonth]}
-            onSelectionChange={keys =>
-              setSelectedMonth(Array.from(keys)[0] as string)
-            }
+            selectedKeys={selectedMonth ? [selectedMonth] : []}
+            defaultSelectedKeys={[selectedMonth]}
+            onSelectionChange={keys => {
+              const selectedKey = Array.from(keys)[0] as string
+              if (selectedKey) {
+                setSelectedMonth(selectedKey)
+              }
+            }}
             className="w-32"
+            placeholder="월 선택"
+            classNames={{
+              trigger: "text-gray-900 bg-white",
+              value: "text-gray-900",
+              label: "text-gray-600"
+            }}
+            renderValue={(items) => {
+              return items.map((item) => (
+                <span key={item.key} className="text-gray-900">
+                  {item.key}월
+                </span>
+              ))
+            }}
           >
             {Array.from({ length: 12 }, (_, i) => (
               <SelectItem key={(i + 1).toString()}>{i + 1}월</SelectItem>
@@ -204,7 +293,15 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <Tabs aria-label="분석 탭" className="w-full">
+      <Tabs 
+        aria-label="분석 탭" 
+        className="w-full"
+        onSelectionChange={(key) => {
+          if (key === 'yearly') {
+            loadAnalyticsData('yearly')
+          }
+        }}
+      >
         <Tab key="monthly" title="월별 분석">
           <div className="space-y-6">
             {/* 월별 요약 카드 */}
@@ -218,8 +315,11 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardBody className="pt-0">
                   <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(currentMonthData?.income || 0)}
+                    {formatCurrency(getCurrentMonthData()?.income || 0)}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    거래 {getCurrentMonthData()?.transactionCount || 0}건
+                  </p>
                 </CardBody>
               </Card>
 
@@ -232,8 +332,11 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardBody className="pt-0">
                   <div className="text-2xl font-bold text-red-600">
-                    {formatCurrency(currentMonthData?.expense || 0)}
+                    {formatCurrency(getCurrentMonthData()?.expense || 0)}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {categoryAnalysis.length}개 카테고리
+                  </p>
                 </CardBody>
               </Card>
 
@@ -246,8 +349,12 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardBody className="pt-0">
                   <div className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(currentMonthData?.savings || 0)}
+                    {formatCurrency(getCurrentMonthData()?.savings || 0)}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    저축률 {getCurrentMonthData()?.income ? 
+                      ((getCurrentMonthData()!.savings / getCurrentMonthData()!.income) * 100).toFixed(1) : 0}%
+                  </p>
                 </CardBody>
               </Card>
 
@@ -258,8 +365,11 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardBody className="pt-0">
                   <div className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(currentMonthData?.netWorth || 0)}
+                    {formatCurrency(analyticsData.summary?.currentNetWorth || 0)}
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    현재 총 자산
+                  </p>
                 </CardBody>
               </Card>
             </div>
@@ -268,15 +378,19 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-semibold">
-                  월별 수입/지출/저축 추이
+                  {selectedYear}년 월별 수입/지출/저축 추이
                 </h3>
+                <p className="text-sm text-gray-600">
+                  전체 거래: {analyticsData.summary?.totalIncome ? formatCurrency(analyticsData.summary.totalIncome) : '₩0'} 수입,
+                  {analyticsData.summary?.totalExpense ? formatCurrency(analyticsData.summary.totalExpense) : '₩0'} 지출
+                </p>
               </CardHeader>
               <CardBody>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={monthlyData.filter(
-                        d => d.income > 0 || d.expense > 0
+                        d => d.income > 0 || d.expense > 0 || d.savings !== 0
                       )}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
@@ -387,10 +501,54 @@ export default function AnalyticsPage() {
 
         <Tab key="yearly" title="연간 분석">
           <div className="space-y-6">
+            {/* 연간 성장률 요약 카드 */}
+            {analyticsData.summary && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card className="p-4">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <h3 className="text-sm font-medium text-gray-600">평균 연간 수입</h3>
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardBody className="pt-0">
+                    <div className="text-lg font-bold text-green-600">
+                      {formatCurrency(analyticsData.summary.averageAnnualIncome || 0)}
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card className="p-4">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <h3 className="text-sm font-medium text-gray-600">순자산 증가</h3>
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                  </CardHeader>
+                  <CardBody className="pt-0">
+                    <div className="text-lg font-bold text-blue-600">
+                      {formatCurrency(analyticsData.summary.totalNetWorthGrowth || 0)}
+                    </div>
+                  </CardBody>
+                </Card>
+
+                <Card className="p-4">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <h3 className="text-sm font-medium text-gray-600">평균 성장률</h3>
+                    <Calendar className="h-4 w-4 text-purple-600" />
+                  </CardHeader>
+                  <CardBody className="pt-0">
+                    <div className="text-lg font-bold text-purple-600">
+                      {analyticsData.summary.averageIncomeGrowth?.toFixed(1) || 0}%
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
+            )}
+
             {/* 연간 순자산 추이 */}
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-semibold">연간 순자산 추이</h3>
+                <p className="text-sm text-gray-600">
+                  최근 5년간 자산 성장 현황
+                </p>
               </CardHeader>
               <CardBody>
                 <div className="h-80">
@@ -400,7 +558,9 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="year" />
                       <YAxis
                         tickFormatter={value =>
-                          `${(value / 10000000).toFixed(0)}천만`
+                          value >= 10000000 
+                            ? `${(value / 10000000).toFixed(0)}천만`
+                            : `${(value / 10000).toFixed(0)}만`
                         }
                       />
                       <Tooltip
@@ -427,6 +587,9 @@ export default function AnalyticsPage() {
             <Card>
               <CardHeader>
                 <h3 className="text-lg font-semibold">연간 수입/지출 비교</h3>
+                <p className="text-sm text-gray-600">
+                  연도별 수입과 지출 변화 추이
+                </p>
               </CardHeader>
               <CardBody>
                 <div className="h-80">
@@ -436,7 +599,9 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="year" />
                       <YAxis
                         tickFormatter={value =>
-                          `${(value / 10000000).toFixed(0)}천만`
+                          value >= 10000000 
+                            ? `${(value / 10000000).toFixed(0)}천만`
+                            : `${(value / 10000).toFixed(0)}만`
                         }
                       />
                       <Tooltip
@@ -468,6 +633,18 @@ export default function AnalyticsPage() {
           </div>
         </Tab>
       </Tabs>
+
+      {/* Toast 알림 */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
     </div>
   )
 }

@@ -18,7 +18,21 @@ body {
 }
 
 /* 입력 필드와 텍스트 요소들의 기본 색상 강제 설정 */
-input, textarea, select, button {
+input, textarea, button {
+  color: #374151 !important;
+}
+
+/* HeroUI Select 컴포넌트 텍스트 가시성 보장 */
+[data-slot="trigger"] {
+  color: #374151 !important;
+}
+
+[data-slot="value"] {
+  color: #374151 !important;
+}
+
+/* Select 드롭다운 버튼 텍스트 */
+button[data-slot="trigger"] {
   color: #374151 !important;
 }
 
