@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { prisma } from '@/lib/prisma'
 import { isValidUUID } from '@/lib/utils/validation'
+import { GoalSyncManager } from '@/lib/goal-sync'
 
 // 목표 목록 조회
 export async function GET(request: NextRequest) {
@@ -60,6 +61,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // 목표 목록 조회 전에 실시간 동기화 수행
+    try {
+      await GoalSyncManager.syncAllGoals(organizationId)
+      console.log(`🔄 목표 실시간 동기화 완료: ${organizationId}`)
+    } catch (syncError) {
+      console.error('⚠️ 목표 실시간 동기화 실패:', syncError)
+      // 동기화 실패해도 조회는 계속 진행
+    }
+
     // 목표 목록 조회 - Prisma 사용
     const goals = await prisma.financialGoal.findMany({
       where: { organizationId },
@@ -68,9 +78,10 @@ export async function GET(request: NextRequest) {
 
     // 응답 형식을 기존 Supabase 형식과 맞추기
     const formattedGoals = await Promise.all(goals.map(async (goal) => {
-      // 달성률 계산
+      // 실시간 달성률 계산 (이미 동기화되었지만 최신 상태 확인)
+      const currentAmount = await GoalSyncManager.calculateCurrentAmount(goal.id)
       const achievementRate = goal.targetAmount > 0 
-        ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 
+        ? (currentAmount / Number(goal.targetAmount)) * 100 
         : 0
 
       // 목표 달성시 상태 자동 업데이트
@@ -80,6 +91,7 @@ export async function GET(request: NextRequest) {
           where: { id: goal.id },
           data: { 
             status: 'completed',
+            currentAmount: currentAmount,
             updatedAt: new Date()
           },
         })
@@ -91,11 +103,11 @@ export async function GET(request: NextRequest) {
         title: updatedGoal.name, // 매핑: name -> title
         type: updatedGoal.category, // 매핑: category -> type
         target_amount: updatedGoal.targetAmount,
-        current_amount: updatedGoal.currentAmount,
+        current_amount: currentAmount, // 실시간 계산된 값 사용
         target_date: updatedGoal.targetDate,
         priority: updatedGoal.priority,
         status: updatedGoal.status,
-        achievement_rate: achievementRate,
+        achievement_rate: achievementRate, // 실시간 계산된 달성률 사용
         created_at: updatedGoal.createdAt,
         updated_at: updatedGoal.updatedAt,
       }
@@ -172,9 +184,18 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // 달성률 계산 및 상태 자동 업데이트
+    // 목표 생성 후 실시간 달성률 계산 및 동기화
+    try {
+      await GoalSyncManager.syncAllGoals(organization_id)
+      console.log(`🔄 새 목표 생성 후 동기화 완료: ${goal.name}`)
+    } catch (syncError) {
+      console.error('⚠️ 새 목표 생성 후 동기화 실패:', syncError)
+    }
+
+    // 실시간 달성률 계산
+    const currentAmount = await GoalSyncManager.calculateCurrentAmount(goal.id)
     const achievementRate = goal.targetAmount > 0 
-      ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 
+      ? (currentAmount / Number(goal.targetAmount)) * 100 
       : 0
 
     // 목표 달성시 상태 자동 업데이트
@@ -184,6 +205,7 @@ export async function POST(request: NextRequest) {
         where: { id: goal.id },
         data: { 
           status: 'completed',
+          currentAmount: currentAmount,
           updatedAt: new Date()
         },
       })
@@ -195,11 +217,11 @@ export async function POST(request: NextRequest) {
       title: updatedGoal.name, // 매핑: name -> title
       type: updatedGoal.category, // 매핑: category -> type
       target_amount: updatedGoal.targetAmount,
-      current_amount: updatedGoal.currentAmount,
+      current_amount: currentAmount, // 실시간 계산된 값 사용
       target_date: updatedGoal.targetDate,
       priority: updatedGoal.priority,
       status: updatedGoal.status,
-      achievement_rate: achievementRate,
+      achievement_rate: achievementRate, // 실시간 계산된 달성률 사용
       created_at: updatedGoal.createdAt,
       updated_at: updatedGoal.updatedAt,
     }
@@ -284,9 +306,18 @@ export async function PUT(request: NextRequest) {
       },
     })
 
-    // 달성률 계산 및 상태 자동 업데이트
+    // 목표 수정 후 실시간 달성률 계산 및 동기화
+    try {
+      await GoalSyncManager.syncAllGoals(existingGoal.organizationId)
+      console.log(`🔄 목표 수정 후 동기화 완료: ${updatedGoal.name}`)
+    } catch (syncError) {
+      console.error('⚠️ 목표 수정 후 동기화 실패:', syncError)
+    }
+
+    // 실시간 달성률 계산
+    const currentAmount = await GoalSyncManager.calculateCurrentAmount(updatedGoal.id)
     const achievementRate = updatedGoal.targetAmount > 0 
-      ? (Number(updatedGoal.currentAmount) / Number(updatedGoal.targetAmount)) * 100 
+      ? (currentAmount / Number(updatedGoal.targetAmount)) * 100 
       : 0
 
     // 목표 달성시 상태 자동 업데이트
@@ -296,6 +327,7 @@ export async function PUT(request: NextRequest) {
         where: { id: updatedGoal.id },
         data: { 
           status: 'completed',
+          currentAmount: currentAmount,
           updatedAt: new Date()
         },
       })
@@ -307,11 +339,11 @@ export async function PUT(request: NextRequest) {
       title: finalGoal.name,
       type: finalGoal.category,
       target_amount: finalGoal.targetAmount,
-      current_amount: finalGoal.currentAmount,
+      current_amount: currentAmount, // 실시간 계산된 값 사용
       target_date: finalGoal.targetDate,
       priority: finalGoal.priority,
       status: finalGoal.status,
-      achievement_rate: achievementRate,
+      achievement_rate: achievementRate, // 실시간 계산된 달성률 사용
       created_at: finalGoal.createdAt,
       updated_at: finalGoal.updatedAt,
     }

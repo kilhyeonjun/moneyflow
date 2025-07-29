@@ -418,6 +418,75 @@ export default function GoalsPage() {
     return diffDays
   }
 
+  const getGoalProgress = (goal: FinancialGoal) => {
+    const achievementRate = goal.achievement_rate || 0
+    const currentAmount = goal.current_amount || 0
+    const targetAmount = goal.target_amount
+    const remainingAmount = Math.max(0, targetAmount - currentAmount)
+    const daysRemaining = getDaysRemaining(goal.target_date)
+    
+    // 현재 페이스로 목표 달성까지 걸리는 시간 계산
+    const dailyProgress = currentAmount > 0 ? currentAmount / Math.max(1, new Date().getDate()) : 0
+    const projectedDays = remainingAmount > 0 && dailyProgress > 0 
+      ? Math.ceil(remainingAmount / dailyProgress) 
+      : daysRemaining
+    
+    // 목표 달성을 위한 일일 권장 금액
+    const dailyTargetToReach = daysRemaining > 0 ? remainingAmount / daysRemaining : 0
+    
+    // 진행 상태 분석
+    const isOnTrack = projectedDays <= daysRemaining
+    const daysAheadBehind = daysRemaining - projectedDays
+    
+    return {
+      achievementRate,
+      currentAmount,
+      remainingAmount,
+      daysRemaining,
+      dailyTargetToReach,
+      projectedDays,
+      isOnTrack,
+      daysAheadBehind,
+      status: isOnTrack ? (daysAheadBehind > 7 ? 'ahead' : 'on-track') : 'behind'
+    }
+  }
+
+  const getProgressStatusIcon = (status: string) => {
+    switch (status) {
+      case 'ahead':
+        return '🚀'
+      case 'on-track':
+        return '🎯'
+      case 'behind':
+        return '⚠️'
+      default:
+        return '📊'
+    }
+  }
+
+  const getProgressStatusColor = (status: string) => {
+    switch (status) {
+      case 'ahead':
+        return 'text-green-600'
+      case 'on-track':
+        return 'text-blue-600'
+      case 'behind':
+        return 'text-orange-600'
+      default:
+        return 'text-gray-600'
+    }
+  }
+
+  const getProgressStatusMessage = (progress: any) => {
+    if (progress.status === 'ahead') {
+      return `목표보다 ${Math.abs(progress.daysAheadBehind)}일 빠른 속도`
+    } else if (progress.status === 'behind') {
+      return `목표보다 ${Math.abs(progress.daysAheadBehind)}일 느린 속도`
+    } else {
+      return '목표 달성 페이스 유지 중'
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -448,8 +517,8 @@ export default function GoalsPage() {
         </Button>
       </div>
 
-      {/* 목표 현황 요약 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* 목표 현황 요약 대시보드 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card className="p-4">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <h3 className="text-sm font-medium text-gray-600">활성 목표</h3>
@@ -494,123 +563,186 @@ export default function GoalsPage() {
             </div>
           </CardBody>
         </Card>
+
+        <Card className="p-4">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <h3 className="text-sm font-medium text-gray-600">진행 상태</h3>
+            <Calendar className="h-4 w-4 text-indigo-600" />
+          </CardHeader>
+          <CardBody className="pt-0">
+            <div className="space-y-1">
+              {(() => {
+                const activeGoals = goals.filter(g => g.status === 'active')
+                const progressStats = activeGoals.map(goal => getGoalProgress(goal))
+                const onTrack = progressStats.filter(p => p.status === 'on-track' || p.status === 'ahead').length
+                const behind = progressStats.filter(p => p.status === 'behind').length
+                
+                return (
+                  <>
+                    <div className="text-sm text-green-600">순조: {onTrack}개</div>
+                    <div className="text-sm text-orange-600">지연: {behind}개</div>
+                  </>
+                )
+              })()}
+            </div>
+          </CardBody>
+        </Card>
       </div>
 
       {/* 목표 목록 */}
       <div className="space-y-6">
-        {goals.map(goal => (
-          <Card key={goal.id}>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold">{goal.title}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Chip
-                      color={getGoalTypeColor(goal.type) as any}
-                      size="sm"
-                      variant="flat"
-                    >
-                      {getGoalTypeLabel(goal.type)}
-                    </Chip>
-                    <Chip
-                      color={getStatusColor(goal.status) as any}
-                      size="sm"
-                      variant="flat"
-                    >
-                      {goal.status === 'active'
-                        ? '진행중'
-                        : goal.status === 'completed'
-                          ? '완료'
-                          : '일시정지'}
-                    </Chip>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  onPress={() => handleEditGoal(goal)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  color="danger"
-                  onPress={() => handleDeleteGoal(goal)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
+        {goals.map(goal => {
+          const progress = getGoalProgress(goal)
+          
+          return (
+            <Card key={goal.id}>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">목표 금액</p>
-                    <p className="text-lg font-semibold">
-                      {formatCurrency(goal.target_amount)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">현재 달성</p>
-                    <p
-                      className={`text-lg font-semibold ${
-                        (goal.current_amount || 0) >= 0
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {formatCurrency(Math.abs(goal.current_amount || 0))}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-gray-600">달성률</p>
-                    <p
-                      className={`text-lg font-semibold ${
-                        (goal.achievement_rate || 0) >= 0
-                          ? 'text-green-600'
-                          : 'text-red-600'
-                      }`}
-                    >
-                      {(goal.achievement_rate || 0).toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-
-                <Progress
-                  value={Math.max(0, Math.min(100, goal.achievement_rate || 0))}
-                  color={
-                    (goal.achievement_rate || 0) >= 100
-                      ? 'success'
-                      : (goal.achievement_rate || 0) >= 50
-                        ? 'primary'
-                        : 'danger'
-                  }
-                  className="w-full"
-                />
-
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="w-4 h-4" />
-                    <span>
-                      목표일:{' '}
-                      {new Date(goal.target_date).toLocaleDateString('ko-KR')}
-                    </span>
-                  </div>
-                  <div>
-                    {getDaysRemaining(goal.target_date) > 0
-                      ? `${getDaysRemaining(goal.target_date)}일 남음`
-                      : '기한 만료'}
+                    <h3 className="text-lg font-semibold">{goal.title}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Chip
+                        color={getGoalTypeColor(goal.type) as any}
+                        size="sm"
+                        variant="flat"
+                      >
+                        {getGoalTypeLabel(goal.type)}
+                      </Chip>
+                      <Chip
+                        color={getStatusColor(goal.status) as any}
+                        size="sm"
+                        variant="flat"
+                      >
+                        {goal.status === 'active'
+                          ? '진행중'
+                          : goal.status === 'completed'
+                            ? '완료'
+                            : '일시정지'}
+                      </Chip>
+                      {goal.status === 'active' && (
+                        <Chip
+                          color={progress.status === 'ahead' ? 'success' : progress.status === 'behind' ? 'warning' : 'primary'}
+                          size="sm"
+                          variant="flat"
+                        >
+                          {getProgressStatusIcon(progress.status)} {progress.status === 'ahead' ? '빠름' : progress.status === 'behind' ? '지연' : '순조'}
+                        </Chip>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardBody>
-          </Card>
-        ))}
+                <div className="flex items-center gap-2">
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    onPress={() => handleEditGoal(goal)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    variant="light"
+                    color="danger"
+                    onPress={() => handleDeleteGoal(goal)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-4">
+                  {/* 진행 현황 상세 정보 */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">목표 금액</p>
+                      <p className="text-lg font-semibold">
+                        {formatCurrency(goal.target_amount)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">현재 달성</p>
+                      <p
+                        className={`text-lg font-semibold ${
+                          (goal.current_amount || 0) >= 0
+                            ? 'text-green-600'
+                            : 'text-red-600'
+                        }`}
+                      >
+                        {formatCurrency(Math.abs(goal.current_amount || 0))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">남은 금액</p>
+                      <p className="text-lg font-semibold text-blue-600">
+                        {formatCurrency(progress.remainingAmount)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 진행률 바와 달성률 */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">달성률</span>
+                      <span className={`text-sm font-semibold ${getProgressStatusColor(progress.status)}`}>
+                        {progress.achievementRate.toFixed(1)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={Math.max(0, Math.min(100, progress.achievementRate))}
+                      color={
+                        progress.achievementRate >= 100
+                          ? 'success'
+                          : progress.achievementRate >= 50
+                            ? 'primary'
+                            : 'danger'
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* 진행 상태 및 피드백 */}
+                  {goal.status === 'active' && (
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <div className={`text-sm font-medium ${getProgressStatusColor(progress.status)}`}>
+                        {getProgressStatusIcon(progress.status)} {getProgressStatusMessage(progress)}
+                      </div>
+                      
+                      {progress.daysRemaining > 0 && (
+                        <div className="text-sm text-gray-600">
+                          💡 <strong>권장 일일 진행:</strong> {formatCurrency(progress.dailyTargetToReach)}/일
+                        </div>
+                      )}
+                      
+                      {progress.projectedDays !== progress.daysRemaining && (
+                        <div className="text-sm text-gray-600">
+                          📊 <strong>현재 페이스:</strong> 약 {progress.projectedDays}일 후 달성 예상
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 날짜 정보 */}
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      <span>
+                        목표일:{' '}
+                        {new Date(goal.target_date).toLocaleDateString('ko-KR')}
+                      </span>
+                    </div>
+                    <div className={progress.daysRemaining <= 7 ? 'text-red-600 font-medium' : ''}>
+                      {progress.daysRemaining > 0
+                        ? `${progress.daysRemaining}일 남음`
+                        : '기한 만료'}
+                    </div>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          )
+        })}
       </div>
 
       {/* 목표 추가 모달 */}

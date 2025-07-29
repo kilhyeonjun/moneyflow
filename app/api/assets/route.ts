@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isValidUUID } from '@/lib/utils/validation'
+import { GoalSyncManager, createAssetChangeEvent } from '@/lib/goal-sync'
 
 export async function GET(request: NextRequest) {
   try {
@@ -123,6 +124,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // 자산 생성 후 목표 동기화 트리거
+    try {
+      const changeEvent = createAssetChangeEvent(
+        'CREATE',
+        asset.id,
+        Number(asset.currentValue),
+        asset.type
+      )
+      await GoalSyncManager.triggerSync(organizationId, changeEvent)
+      console.log(`✅ 목표 동기화 완료 (자산 생성): ${asset.name}`)
+    } catch (syncError) {
+      console.error('⚠️ 목표 동기화 실패 (자산 생성):', syncError)
+      // 동기화 실패해도 자산 생성은 성공으로 처리
+    }
+
     return NextResponse.json(asset, { status: 201 })
   } catch (error) {
     console.error('Asset creation error:', error || 'Unknown error')
@@ -208,6 +224,24 @@ export async function PUT(request: NextRequest) {
       },
     })
 
+    // 자산 수정 후 목표 동기화 트리거 (currentValue가 변경된 경우)
+    if (currentValue !== undefined) {
+      try {
+        const changeEvent = createAssetChangeEvent(
+          'UPDATE',
+          updatedAsset.id,
+          Number(updatedAsset.currentValue),
+          updatedAsset.type,
+          Number(existingAsset.currentValue) // 이전 값
+        )
+        await GoalSyncManager.triggerSync(organizationId, changeEvent)
+        console.log(`✅ 목표 동기화 완료 (자산 수정): ${updatedAsset.name}`)
+      } catch (syncError) {
+        console.error('⚠️ 목표 동기화 실패 (자산 수정):', syncError)
+        // 동기화 실패해도 자산 수정은 성공으로 처리
+      }
+    }
+
     return NextResponse.json(updatedAsset)
   } catch (error) {
     console.error('Asset update error:', error || 'Unknown error')
@@ -264,6 +298,22 @@ export async function DELETE(request: NextRequest) {
     await prisma.asset.delete({
       where: { id: id },
     })
+
+    // 자산 삭제 후 목표 동기화 트리거
+    try {
+      const changeEvent = createAssetChangeEvent(
+        'DELETE',
+        existingAsset.id,
+        0, // 삭제된 자산의 현재 값은 0
+        existingAsset.type,
+        Number(existingAsset.currentValue) // 삭제된 자산의 이전 값
+      )
+      await GoalSyncManager.triggerSync(organizationId, changeEvent)
+      console.log(`✅ 목표 동기화 완료 (자산 삭제): ${existingAsset.name}`)
+    } catch (syncError) {
+      console.error('⚠️ 목표 동기화 실패 (자산 삭제):', syncError)
+      // 동기화 실패해도 자산 삭제는 성공으로 처리
+    }
 
     return NextResponse.json({ message: 'Asset deleted successfully' })
   } catch (error) {
