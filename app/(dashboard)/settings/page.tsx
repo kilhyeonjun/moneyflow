@@ -18,18 +18,11 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
-  Select,
-  SelectItem,
 } from '@heroui/react'
 import {
   User,
-  Settings,
-  Bell,
   Shield,
-  Palette,
-  Globe,
   Download,
-  Upload,
   Trash2,
   Edit,
   Plus,
@@ -50,26 +43,27 @@ interface UserProfile {
   avatar_url?: string
 }
 
-type SettingsType = {
-  notifications: {
-    email: boolean
-    push: boolean
-    transactions: boolean
-    goals: boolean
-    reports: boolean
-  }
-  privacy: {
-    profileVisible: boolean
-    dataSharing: boolean
-  }
-  preferences: {
-    language: string
-    currency: string
-    theme: string
-  }
-}
+// Settings types - 추후 구현 예정
+// type SettingsType = {
+//   notifications: {
+//     email: boolean
+//     push: boolean
+//     transactions: boolean
+//     goals: boolean
+//     reports: boolean
+//   }
+//   privacy: {
+//     profileVisible: boolean
+//     dataSharing: boolean
+//   }
+//   preferences: {
+//     language: string
+//     currency: string
+//     theme: string
+//   }
+// }
 
-type SettingValue = boolean | string
+// type SettingValue = boolean | string
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -80,28 +74,55 @@ export default function SettingsPage() {
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [members, setMembers] = useState<OrganizationMember[]>([])
 
-  const [settings, setSettings] = useState({
-    notifications: {
-      email: true,
-      push: false,
-      transactions: true,
-      goals: true,
-      reports: false,
-    },
-    privacy: {
-      profileVisible: true,
-      dataSharing: false,
-    },
-    preferences: {
-      language: 'ko',
-      currency: 'KRW',
-      theme: 'light',
-    },
+  // Settings state - 추후 구현 예정
+  // const [settings, setSettings] = useState({
+  //   notifications: {
+  //     email: true,
+  //     push: false,
+  //     transactions: true,
+  //     goals: true,
+  //     reports: false,
+  //   },
+  //   privacy: {
+  //     profileVisible: true,
+  //     dataSharing: false,
+  //   },
+  //   preferences: {
+  //     language: 'ko',
+  //     currency: 'KRW',
+  //     theme: 'light',
+  //   },
+  // })
+
+  // 프로필 편집 상태
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editProfileData, setEditProfileData] = useState({
+    full_name: '',
+    avatar_url: '',
+  })
+
+  // 조직 편집 상태
+  const [isEditingOrganization, setIsEditingOrganization] = useState(false)
+  const [editOrgData, setEditOrgData] = useState({
+    name: '',
+    description: '',
   })
 
   useEffect(() => {
     checkOrganizationAndLoadData()
+    // loadUserSettings() - 추후 구현 예정
   }, [])
+
+  // const loadUserSettings = () => {
+  //   try {
+  //     const savedSettings = localStorage.getItem('userSettings')
+  //     if (savedSettings) {
+  //       setSettings(JSON.parse(savedSettings))
+  //     }
+  //   } catch (error) {
+  //     console.error('설정 로드 실패:', error)
+  //   }
+  // }
 
   const checkOrganizationAndLoadData = async () => {
     try {
@@ -131,11 +152,17 @@ export default function SettingsPage() {
       } = await supabase.auth.getUser()
 
       if (user) {
-        setUserProfile({
+        const profile = {
           id: user.id,
           email: user.email || '',
           full_name: user.user_metadata?.full_name,
           avatar_url: user.user_metadata?.avatar_url,
+        }
+        
+        setUserProfile(profile)
+        setEditProfileData({
+          full_name: profile.full_name || '',
+          avatar_url: profile.avatar_url || '',
         })
       }
     } catch (error) {
@@ -171,6 +198,12 @@ export default function SettingsPage() {
       const { organization, members } = await response.json()
       setOrganization(organization)
       setMembers(members || [])
+      
+      // 조직 편집 데이터 초기화
+      setEditOrgData({
+        name: organization?.name || '',
+        description: organization?.description || '',
+      })
     } catch (error) {
       console.error('설정 데이터 로드 실패:', error)
     }
@@ -181,26 +214,152 @@ export default function SettingsPage() {
     // 호환성을 위해 빈 함수로 유지
   }
 
-  const handleSettingChange = (category: keyof SettingsType, key: string, value: SettingValue) => {
-    setSettings(prev => ({
-      ...prev,
-      [category]: {
-        ...prev[category as keyof typeof prev],
-        [key]: value,
-      },
-    }))
+  // const handleSettingChange = (category: keyof SettingsType, key: string, value: SettingValue) => {
+  //   setSettings(prev => ({
+  //     ...prev,
+  //     [category]: {
+  //       ...prev[category as keyof typeof prev],
+  //       [key]: value,
+  //     },
+  //   }))
 
-    // 테마 설정은 현재 비활성화됨
+  //   // 로컬 스토리지에 설정 저장
+  //   localStorage.setItem('userSettings', JSON.stringify({
+  //     ...settings,
+  //     [category]: {
+  //       ...settings[category as keyof typeof settings],
+  //       [key]: value,
+  //     },
+  //   }))
 
-    // 실제로는 여기서 서버에 설정을 저장해야 함
-    toast.success('설정이 저장되었습니다.')
+  //   toast.success('설정이 저장되었습니다.')
+  // }
+
+  const handleUpdateProfile = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('로그인이 필요합니다.')
+        return
+      }
+
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          type: 'profile',
+          data: editProfileData,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update profile')
+      }
+
+      // UI 업데이트
+      setUserProfile(prev => prev ? {
+        ...prev,
+        full_name: editProfileData.full_name,
+        avatar_url: editProfileData.avatar_url,
+      } : null)
+
+      setIsEditingProfile(false)
+      toast.success('프로필이 업데이트되었습니다.')
+
+      // 페이지 새로고침하여 변경사항 반영
+      window.location.reload()
+    } catch (error) {
+      console.error('프로필 업데이트 실패:', error)
+      toast.error('프로필 업데이트에 실패했습니다.')
+    }
+  }
+
+  const handleUpdateOrganization = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session || !selectedOrgId) {
+        toast.error('권한이 없습니다.')
+        return
+      }
+
+      const response = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          type: 'organization',
+          data: {
+            organizationId: selectedOrgId,
+            name: editOrgData.name,
+            description: editOrgData.description,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update organization')
+      }
+
+      // UI 업데이트
+      setOrganization(prev => prev ? {
+        ...prev,
+        name: editOrgData.name,
+        description: editOrgData.description,
+      } : null)
+
+      setIsEditingOrganization(false)
+      toast.success('조직 정보가 업데이트되었습니다.')
+    } catch (error) {
+      console.error('조직 업데이트 실패:', error)
+      toast.error('조직 정보 업데이트에 실패했습니다.')
+    }
   }
 
   const handleExportData = async () => {
     try {
-      // 실제 구현에서는 사용자 데이터를 내보내는 로직
-      toast.success('데이터 내보내기가 시작되었습니다.')
+      if (!selectedOrgId) {
+        toast.error('조직을 선택하세요.')
+        return
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('로그인이 필요합니다.')
+        return
+      }
+
+      // 모든 데이터를 가져와서 JSON으로 내보내기
+      const exportData = {
+        userProfile: userProfile,
+        organization: organization,
+        // settings: settings, // 추후 구현 예정
+        exportedAt: new Date().toISOString(),
+      }
+
+      // JSON 파일로 다운로드
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+        type: 'application/json' 
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `moneyflow-data-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      toast.success('데이터가 성공적으로 내보내졌습니다.')
     } catch (error) {
+      console.error('데이터 내보내기 실패:', error)
       toast.error('데이터 내보내기에 실패했습니다.')
     }
   }
@@ -260,16 +419,19 @@ export default function SettingsPage() {
                 size="sm"
                 variant="light"
                 startContent={<Edit className="w-4 h-4" />}
+                onPress={() => setIsEditingProfile(!isEditingProfile)}
               >
-                편집
+                {isEditingProfile ? '취소' : '편집'}
               </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="이름"
-                value={userProfile?.full_name || ''}
+                value={isEditingProfile ? editProfileData.full_name : (userProfile?.full_name || '')}
                 placeholder="이름을 입력하세요"
+                isReadOnly={!isEditingProfile}
+                onChange={(e) => isEditingProfile && setEditProfileData(prev => ({ ...prev, full_name: e.target.value }))}
               />
               <Input
                 label="이메일"
@@ -277,6 +439,31 @@ export default function SettingsPage() {
                 isReadOnly
               />
             </div>
+
+            {isEditingProfile && (
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="light"
+                  onPress={() => {
+                    setIsEditingProfile(false)
+                    setEditProfileData({
+                      full_name: userProfile?.full_name || '',
+                      avatar_url: userProfile?.avatar_url || '',
+                    })
+                  }}
+                >
+                  취소
+                </Button>
+                <Button
+                  size="sm"
+                  color="primary"
+                  onPress={handleUpdateProfile}
+                >
+                  저장
+                </Button>
+              </div>
+            )}
           </CardBody>
         </Card>
 
@@ -290,18 +477,65 @@ export default function SettingsPage() {
           </CardHeader>
           <CardBody>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold">{organization?.name}</h3>
-                  <p className="text-gray-600">{organization?.description}</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    {isEditingOrganization ? (
+                      <div className="space-y-2">
+                        <Input
+                          label="조직명"
+                          value={editOrgData.name}
+                          placeholder="조직명을 입력하세요"
+                          onChange={(e) => setEditOrgData(prev => ({ ...prev, name: e.target.value }))}
+                        />
+                        <Input
+                          label="설명"
+                          value={editOrgData.description}
+                          placeholder="조직 설명을 입력하세요"
+                          onChange={(e) => setEditOrgData(prev => ({ ...prev, description: e.target.value }))}
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="font-semibold">{organization?.name}</h3>
+                        <p className="text-gray-600">{organization?.description}</p>
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    startContent={<Edit className="w-4 h-4" />}
+                    onPress={() => setIsEditingOrganization(!isEditingOrganization)}
+                  >
+                    {isEditingOrganization ? '취소' : '편집'}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="light"
-                  startContent={<Edit className="w-4 h-4" />}
-                >
-                  편집
-                </Button>
+
+                {isEditingOrganization && (
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="light"
+                      onPress={() => {
+                        setIsEditingOrganization(false)
+                        setEditOrgData({
+                          name: organization?.name || '',
+                          description: organization?.description || '',
+                        })
+                      }}
+                    >
+                      취소
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="primary"
+                      onPress={handleUpdateOrganization}
+                    >
+                      저장
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <Divider />
@@ -361,7 +595,8 @@ export default function SettingsPage() {
           </CardBody>
         </Card>
 
-        {/* 알림 설정 */}
+        {/* 알림 설정 - 추후 구현 예정 */}
+        {/*
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -418,8 +653,10 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        */}
 
-        {/* 환경 설정 */}
+        {/* 환경 설정 - 추후 구현 예정 */}
+        {/*
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -464,6 +701,7 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        */}
 
         {/* 데이터 관리 */}
         <Card>
