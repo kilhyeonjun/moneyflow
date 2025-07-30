@@ -21,6 +21,7 @@ import {
   ChevronDown,
   Wallet,
   Target,
+  Check,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
@@ -190,10 +191,33 @@ export function Sidebar() {
     }
   }
 
-  const switchOrganization = (orgId: string) => {
+  const switchOrganization = async (orgId: string) => {
     if (typeof window === 'undefined') return
-    localStorage.setItem('selectedOrganization', orgId)
-    window.location.reload()
+    
+    // 현재 선택된 조직과 동일하면 아무것도 하지 않음
+    if (currentOrg?.id === orgId) return
+    
+    try {
+      // localStorage 업데이트
+      localStorage.setItem('selectedOrganization', orgId)
+      
+      // 새로운 조직 정보 찾기
+      const newOrg = userOrgs.find(org => org.id === orgId)
+      if (newOrg) {
+        // 즉시 UI 업데이트
+        setCurrentOrg(newOrg)
+      }
+      
+      // 페이지 새로고침으로 모든 데이터 동기화
+      setTimeout(() => {
+        window.location.reload()
+      }, 100) // 약간의 지연을 두어 UI 업데이트가 보이도록 함
+      
+    } catch (error) {
+      console.error('조직 전환 실패:', error)
+      // 오류 발생 시 즉시 새로고침
+      window.location.reload()
+    }
   }
 
   const handleLogout = async () => {
@@ -236,10 +260,17 @@ export function Sidebar() {
                   }
                   className={
                     item.id === currentOrg?.id
-                      ? 'bg-blue-50'
+                      ? 'bg-blue-50 text-blue-600 font-medium'
                       : item.id === 'manage'
                         ? 'text-blue-600'
                         : ''
+                  }
+                  startContent={
+                    item.id === currentOrg?.id ? (
+                      <Check className="w-4 h-4 text-blue-600" />
+                    ) : item.id === 'manage' ? (
+                      <Settings className="w-4 h-4" />
+                    ) : null
                   }
                 >
                   {item.name}

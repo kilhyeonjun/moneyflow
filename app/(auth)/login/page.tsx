@@ -14,24 +14,28 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  // 페이지 로드 시 만료된 토큰 정리
+  // 페이지 로드 시 인증 상태 확인 및 토큰 정리
   useEffect(() => {
-    const clearExpiredTokens = async () => {
+    const checkAuthAndRedirect = async () => {
       try {
         // 현재 세션 확인
         const { data: { session }, error } = await supabase.auth.getSession()
         
-        if (error || !session) {
-          // 만료된 토큰이나 오류가 있으면 로그아웃 처리
+        if (error) {
+          // 토큰 관련 오류 발생 시 강제 로그아웃
+          console.warn('토큰 확인 중 오류:', error)
           await supabase.auth.signOut()
-          // localStorage 정리
           if (typeof window !== 'undefined') {
             localStorage.removeItem('selectedOrganization')
           }
+        } else if (session) {
+          // 이미 로그인된 경우 대시보드로 리다이렉트
+          console.log('이미 로그인됨, 대시보드로 이동')
+          router.push('/dashboard')
         }
       } catch (err) {
         // 토큰 관련 오류 발생 시 강제 로그아웃
-        console.warn('토큰 정리 중 오류:', err)
+        console.warn('인증 확인 중 오류:', err)
         await supabase.auth.signOut()
         if (typeof window !== 'undefined') {
           localStorage.removeItem('selectedOrganization')
@@ -39,8 +43,25 @@ export default function LoginPage() {
       }
     }
 
-    clearExpiredTokens()
-  }, [])
+    checkAuthAndRedirect()
+
+    // 인증 상태 변경 감지
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // 로그인 성공 시 대시보드로 이동
+        router.push('/dashboard')
+      } else if (event === 'SIGNED_OUT') {
+        // 로그아웃 시 localStorage 정리
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('selectedOrganization')
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [router])
 
   const toggleVisibility = () => setIsVisible(!isVisible)
 
