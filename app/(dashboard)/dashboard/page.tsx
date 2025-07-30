@@ -31,6 +31,7 @@ interface DashboardStats {
   previousMonthSavings: number
 }
 
+
 export default function DashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -195,6 +196,7 @@ export default function DashboardPage() {
     }
     return change > 0 ? 'text-green-500' : 'text-red-500'
   }
+
 
   if (loading) {
     return (
@@ -363,6 +365,7 @@ export default function DashboardPage() {
         <MonthlyTrendChart transactions={allTransactions} />
         <CategoryPieChart transactions={allTransactions} type="expense" />
       </div>
+
 
       {/* 최근 거래 내역 */}
       <Card>

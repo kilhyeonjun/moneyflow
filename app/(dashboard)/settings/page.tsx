@@ -18,6 +18,8 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
+  Select,
+  SelectItem,
 } from '@heroui/react'
 import {
   User,
@@ -27,6 +29,8 @@ import {
   Edit,
   Plus,
   Users,
+  Mail,
+  Clock,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -41,6 +45,16 @@ interface UserProfile {
   email: string
   full_name?: string
   avatar_url?: string
+}
+
+interface Invitation {
+  id: string
+  email: string
+  role: string
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled'
+  created_at: string
+  expires_at: string
+  organizations: { name: string }
 }
 
 // Settings types - 추후 구현 예정
@@ -68,11 +82,25 @@ interface UserProfile {
 export default function SettingsPage() {
   const router = useRouter()
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const { 
+    isOpen: isInviteModalOpen, 
+    onOpen: onInviteModalOpen, 
+    onClose: onInviteModalClose 
+  } = useDisclosure()
+  
   const [loading, setLoading] = useState(true)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [members, setMembers] = useState<OrganizationMember[]>([])
+  const [invitations, setInvitations] = useState<Invitation[]>([])
+  
+  // 초대 모달 상태
+  const [inviteData, setInviteData] = useState({
+    email: '',
+    role: 'member'
+  })
+  const [inviting, setInviting] = useState(false)
 
   // Settings state - 추후 구현 예정
   // const [settings, setSettings] = useState({
@@ -204,6 +232,9 @@ export default function SettingsPage() {
         name: organization?.name || '',
         description: organization?.description || '',
       })
+      
+      // 초대 목록도 함께 로드
+      await loadInvitations(orgId, session)
     } catch (error) {
       console.error('설정 데이터 로드 실패:', error)
     }
@@ -212,6 +243,142 @@ export default function SettingsPage() {
   const loadMembers = async (orgId: string) => {
     // 멤버 로드는 이제 loadOrganization에서 함께 처리됨
     // 호환성을 위해 빈 함수로 유지
+  }
+
+  const loadInvitations = async (orgId: string, session: any) => {
+    try {
+      const response = await fetch(`/api/organizations/${orgId}/invitations`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      if (response.ok) {
+        const { invitations } = await response.json()
+        setInvitations(invitations || [])
+      }
+    } catch (error) {
+      console.error('초대 목록 로드 실패:', error)
+    }
+  }
+
+  const handleInviteMember = async () => {
+    if (!selectedOrgId || !inviteData.email.trim()) {
+      toast.error('이메일을 입력하세요.')
+      return
+    }
+
+    // 이메일 형식 검증
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(inviteData.email)) {
+      toast.error('올바른 이메일 형식을 입력하세요.')
+      return
+    }
+
+    try {
+      setInviting(true)
+      
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('로그인이 필요합니다.')
+        return
+      }
+
+      const response = await fetch(`/api/organizations/${selectedOrgId}/invitations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email: inviteData.email,
+          role: inviteData.role,
+        }),
+      })
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to send invitation'
+        
+        // response를 복제하여 multiple read 방지
+        const responseClone = response.clone()
+        
+        try {
+          const errorData = await response.json()
+          console.error('초대 API 에러:', errorData)
+          errorMessage = errorData.details || errorData.error || errorMessage
+        } catch (jsonError) {
+          // JSON 파싱 실패 시 복제된 response로 text 시도
+          try {
+            const errorText = await responseClone.text()
+            console.error('초대 API 응답 (텍스트):', errorText)
+            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`
+          } catch (textError) {
+            console.error('응답 읽기 실패:', textError)
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
+      try {
+        const result = await response.json()
+        console.log('초대 성공:', result)
+      } catch (jsonError) {
+        console.log('응답 JSON 파싱 실패 (성공적인 응답이지만 JSON이 아님):', jsonError)
+      }
+      
+      toast.success('초대가 성공적으로 발송되었습니다!')
+      
+      // 초대 목록 새로고침
+      await loadInvitations(selectedOrgId, session)
+      
+      // 모달 닫기 및 폼 초기화
+      setInviteData({ email: '', role: 'member' })
+      onInviteModalClose()
+      
+    } catch (error: any) {
+      console.error('초대 발송 실패:', error)
+      toast.error(error.message || '초대 발송에 실패했습니다.')
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!selectedOrgId) return
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        toast.error('로그인이 필요합니다.')
+        return
+      }
+
+      const response = await fetch(
+        `/api/organizations/${selectedOrgId}/invitations?invitationId=${invitationId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel invitation')
+      }
+
+      toast.success('초대가 취소되었습니다.')
+      
+      // 초대 목록 새로고침
+      await loadInvitations(selectedOrgId, session)
+      
+    } catch (error: any) {
+      console.error('초대 취소 실패:', error)
+      toast.error('초대 취소에 실패했습니다.')
+    }
   }
 
   // const handleSettingChange = (category: keyof SettingsType, key: string, value: SettingValue) => {
@@ -547,6 +714,7 @@ export default function SettingsPage() {
                     size="sm"
                     color="primary"
                     startContent={<Plus className="w-4 h-4" />}
+                    onPress={onInviteModalOpen}
                   >
                     멤버 초대
                   </Button>
@@ -590,6 +758,55 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* 초대 목록 */}
+                {invitations.length > 0 && (
+                  <>
+                    <Divider />
+                    <div>
+                      <h4 className="font-medium mb-3">대기 중인 초대</h4>
+                      <div className="space-y-2">
+                        {invitations
+                          .filter(invitation => invitation.status === 'pending')
+                          .map(invitation => (
+                            <div
+                              key={invitation.id}
+                              className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Avatar size="sm" name={invitation.email} />
+                                <div>
+                                  <p className="font-medium">{invitation.email}</p>
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Chip
+                                      color={
+                                        invitation.role === 'admin' ? 'secondary' : 'default'
+                                      }
+                                      size="sm"
+                                    >
+                                      {invitation.role === 'admin' ? '관리자' : '멤버'}
+                                    </Chip>
+                                    <span>•</span>
+                                    <span>
+                                      {new Date(invitation.expires_at).toLocaleDateString('ko-KR')} 만료
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                color="danger"
+                                variant="light"
+                                onPress={() => handleCancelInvitation(invitation.id)}
+                              >
+                                취소
+                              </Button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardBody>
@@ -774,6 +991,65 @@ export default function SettingsPage() {
             </Button>
             <Button color="danger" onPress={handleDeleteAccount}>
               계정 삭제
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 멤버 초대 모달 */}
+      <Modal isOpen={isInviteModalOpen} onClose={onInviteModalClose}>
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-blue-600" />
+            멤버 초대
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <Input
+                label="이메일"
+                placeholder="초대할 사용자의 이메일을 입력하세요"
+                value={inviteData.email}
+                onChange={(e) => setInviteData(prev => ({ ...prev, email: e.target.value }))}
+                type="email"
+              />
+              
+              <Select
+                label="역할"
+                selectedKeys={[inviteData.role]}
+                onSelectionChange={keys => {
+                  const selectedRole = Array.from(keys)[0] as string
+                  setInviteData(prev => ({ ...prev, role: selectedRole }))
+                }}
+              >
+                <SelectItem key="member">멤버</SelectItem>
+                <SelectItem key="admin">관리자</SelectItem>
+              </Select>
+
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <p className="text-blue-800 text-sm">
+                  <strong>참고:</strong> 초대된 사용자는 이메일로 초대 링크를 받게 되며, 
+                  7일 이내에 초대를 수락해야 합니다.
+                </p>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button 
+              variant="light" 
+              onPress={() => {
+                setInviteData({ email: '', role: 'member' })
+                onInviteModalClose()
+              }}
+            >
+              취소
+            </Button>
+            <Button 
+              color="primary" 
+              onPress={handleInviteMember}
+              isLoading={inviting}
+              isDisabled={inviting || !inviteData.email.trim()}
+            >
+              초대 발송
             </Button>
           </ModalFooter>
         </ModalContent>

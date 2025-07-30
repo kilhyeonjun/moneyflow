@@ -8,8 +8,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log('=== 초대 목록 조회 API 시작 ===')
   try {
     const { id: organizationId } = await params
+    console.log('Organization ID:', organizationId)
 
     // 사용자 인증 확인
     const authHeader = request.headers.get('authorization')
@@ -84,9 +86,15 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  console.log('=== 초대 생성 API 시작 ===')
   try {
     const { id: organizationId } = await params
-    const { email, role = 'member' } = await request.json()
+    console.log('Organization ID:', organizationId)
+    
+    const { email: rawEmail, role = 'member' } = await request.json()
+    // 이메일 정규화: 소문자 변환 및 공백 제거
+    const email = rawEmail?.trim().toLowerCase()
+    console.log('Request data:', { email, role, rawEmail })
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -138,28 +146,61 @@ export async function POST(
       )
     }
 
-    // 이미 멤버인지 확인 - Prisma 사용
-    const existingMember = await prisma.organizationMember.findUnique({
-      where: { 
+    // 초대를 보내는 사용자가 해당 조직의 멤버인지 확인 - Prisma 사용
+    const senderMember = await prisma.organizationMember.findUnique({
+      where: {
         organizationId_userId: {
           organizationId,
           userId: user.id,
         },
       },
+      select: { role: true },
     })
 
-    if (existingMember) {
+    if (!senderMember || !['owner', 'admin'].includes(senderMember.role)) {
       return NextResponse.json(
-        { error: 'User is already a member' },
+        { error: 'Insufficient permissions to send invitations' },
+        { status: 403 }
+      )
+    }
+
+    // 해당 이메일로 이미 가입된 사용자가 조직 멤버인지 확인
+    // getUserByEmail을 사용하되 에러 처리를 개선
+    let isAlreadyMember = false
+    try {
+      const { data: inviteeUser, error: userError } = await supabaseClient.auth.admin.getUserByEmail(email)
+      
+      if (!userError && inviteeUser?.user) {
+        const existingMember = await prisma.organizationMember.findUnique({
+          where: { 
+            organizationId_userId: {
+              organizationId,
+              userId: inviteeUser.user.id,
+            },
+          },
+        })
+
+        if (existingMember) {
+          isAlreadyMember = true
+        }
+      }
+    } catch (userCheckError) {
+      // 사용자 조회 실패 시 로그만 남기고 계속 진행 (새 사용자일 가능성)
+      console.log('사용자 조회 중 에러 (새 사용자일 수 있음):', userCheckError)
+    }
+
+    if (isAlreadyMember) {
+      return NextResponse.json(
+        { error: 'User is already a member of this organization' },
         { status: 409 }
       )
     }
 
-    // 기존 대기 중인 초대 확인 - Prisma 사용
+    // 기존 대기 중인 초대 확인 - Prisma 사용 (정규화된 이메일로 검색)
     const existingInvitation = await prisma.organizationInvitation.findFirst({
       where: {
         organizationId,
-        email,
+        email, // 이미 정규화된 이메일
         status: 'pending',
       },
     })
@@ -197,12 +238,18 @@ export async function POST(
       },
     })
 
-    // 이메일 발송 (실제 구현에서는 이메일 서비스 사용)
+    // TODO: 이메일 발송 기능 구현
+    // 현재는 대시보드에서 직접 초대를 확인할 수 있으므로 이메일 발송은 선택사항
+    // 향후 구현 옵션:
+    // 1. Resend (무료 3,000통/월) - 추천
+    // 2. Supabase Auth 기본 이메일 (무료, 제한적 커스터마이징)
+    // 3. SendGrid (무료 100통/월)
+    // 4. NodeMailer + Gmail SMTP (무료, 500통/일)
     const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${invitation.token}`
 
-    // TODO: 실제 이메일 발송 로직 구현
-    console.log(`초대 이메일 발송: ${email}`)
-    console.log(`초대 링크: ${inviteUrl}`)
+    console.log(`[TODO] 초대 이메일 발송: ${email}`)
+    console.log(`[TODO] 초대 링크: ${inviteUrl}`)
+    console.log(`[INFO] 사용자는 대시보드에서 초대를 확인할 수 있습니다.`)
 
     return NextResponse.json({
       message: 'Invitation sent successfully',
@@ -216,8 +263,20 @@ export async function POST(
     })
   } catch (error) {
     console.error('초대 생성 에러:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      organizationId,
+      email,
+      role,
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' 
+          ? (error instanceof Error ? error.message : 'Unknown error')
+          : undefined
+      },
       { status: 500 }
     )
   }

@@ -14,14 +14,39 @@ import {
   ModalFooter,
   useDisclosure,
 } from '@heroui/react'
-import { Plus, Users, Building2 } from 'lucide-react'
+import {
+  Plus,
+  Users,
+  Building2,
+  Mail,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Building,
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import toast, { Toaster } from 'react-hot-toast'
+import { Chip } from '@heroui/react'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 type OrganizationInsert =
   Database['public']['Tables']['organizations']['Insert']
+
+interface ReceivedInvitation {
+  id: string
+  email: string
+  role: string
+  status: string
+  createdAt: string
+  expiresAt: string
+  organization: {
+    id: string
+    name: string
+    description?: string
+  }
+  token: string
+}
 
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
@@ -29,10 +54,14 @@ export default function OrganizationsPage() {
   const [creating, setCreating] = useState(false)
   const [newOrgName, setNewOrgName] = useState('')
   const [newOrgDescription, setNewOrgDescription] = useState('')
+  const [receivedInvitations, setReceivedInvitations] = useState<ReceivedInvitation[]>([])
+  const [invitationsLoading, setInvitationsLoading] = useState(false)
+  const [processingInvitation, setProcessingInvitation] = useState<string | null>(null)
   const { isOpen, onOpen, onClose } = useDisclosure()
 
   useEffect(() => {
     fetchOrganizations()
+    loadReceivedInvitations()
   }, [])
 
   const fetchOrganizations = async () => {
@@ -136,6 +165,113 @@ export default function OrganizationsPage() {
     }
   }
 
+  const loadReceivedInvitations = async () => {
+    try {
+      setInvitationsLoading(true)
+      console.log('=== 받은 초대 로드 시작 ===')
+
+      // Supabase Auth 토큰 가져오기
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.log('세션이 없어서 초대 로드를 건너뜁니다')
+        return
+      }
+
+      console.log('현재 사용자 이메일:', session.user?.email)
+      
+      const response = await fetch('/api/invitations/received', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      })
+
+      console.log('API 응답 상태:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('받은 초대 데이터:', data)
+        setReceivedInvitations(data.invitations || [])
+      } else {
+        const errorData = await response.json()
+        console.error('초대 로드 API 에러:', response.status, errorData)
+      }
+    } catch (error) {
+      console.error('받은 초대 로드 실패:', error)
+    } finally {
+      setInvitationsLoading(false)
+    }
+  }
+
+  const handleInvitationAction = async (invitationId: string, action: 'accept' | 'reject') => {
+    try {
+      setProcessingInvitation(invitationId)
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        toast.error('로그인이 필요합니다')
+        return
+      }
+
+      const response = await fetch('/api/invitations/received', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ invitationId, action }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to ${action} invitation`)
+      }
+
+      // 초대 목록에서 처리된 초대 제거
+      setReceivedInvitations(prev => prev.filter(inv => inv.id !== invitationId))
+
+      if (action === 'accept') {
+        toast.success('초대를 수락했습니다!')
+        // 조직 목록 새로고침
+        await fetchOrganizations()
+      } else {
+        toast.success('초대를 거절했습니다')
+      }
+    } catch (error: any) {
+      console.error(`초대 ${action} 실패:`, error)
+      toast.error(error.message)
+    } finally {
+      setProcessingInvitation(null)
+    }
+  }
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return '소유자'
+      case 'admin':
+        return '관리자'
+      case 'member':
+        return '멤버'
+      default:
+        return role
+    }
+  }
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return 'danger'
+      case 'admin':
+        return 'warning'
+      case 'member':
+        return 'primary'
+      default:
+        return 'default'
+    }
+  }
+
   const selectOrganization = (orgId: string) => {
     // 조직 선택 후 대시보드로 이동
     localStorage.setItem('selectedOrganization', orgId)
@@ -170,7 +306,108 @@ export default function OrganizationsPage() {
           >
             새 조직 만들기
           </Button>
-        </div>{' '}
+        </div>
+
+        {/* 받은 초대 섹션 */}
+        {receivedInvitations.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold">받은 초대</h3>
+                <Chip size="sm" color="primary" variant="flat">
+                  {receivedInvitations.length}
+                </Chip>
+              </div>
+            </CardHeader>
+            <CardBody>
+              {invitationsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">초대 목록을 불러오는 중...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {receivedInvitations.map(invitation => {
+                    const expiresIn = Math.ceil(
+                      (new Date(invitation.expiresAt).getTime() - new Date().getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+                    const isProcessing = processingInvitation === invitation.id
+
+                    return (
+                      <div
+                        key={invitation.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="p-2 bg-blue-100 rounded-full">
+                            <Building className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold">{invitation.organization.name}</h4>
+                              <Chip
+                                color={getRoleColor(invitation.role) as any}
+                                variant="flat"
+                                size="sm"
+                              >
+                                {getRoleDisplayName(invitation.role)}
+                              </Chip>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Users className="w-3 h-3" />
+                              <span>{invitation.email}</span>
+                              <span>•</span>
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                <span>
+                                  {expiresIn > 0 
+                                    ? `${expiresIn}일 남음`
+                                    : '만료됨'
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                            {invitation.organization.description && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {invitation.organization.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            color="success"
+                            size="sm"
+                            startContent={<CheckCircle className="w-4 h-4" />}
+                            onPress={() => handleInvitationAction(invitation.id, 'accept')}
+                            isLoading={isProcessing}
+                            isDisabled={isProcessing || expiresIn <= 0}
+                          >
+                            수락
+                          </Button>
+                          <Button
+                            color="danger"
+                            variant="bordered"
+                            size="sm"
+                            startContent={<XCircle className="w-4 h-4" />}
+                            onPress={() => handleInvitationAction(invitation.id, 'reject')}
+                            isLoading={isProcessing}
+                            isDisabled={isProcessing || expiresIn <= 0}
+                          >
+                            거절
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        )}
+
         {organizations.length === 0 ? (
           <div className="text-center py-12">
             <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
