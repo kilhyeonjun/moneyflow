@@ -62,6 +62,7 @@ export function Sidebar() {
     if (typeof window === 'undefined') return
 
     const selectedOrgId = localStorage.getItem('selectedOrganization')
+    
     if (!selectedOrgId) {
       // 선택된 조직이 없으면 사용자 조직 목록을 먼저 로드하고 첫 번째 조직을 선택
       await loadUserOrganizations()
@@ -85,6 +86,8 @@ export function Sidebar() {
       const response = await fetch(`/api/organizations/${selectedOrgId}/check-membership?userId=${user.id}`)
       
       if (!response.ok) {
+        const errorData = await response.json()
+        console.error('API error:', errorData)
         console.warn('선택된 조직에 접근할 수 없습니다. 다른 조직을 선택합니다.')
         localStorage.removeItem('selectedOrganization')
         await loadUserOrganizations()
@@ -181,7 +184,9 @@ export function Sidebar() {
       }
 
       // 현재 선택된 조직이 없고 조직이 존재한다면 첫 번째 조직을 자동 선택
-      if (!currentOrg && organizationList.length > 0 && typeof window !== 'undefined') {
+      // 단, localStorage에 이미 선택된 조직이 있다면 자동 선택하지 않음
+      const selectedOrgId = typeof window !== 'undefined' ? localStorage.getItem('selectedOrganization') : null
+      if (!currentOrg && organizationList.length > 0 && !selectedOrgId && typeof window !== 'undefined') {
         const firstOrg = organizationList[0]
         localStorage.setItem('selectedOrganization', firstOrg.id)
         setCurrentOrg(firstOrg)
@@ -191,33 +196,24 @@ export function Sidebar() {
     }
   }
 
-  const switchOrganization = async (orgId: string) => {
+  const switchOrganization = (orgId: string) => {
     if (typeof window === 'undefined') return
     
     // 현재 선택된 조직과 동일하면 아무것도 하지 않음
-    if (currentOrg?.id === orgId) return
-    
-    try {
-      // localStorage 업데이트
-      localStorage.setItem('selectedOrganization', orgId)
-      
-      // 새로운 조직 정보 찾기
-      const newOrg = userOrgs.find(org => org.id === orgId)
-      if (newOrg) {
-        // 즉시 UI 업데이트
-        setCurrentOrg(newOrg)
-      }
-      
-      // 페이지 새로고침으로 모든 데이터 동기화
-      setTimeout(() => {
-        window.location.reload()
-      }, 100) // 약간의 지연을 두어 UI 업데이트가 보이도록 함
-      
-    } catch (error) {
-      console.error('조직 전환 실패:', error)
-      // 오류 발생 시 즉시 새로고침
-      window.location.reload()
+    if (currentOrg?.id === orgId) {
+      return
     }
+    
+    // 선택할 조직 찾기
+    const selectedOrg = userOrgs.find(org => org.id === orgId)
+    if (selectedOrg) {
+      // 즉시 UI 상태 업데이트
+      setCurrentOrg(selectedOrg)
+    }
+    
+    // localStorage 업데이트 후 대시보드로 이동
+    localStorage.setItem('selectedOrganization', orgId)
+    window.location.href = '/dashboard'
   }
 
   const handleLogout = async () => {
