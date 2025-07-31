@@ -133,8 +133,9 @@ export default function TransactionsPage() {
         categoriesResponse.json(),
       ])
 
+      console.log('로드된 카테고리 데이터:', categoriesData)
       setTransactions(transactionsData.transactions || [])
-      setTransactionCategories(categoriesData.categories || [])
+      setTransactionCategories(categoriesData || [])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
       toast.error('데이터를 불러오는데 실패했습니다.')
@@ -524,10 +525,13 @@ export default function TransactionsPage() {
                 }
               >
                 {transactionCategories
-                  .filter(category => category.transactionType === formData.transactionType)
+                  .filter(category => {
+                    console.log('카테고리 필터링:', category.name, category.transactionType, '현재 타입:', formData.transactionType)
+                    return category.transactionType === formData.transactionType
+                  })
                   .map(category => (
                     <SelectItem key={category.id}>
-                      {category.name}
+                      {category.name}{category.isDefault ? ' (기본)' : ''}
                     </SelectItem>
                   ))}
               </Select>
@@ -624,7 +628,7 @@ export default function TransactionsPage() {
                   .filter(category => category.transactionType === editFormData.transactionType)
                   .map(category => (
                     <SelectItem key={category.id}>
-                      {category.name}
+                      {category.name}{category.isDefault ? ' (기본)' : ''}
                     </SelectItem>
                   ))}
               </Select>

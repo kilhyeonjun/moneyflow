@@ -151,25 +151,25 @@ export const defaultTransactionCategories: DefaultTransactionCategoryData[] = [
     color: '#9A3412',
   },
 
-  // 저축/투자 카테고리 (Level 1)
+  // 이체 카테고리 (Level 1) - 저축과 투자를 이체로 분류
   {
     name: '저축',
     level: 1,
-    transactionType: 'savings',
+    transactionType: 'transfer',
     icon: '🏦',
     color: '#3B82F6',
   },
   {
     name: '투자',
     level: 1,
-    transactionType: 'savings',
+    transactionType: 'transfer',
     icon: '📊',
     color: '#2563EB',
   },
   {
     name: '대출 상환',
     level: 1,
-    transactionType: 'savings',
+    transactionType: 'transfer',
     icon: '💳',
     color: '#1D4ED8',
   },
