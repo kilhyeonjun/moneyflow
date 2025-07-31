@@ -39,6 +39,8 @@ import {
   ArrowRightLeft,
   Calendar,
   Filter,
+  Shield,
+  Building,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
@@ -531,7 +533,21 @@ export default function TransactionsPage() {
                   })
                   .map(category => (
                     <SelectItem key={category.id}>
-                      {category.name}{category.isDefault ? ' (기본)' : ''}
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium">{category.name}</span>
+                        <Chip
+                          size="sm"
+                          variant="flat"
+                          color={category.isDefault ? "default" : "primary"}
+                          startContent={
+                            category.isDefault ? 
+                              <Shield className="w-3 h-3" /> : 
+                              <Building className="w-3 h-3" />
+                          }
+                        >
+                          {category.isDefault ? "시스템" : "조직"}
+                        </Chip>
+                      </div>
                     </SelectItem>
                   ))}
               </Select>
@@ -628,7 +644,21 @@ export default function TransactionsPage() {
                   .filter(category => category.transactionType === editFormData.transactionType)
                   .map(category => (
                     <SelectItem key={category.id}>
-                      {category.name}{category.isDefault ? ' (기본)' : ''}
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium">{category.name}</span>
+                        <Chip
+                          size="sm"
+                          variant="flat"
+                          color={category.isDefault ? "default" : "primary"}
+                          startContent={
+                            category.isDefault ? 
+                              <Shield className="w-3 h-3" /> : 
+                              <Building className="w-3 h-3" />
+                          }
+                        >
+                          {category.isDefault ? "시스템" : "조직"}
+                        </Chip>
+                      </div>
                     </SelectItem>
                   ))}
               </Select>
