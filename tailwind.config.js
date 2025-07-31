@@ -16,6 +16,5 @@ module.exports = {
       },
     },
   },
-  darkMode: false,
   plugins: [heroui()],
 }
