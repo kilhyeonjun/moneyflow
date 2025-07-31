@@ -44,6 +44,7 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
+import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
 
 // Prisma 타입 import
 import type { Transaction, Category } from '@prisma/client'
@@ -515,37 +516,20 @@ export default function TransactionsPage() {
                 </SelectItem>
               </Select>
 
-              <Select
-                label="카테고리"
-                placeholder="카테고리를 선택하세요"
-                selectedKeys={formData.categoryId ? [formData.categoryId] : []}
-                onSelectionChange={(keys) =>
+              <HierarchicalCategorySelect
+                categories={transactionCategories}
+                selectedCategoryId={formData.categoryId}
+                onSelectionChange={(categoryId) =>
                   setFormData(prev => ({
                     ...prev,
-                    categoryId: Array.from(keys)[0] as string
+                    categoryId
                   }))
                 }
-              >
-                {transactionCategories
-                  .filter(category => {
-                    console.log('카테고리 필터링:', category.name, category.transactionType, '현재 타입:', formData.transactionType)
-                    return category.transactionType === formData.transactionType
-                  })
-                  .map(category => {
-                    // 계층형 텍스트 생성 (자산 카테고리 방식 참고)
-                    const levelIndent = '　'.repeat(category.level - 1) // 전각 공백으로 들여쓰기
-                    const hierarchySymbol = category.level > 1 ? (category.level === 2 ? '├─ ' : '└─ ') : ''
-                    const categoryIcon = category.icon ? `${category.icon} ` : ''
-                    const systemLabel = category.isDefault ? ' [시스템]' : ' [조직]'
-                    const displayText = `${levelIndent}${hierarchySymbol}${categoryIcon}${category.name}${systemLabel}`
-                    
-                    return (
-                      <SelectItem key={category.id}>
-                        {displayText}
-                      </SelectItem>
-                    )
-                  })}
-              </Select>
+                transactionType={formData.transactionType}
+                label="카테고리"
+                placeholder="카테고리를 선택하세요"
+                isRequired={true}
+              />
 
               <Input
                 label="금액"
@@ -624,34 +608,20 @@ export default function TransactionsPage() {
                 </SelectItem>
               </Select>
 
-              <Select
-                label="카테고리"
-                placeholder="카테고리를 선택하세요"
-                selectedKeys={editFormData.categoryId ? [editFormData.categoryId] : []}
-                onSelectionChange={(keys) =>
+              <HierarchicalCategorySelect
+                categories={transactionCategories}
+                selectedCategoryId={editFormData.categoryId}
+                onSelectionChange={(categoryId) =>
                   setEditFormData(prev => ({
                     ...prev,
-                    categoryId: Array.from(keys)[0] as string
+                    categoryId
                   }))
                 }
-              >
-                {transactionCategories
-                  .filter(category => category.transactionType === editFormData.transactionType)
-                  .map(category => {
-                    // 계층형 텍스트 생성 (자산 카테고리 방식 참고)
-                    const levelIndent = '　'.repeat(category.level - 1) // 전각 공백으로 들여쓰기
-                    const hierarchySymbol = category.level > 1 ? (category.level === 2 ? '├─ ' : '└─ ') : ''
-                    const categoryIcon = category.icon ? `${category.icon} ` : ''
-                    const systemLabel = category.isDefault ? ' [시스템]' : ' [조직]'
-                    const displayText = `${levelIndent}${hierarchySymbol}${categoryIcon}${category.name}${systemLabel}`
-                    
-                    return (
-                      <SelectItem key={category.id}>
-                        {displayText}
-                      </SelectItem>
-                    )
-                  })}
-              </Select>
+                transactionType={editFormData.transactionType}
+                label="카테고리"
+                placeholder="카테고리를 선택하세요"
+                isRequired={true}
+              />
 
               <Input
                 label="금액"

@@ -37,6 +37,8 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
+import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
+import { formatCategoryDisplay } from '@/lib/category-utils'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 type OrganizationMember =
@@ -1531,7 +1533,11 @@ export default function SettingsPage() {
                   )
                   .map(category => (
                     <SelectItem key={category.id}>
-                      {'  '.repeat(category.level - 1) + category.name}
+                      {formatCategoryDisplay(category, {
+                        showIcons: false,
+                        showHierarchySymbols: true,
+                        indentSize: 2
+                      })}
                     </SelectItem>
                   ))}
               </Select>
@@ -1614,7 +1620,11 @@ export default function SettingsPage() {
                   )
                   .map(category => (
                     <SelectItem key={category.id}>
-                      {'  '.repeat(category.level - 1) + category.name}
+                      {formatCategoryDisplay(category, {
+                        showIcons: false,
+                        showHierarchySymbols: true,
+                        indentSize: 2
+                      })}
                     </SelectItem>
                   ))}
               </Select>
