@@ -135,6 +135,7 @@ export default function SettingsPage() {
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | null>(null)
   
   // 초대 모달 상태
   const [inviteData, setInviteData] = useState({
@@ -277,6 +278,10 @@ export default function SettingsPage() {
       setOrganization(organization)
       setMembers(members || [])
       
+      // 현재 사용자의 역할 찾기
+      const currentUser = members?.find((member: OrganizationMember) => member.user_id === session.user.id)
+      setCurrentUserRole(currentUser?.role || null)
+      
       // 조직 편집 데이터 초기화
       setEditOrgData({
         name: organization?.name || '',
@@ -340,6 +345,12 @@ export default function SettingsPage() {
   }
 
   const handleInviteMember = async () => {
+    // 권한 검증
+    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
+      toast.error('멤버 초대 권한이 없습니다.')
+      return
+    }
+
     if (!orgId || !inviteData.email.trim()) {
       toast.error('이메일을 입력하세요.')
       return
@@ -523,6 +534,12 @@ export default function SettingsPage() {
   }
 
   const handleUpdateOrganization = async () => {
+    // 권한 검증
+    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
+      toast.error('조직 정보 수정 권한이 없습니다.')
+      return
+    }
+
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -567,6 +584,12 @@ export default function SettingsPage() {
   }
 
   const handleExportData = async () => {
+    // 권한 검증 - owner만 가능
+    if (!currentUserRole || currentUserRole !== 'owner') {
+      toast.error('데이터 내보내기 권한이 없습니다.')
+      return
+    }
+
     try {
       if (!orgId) {
         toast.error('조직을 선택하세요.')
@@ -609,6 +632,12 @@ export default function SettingsPage() {
   }
 
   const handleDeleteAccount = async () => {
+    // 권한 검증 - owner만 가능
+    if (!currentUserRole || currentUserRole !== 'owner') {
+      toast.error('계정 삭제 권한이 없습니다.')
+      return
+    }
+
     try {
       // 실제 구현에서는 계정 삭제 로직
       toast.success('계정 삭제 요청이 처리되었습니다.')
@@ -620,6 +649,12 @@ export default function SettingsPage() {
 
   // 카테고리 관련 함수들
   const handleCreateCategory = async () => {
+    // 권한 검증
+    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
+      toast.error('카테고리 생성 권한이 없습니다.')
+      return
+    }
+
     if (!categoryFormData.name.trim()) {
       toast.error('카테고리명을 입력하세요.')
       return
@@ -687,6 +722,12 @@ export default function SettingsPage() {
   }
 
   const handleUpdateCategory = async () => {
+    // 권한 검증
+    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
+      toast.error('카테고리 수정 권한이 없습니다.')
+      return
+    }
+
     if (!selectedCategory || !categoryFormData.name.trim()) {
       toast.error('카테고리명을 입력하세요.')
       return
@@ -736,6 +777,12 @@ export default function SettingsPage() {
   }
 
   const handleDeleteCategory = async () => {
+    // 권한 검증
+    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
+      toast.error('카테고리 삭제 권한이 없습니다.')
+      return
+    }
+
     if (!selectedCategory) return
 
     setCategoryLoading(true)
@@ -871,14 +918,15 @@ export default function SettingsPage() {
           </CardBody>
         </Card>
 
-        {/* 조직 설정 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Users className="w-5 h-5 text-green-600" />
-              <h2 className="text-lg font-semibold">조직 설정</h2>
-            </div>
-          </CardHeader>
+        {/* 조직 설정 - owner/admin만 접근 가능 */}
+        {currentUserRole && ['owner', 'admin'].includes(currentUserRole) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-green-600" />
+                <h2 className="text-lg font-semibold">조직 설정</h2>
+              </div>
+            </CardHeader>
           <CardBody>
             <div className="space-y-4">
               <div className="space-y-4">
@@ -1066,9 +1114,11 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        )}
 
-        {/* 카테고리 관리 */}
-        <Card>
+        {/* 카테고리 관리 - owner/admin만 접근 가능 */}
+        {currentUserRole && ['owner', 'admin'].includes(currentUserRole) && (
+          <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
               <Tag className="w-5 h-5 text-purple-600" />
@@ -1187,6 +1237,7 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        )}
 
         {/* 알림 설정 - 추후 구현 예정 */}
         {/*
@@ -1296,14 +1347,15 @@ export default function SettingsPage() {
         </Card>
         */}
 
-        {/* 데이터 관리 */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-red-600" />
-              <h2 className="text-lg font-semibold">데이터 관리</h2>
-            </div>
-          </CardHeader>
+        {/* 데이터 관리 - owner만 접근 가능 */}
+        {currentUserRole === 'owner' && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-red-600" />
+                <h2 className="text-lg font-semibold">데이터 관리</h2>
+              </div>
+            </CardHeader>
           <CardBody>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -1343,6 +1395,7 @@ export default function SettingsPage() {
             </div>
           </CardBody>
         </Card>
+        )}
       </div>
 
       {/* 계정 삭제 확인 모달 */}
