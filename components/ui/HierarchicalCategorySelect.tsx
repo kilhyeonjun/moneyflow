@@ -47,9 +47,36 @@ export default function HierarchicalCategorySelect({
   const selectedKeys = selectedCategoryId ? [selectedCategoryId] : []
 
   const handleSelectionChange = (keys: any) => {
-    const keyArray = Array.from(keys)
+    console.log('HierarchicalCategorySelect - 선택 변경:', keys)
+    console.log('keys의 타입:', typeof keys, 'instanceof Set:', keys instanceof Set)
+    
+    // keys가 Set인지 확인하고 적절히 처리
+    let keyArray: string[]
+    if (keys instanceof Set) {
+      keyArray = Array.from(keys) as string[]
+    } else if (Array.isArray(keys)) {
+      keyArray = keys as string[]
+    } else {
+      console.warn('예상하지 못한 keys 타입:', keys)
+      keyArray = []
+    }
+    
+    console.log('변환된 키 배열:', keyArray)
+    
     if (keyArray.length > 0) {
-      onSelectionChange(keyArray[0] as string)
+      const selectedId = keyArray[0] as string
+      console.log('선택된 카테고리 ID:', selectedId)
+      
+      // 유효한 ID인지 확인
+      if (selectedId && selectedId.trim() !== '') {
+        onSelectionChange(selectedId)
+      } else {
+        console.warn('빈 카테고리 ID 선택됨:', selectedId)
+        onSelectionChange('')
+      }
+    } else {
+      console.log('선택 해제됨')
+      onSelectionChange('')
     }
   }
 

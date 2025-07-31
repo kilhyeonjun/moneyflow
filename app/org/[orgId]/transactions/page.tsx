@@ -148,18 +148,51 @@ export default function TransactionsPage() {
   }
 
   const createTransaction = async () => {
-    if (!formData.amount || !formData.description || !formData.categoryId) {
-      toast.error('모든 필드를 입력해주세요.')
+    console.log('거래 생성 시도 - formData:', formData)
+    
+    // 상세한 폼 검증
+    const validationErrors = []
+    if (!formData.categoryId || formData.categoryId.trim() === '') {
+      validationErrors.push('카테고리를 선택해주세요.')
+    }
+    if (!formData.amount || formData.amount.trim() === '') {
+      validationErrors.push('금액을 입력해주세요.')
+    } else if (isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
+      validationErrors.push('올바른 금액을 입력해주세요.')
+    }
+    if (!formData.description || formData.description.trim() === '') {
+      validationErrors.push('설명을 입력해주세요.')
+    }
+    
+    if (validationErrors.length > 0) {
+      console.log('폼 검증 실패:', {
+        amount: formData.amount,
+        description: formData.description,
+        categoryId: formData.categoryId,
+        errors: validationErrors
+      })
+      toast.error(validationErrors.join(' '))
       return
     }
 
     setCreating(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      if (!session || !session.user) {
         router.push('/login')
         return
       }
+
+      const requestData = {
+        organizationId: orgId,
+        categoryId: formData.categoryId,
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        transactionDate: formData.transactionDate,
+        transactionType: formData.transactionType,
+        userId: session.user.id, // 누락된 userId 추가
+      }
+      console.log('API 요청 데이터:', requestData)
 
       const response = await fetch('/api/transactions', {
         method: 'POST',
@@ -167,18 +200,25 @@ export default function TransactionsPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          organizationId: orgId,
-          categoryId: formData.categoryId,
-          amount: parseFloat(formData.amount),
-          description: formData.description,
-          transactionDate: formData.transactionDate,
-          transactionType: formData.transactionType,
-        }),
+        body: JSON.stringify(requestData),
       })
 
+      console.log('응답 상태:', response.status, response.statusText)
+
       if (!response.ok) {
-        throw new Error('Failed to create transaction')
+        const errorText = await response.text()
+        console.log('오류 응답:', errorText)
+        let errorMessage = 'Failed to create transaction'
+        
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } catch (e) {
+          console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
+          errorMessage = errorText || errorMessage
+        }
+        
+        throw new Error(errorMessage)
       }
 
       toast.success('거래가 성공적으로 추가되었습니다!')
@@ -195,7 +235,24 @@ export default function TransactionsPage() {
       await loadTransactionsAndCategories(orgId)
     } catch (error) {
       console.error('거래 생성 실패:', error)
-      toast.error('거래 추가에 실패했습니다.')
+      
+      // 오류 메시지 파싱
+      let userMessage = '거래 추가에 실패했습니다.'
+      if (error instanceof Error) {
+        if (error.message.includes('categoryId')) {
+          userMessage = '선택한 카테고리에 문제가 있습니다. 다른 카테고리를 선택해 주세요.'
+        } else if (error.message.includes('amount')) {
+          userMessage = '금액 정보에 문제가 있습니다. 올바른 금액을 입력해 주세요.'
+        } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+          userMessage = '로그인이 필요합니다. 다시 로그인해 주세요.'
+        } else if (error.message.includes('Forbidden') || error.message.includes('403')) {
+          userMessage = '이 조직에서 거래를 추가할 권한이 없습니다.'
+        } else if (error.message !== 'Failed to create transaction') {
+          userMessage = error.message
+        }
+      }
+      
+      toast.error(userMessage)
     } finally {
       setCreating(false)
     }
@@ -216,15 +273,42 @@ export default function TransactionsPage() {
   }
 
   const updateTransaction = async () => {
-    if (!selectedTransaction || !editFormData.amount || !editFormData.description || !editFormData.categoryId) {
-      toast.error('모든 필드를 입력해주세요.')
+    if (!selectedTransaction) {
+      toast.error('수정할 거래를 선택해주세요.')
+      return
+    }
+
+    console.log('거래 수정 시도 - editFormData:', editFormData)
+    
+    // 상세한 폼 검증
+    const validationErrors = []
+    if (!editFormData.categoryId || editFormData.categoryId.trim() === '') {
+      validationErrors.push('카테고리를 선택해주세요.')
+    }
+    if (!editFormData.amount || editFormData.amount.trim() === '') {
+      validationErrors.push('금액을 입력해주세요.')
+    } else if (isNaN(parseFloat(editFormData.amount)) || parseFloat(editFormData.amount) <= 0) {
+      validationErrors.push('올바른 금액을 입력해주세요.')
+    }
+    if (!editFormData.description || editFormData.description.trim() === '') {
+      validationErrors.push('설명을 입력해주세요.')
+    }
+    
+    if (validationErrors.length > 0) {
+      console.log('폼 검증 실패:', {
+        amount: editFormData.amount,
+        description: editFormData.description,
+        categoryId: editFormData.categoryId,
+        errors: validationErrors
+      })
+      toast.error(validationErrors.join(' '))
       return
     }
 
     setUpdating(true)
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      if (!session || !session.user) {
         router.push('/login')
         return
       }
@@ -243,11 +327,26 @@ export default function TransactionsPage() {
           description: editFormData.description,
           transactionDate: editFormData.transactionDate,
           transactionType: editFormData.transactionType,
+          userId: session.user.id, // userId 추가
         }),
       })
 
+      console.log('응답 상태:', response.status, response.statusText)
+
       if (!response.ok) {
-        throw new Error('Failed to update transaction')
+        const errorText = await response.text()
+        console.log('오류 응답:', errorText)
+        let errorMessage = 'Failed to update transaction'
+        
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } catch (e) {
+          console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
+          errorMessage = errorText || errorMessage
+        }
+        
+        throw new Error(errorMessage)
       }
 
       toast.success('거래가 성공적으로 수정되었습니다!')
@@ -258,7 +357,24 @@ export default function TransactionsPage() {
       await loadTransactionsAndCategories(orgId)
     } catch (error) {
       console.error('거래 수정 실패:', error)
-      toast.error('거래 수정에 실패했습니다.')
+      
+      // 오류 메시지 파싱
+      let userMessage = '거래 수정에 실패했습니다.'
+      if (error instanceof Error) {
+        if (error.message.includes('categoryId')) {
+          userMessage = '선택한 카테고리에 문제가 있습니다. 다른 카테고리를 선택해 주세요.'
+        } else if (error.message.includes('amount')) {
+          userMessage = '금액 정보에 문제가 있습니다. 올바른 금액을 입력해 주세요.'
+        } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+          userMessage = '로그인이 필요합니다. 다시 로그인해 주세요.'
+        } else if (error.message.includes('Forbidden') || error.message.includes('403')) {
+          userMessage = '이 조직에서 거래를 수정할 권한이 없습니다.'
+        } else if (error.message !== 'Failed to update transaction') {
+          userMessage = error.message
+        }
+      }
+      
+      toast.error(userMessage)
     } finally {
       setUpdating(false)
     }
