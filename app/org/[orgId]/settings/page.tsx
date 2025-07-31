@@ -43,6 +43,7 @@ import { formatCategoryDisplay } from '@/lib/category-utils'
 import { getSettingsData, getOrganizationInvitations, updateUserProfile, resendInvitation } from '@/lib/server-actions/settings'
 import { getCategories, createCategory, updateCategory, deleteCategory, createDefaultCategories } from '@/lib/server-actions/categories'
 import { updateOrganization, createInvitation, cancelInvitation } from '@/lib/server-actions/organizations'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import type { Category, Organization, OrganizationMember } from '@/lib/types'
 
 interface UserProfile {
@@ -195,17 +196,9 @@ export default function SettingsPage() {
       setLoading(true)
       
       // 서버 액션으로 설정 데이터 로드
-      const result = await getSettingsData(orgId)
-      
-      if (!result.success || !result.data) {
-        console.error('설정 데이터 로드 실패:', result.error)
-        if (result.error?.includes('FORBIDDEN') || result.error?.includes('Unauthorized')) {
-          router.push('/login')
-        }
-        return
-      }
-
-      const { organization, members, userProfile, currentUserRole } = result.data
+      try {
+        const data = handleServerActionResult(await getSettingsData(orgId))
+        const { organization, members, userProfile, currentUserRole } = data
       
       // 상태 업데이트
       setOrganization(organization)
@@ -224,11 +217,18 @@ export default function SettingsPage() {
         description: organization?.description || '',
       })
       
-      // 카테고리와 초대 목록을 병렬로 로드
-      await Promise.all([
-        loadCategories(orgId),
-        (currentUserRole === 'admin' || currentUserRole === 'owner') ? loadInvitations(orgId) : Promise.resolve(),
-      ])
+        // 카테고리와 초대 목록을 병렬로 로드
+        await Promise.all([
+          loadCategories(orgId),
+          (currentUserRole === 'admin' || currentUserRole === 'owner') ? loadInvitations(orgId) : Promise.resolve(),
+        ])
+      } catch (error) {
+        if (error instanceof Error && error.message === 'FORBIDDEN') {
+          router.push('/login')
+          return
+        }
+        throw error // re-throw for Error Boundary
+      }
     } catch (error) {
       console.error('데이터 로드 실패:', error)
     } finally {
@@ -239,13 +239,8 @@ export default function SettingsPage() {
 
   const loadInvitations = async (organizationId: string) => {
     try {
-      const result = await getOrganizationInvitations(organizationId)
-      
-      if (result.success && result.data) {
-        setInvitations(result.data as Invitation[])
-      } else {
-        console.error('초대 목록 로드 실패:', result.error)
-      }
+      const data = handleServerActionResult(await getOrganizationInvitations(organizationId))
+      setInvitations(data as Invitation[])
     } catch (error) {
       console.error('초대 목록 로드 실패:', error)
     }
@@ -253,14 +248,8 @@ export default function SettingsPage() {
 
   const loadCategories = async (organizationId: string) => {
     try {
-      const result = await getCategories(organizationId)
-      
-      if (result.success && result.data) {
-        setCategories(result.data)
-      } else {
-        console.error('카테고리 로드 실패:', result.error)
-        toast.error('카테고리를 불러오는데 실패했습니다.')
-      }
+      const data = handleServerActionResult(await getCategories(organizationId))
+      setCategories(data)
     } catch (error) {
       console.error('카테고리 로드 실패:', error)
       toast.error('카테고리를 불러오는데 실패했습니다.')
@@ -290,15 +279,11 @@ export default function SettingsPage() {
       setInviting(true)
       
       // 서버 액션으로 초대 생성
-      const result = await createInvitation({
+      const data = handleServerActionResult(await createInvitation({
         organizationId: orgId,
         email: inviteData.email,
         role: inviteData.role,
-      })
-
-      if (!result.success) {
-        throw new Error(result.error || '초대 발송에 실패했습니다.')
-      }
+      }))
       
       toast.success('초대가 성공적으로 발송되었습니다!')
       
@@ -322,11 +307,7 @@ export default function SettingsPage() {
 
     try {
       // 서버 액션으로 초대 취소
-      const result = await cancelInvitation(invitationId, orgId)
-
-      if (!result.success) {
-        throw new Error(result.error || '초대 취소에 실패했습니다.')
-      }
+      const data = handleServerActionResult(await cancelInvitation(invitationId, orgId))
 
       toast.success('초대가 취소되었습니다.')
       
@@ -363,11 +344,7 @@ export default function SettingsPage() {
   const handleUpdateProfile = async () => {
     try {
       // 서버 액션으로 프로필 업데이트
-      const result = await updateUserProfile(editProfileData)
-
-      if (!result.success) {
-        throw new Error(result.error || '프로필 업데이트에 실패했습니다.')
-      }
+      const data = handleServerActionResult(await updateUserProfile(editProfileData))
 
       // UI 업데이트
       setUserProfile(prev => prev ? {
@@ -399,15 +376,11 @@ export default function SettingsPage() {
 
     try {
       // 서버 액션으로 조직 업데이트
-      const result = await updateOrganization({
+      const data = handleServerActionResult(await updateOrganization({
         id: orgId,
         name: editOrgData.name,
         description: editOrgData.description,
-      })
-
-      if (!result.success) {
-        throw new Error(result.error || '조직 정보 업데이트에 실패했습니다.')
-      }
+      }))
 
       // UI 업데이트
       setOrganization(prev => prev ? {
@@ -504,7 +477,7 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const result = await createCategory({
+      const data = handleServerActionResult(await createCategory({
         name: categoryFormData.name,
         transactionType: categoryFormData.transactionType,
         icon: categoryFormData.icon,
@@ -512,11 +485,7 @@ export default function SettingsPage() {
         parentId: categoryFormData.parentId || undefined,
         organizationId: orgId,
         level: 0, // Will be calculated by server action
-      })
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create category')
-      }
+      }))
 
       toast.success('카테고리가 성공적으로 생성되었습니다!')
       onCategoryModalClose()
@@ -564,18 +533,14 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const result = await updateCategory({
+      const data = handleServerActionResult(await updateCategory({
         id: selectedCategory.id,
         name: categoryFormData.name,
         icon: categoryFormData.icon,
         color: categoryFormData.color,
         parentId: categoryFormData.parentId || undefined,
         organizationId: orgId,
-      })
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to update category')
-      }
+      }))
 
       toast.success('카테고리가 성공적으로 수정되었습니다!')
       onEditCategoryModalClose()
@@ -602,11 +567,7 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const result = await deleteCategory(selectedCategory.id, orgId)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to delete category')
-      }
+      const data = handleServerActionResult(await deleteCategory(selectedCategory.id, orgId))
 
       toast.success('카테고리가 성공적으로 삭제되었습니다!')
       onDeleteCategoryModalClose()

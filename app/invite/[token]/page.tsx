@@ -25,6 +25,7 @@ import { createClient } from '@/lib/supabase'
 import { showToast } from '@/lib/utils/toast'
 import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingStates'
 import { getInvitationByToken, acceptInvitation } from '@/lib/server-actions/organizations'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 
 interface InvitationData {
   id: string
@@ -64,13 +65,7 @@ export default function InvitePage() {
       setLoading(true)
       setError(null)
 
-      const result = await getInvitationByToken(token)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to load invitation')
-      }
-
-      setInvitation(result.data || null)
+      setInvitation(handleServerActionResult(await getInvitationByToken(token)) || null)
     } catch (error: any) {
       console.error('초대 정보 로드 실패:', error)
       setError(error.message)
@@ -90,11 +85,7 @@ export default function InvitePage() {
       setProcessing(true)
 
       if (action === 'accept') {
-        const result = await acceptInvitation(token)
-
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to accept invitation')
-        }
+        const data = handleServerActionResult(await acceptInvitation(token))
 
         showToast.success('초대를 수락했습니다!')
         router.push('/organizations')

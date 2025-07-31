@@ -179,6 +179,48 @@ export async function createTransaction(formData: FormData) {
 - Server Actions are co-located with components when appropriate
 - Shared actions in `lib/actions.ts` for common operations
 
+### Error Handling Convention
+
+#### Client-Side Error Handling
+- **Throw Pattern**: All Server Action calls use `handleServerActionResult()` utility and throw errors
+- **Error Boundary**: Global Error Boundary catches and handles all errors
+- **No Try-Catch**: Avoid try-catch blocks in client components for Server Action calls
+- **UNAUTHORIZED**: Automatically redirects to `/login` via Error Boundary
+
+#### Error Handling Utility
+```typescript
+// Import in client components
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+
+// Usage pattern
+const data = handleServerActionResult(serverActionResult) // Throws on error
+```
+
+#### Server Action Results
+- **Success**: `{ success: true, data: T }`
+- **Error**: `{ success: false, error: string, message?: string }`
+- **UNAUTHORIZED**: Triggers automatic redirect to login
+- **FORBIDDEN**: Can be handled specifically in components if needed
+
+#### Implementation Pattern
+```typescript
+// ❌ Old pattern - avoid
+try {
+  const result = await serverAction()
+  if (!result.success) {
+    toast.error(result.error)
+    return
+  }
+  // handle success
+} catch (error) {
+  toast.error('Error occurred')
+}
+
+// ✅ New pattern - preferred
+const data = handleServerActionResult(await serverAction())
+// Error Boundary handles all error cases automatically
+```
+
 ### Testing & Development Notes
 - Test account: `admin@moneyflow.com` / `admin123`
 - UUID v7 provides chronological ordering and improved database performance

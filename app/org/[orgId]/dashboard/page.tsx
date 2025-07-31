@@ -17,6 +17,7 @@ import CategoryPieChart from '@/components/dashboard/CategoryPieChart'
 
 // Import server actions and types
 import { getDashboardData } from '@/lib/server-actions/dashboard'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import { transformTransactionForFrontend } from '@/lib/types'
 
 // Use the actual transformation type from server actions
@@ -58,42 +59,36 @@ export default function DashboardPage() {
   }, [orgId])
 
   const loadDashboardData = async (organizationId: string) => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      setLoading(true)
-      setError(null)
-      
       // Load dashboard data using server action
       const result = await getDashboardData(organizationId)
-
-      // Handle result from server action
-      if (!result.success) {
-        if (result.error === 'UNAUTHORIZED') {
-          router.push('/login')
-          return
-        }
-        if (result.error === 'FORBIDDEN') {
-          setError('이 조직에 접근할 권한이 없습니다.')
-          return
-        }
-        throw new Error(result.message || 'Failed to load dashboard data')
-      }
-
+      const data = handleServerActionResult(result)
+      
       if (process.env.NODE_ENV === 'development') {
-        console.log('로드된 대시보드 데이터:', result.data)
+        console.log('로드된 대시보드 데이터:', data)
       }
 
       // Set data from server action result
-      if (result.data) {
-        const { stats: dashboardStats, recentTransactions: recent, allTransactions: all } = result.data
+      if (data) {
+        const { stats: dashboardStats, recentTransactions: recent, allTransactions: all } = data
         setStats(dashboardStats)
         setRecentTransactions(recent)
         setAllTransactions(all)
       }
     } catch (error) {
       console.error('대시보드 데이터 처리 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '대시보드 데이터를 불러오는데 실패했습니다.'
-      setError(errorMessage)
-      toast.error(errorMessage)
+      
+      // Handle specific errors that should not go to Error Boundary
+      if (error instanceof Error && error.message === 'FORBIDDEN') {
+        setError('이 조직에 접근할 권한이 없습니다.')
+        return
+      }
+      
+      // Re-throw other errors to be handled by Error Boundary
+      throw error
     } finally {
       setLoading(false)
     }

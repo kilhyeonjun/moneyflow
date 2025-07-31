@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { getGoals, createGoal, updateGoal, deleteGoal } from '@/lib/server-actions/goals'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 // Import Prisma types directly
 import type { FinancialGoal } from '@prisma/client'
@@ -101,13 +102,7 @@ export default function GoalsPage() {
       }
 
       // 서버 액션으로 목표 로드
-      const result = await getGoals(organizationId)
-      
-      if (!result.success) {
-        throw new Error(result.error || '목표를 불러오는데 실패했습니다')
-      }
-
-      const goalsList = result.data || []
+      const goalsList = handleServerActionResult(await getGoals(organizationId)) || []
       
       // 새로 달성된 목표가 있는지 확인 (기존 로직 유지)
       const previousGoals = goals || []
@@ -174,13 +169,7 @@ export default function GoalsPage() {
         organizationId: orgId,
       }
 
-      const result = await createGoal(goalData)
-
-      if (!result.success) {
-        throw new Error(result.error || '목표 생성에 실패했습니다')
-      }
-
-      const goal = result.data
+      const goal = handleServerActionResult(await createGoal(goalData))
       
       // 새로 생성된 목표가 바로 달성된 경우 축하 메시지
       if (goal && goal.status === 'completed' && (Number(goal.currentAmount || 0) / Number(goal.targetAmount)) * 100 >= 100) {
@@ -249,13 +238,7 @@ export default function GoalsPage() {
         organizationId: orgId,
       }
 
-      const result = await updateGoal(goalData)
-
-      if (!result.success) {
-        throw new Error(result.error || '목표 수정에 실패했습니다')
-      }
-
-      const goal = result.data
+      const goal = handleServerActionResult(await updateGoal(goalData))
       
       // 수정된 목표가 달성된 경우 축하 메시지
       if (goal && goal.status === 'completed' && (Number(goal.currentAmount || 0) / Number(goal.targetAmount)) * 100 >= 100 && selectedGoal?.status !== 'completed') {
@@ -300,11 +283,7 @@ export default function GoalsPage() {
     setDeleting(true)
 
     try {
-      const result = await deleteGoal(selectedGoal.id, orgId)
-
-      if (!result.success) {
-        throw new Error(result.error || '목표 삭제에 실패했습니다')
-      }
+      const data = handleServerActionResult(await deleteGoal(selectedGoal.id, orgId))
 
       toast.success('목표가 성공적으로 삭제되었습니다!')
       setSelectedGoal(null)

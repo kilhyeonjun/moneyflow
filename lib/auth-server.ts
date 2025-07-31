@@ -59,7 +59,7 @@ export async function requireAuth() {
   const user = await getCurrentUser()
   
   if (!user) {
-    redirect('/login')
+    throw new Error(ServerActionError.UNAUTHORIZED)
   }
   
   return user
@@ -309,7 +309,7 @@ export async function withErrorHandling<T>(
     console.error('Server action error:', error)
     
     if (error instanceof Error) {
-      // Check if it's one of our known error types
+      // Check if it's one of our known error types (including UNAUTHORIZED)
       if (Object.values(ServerActionError).includes(error.message as ServerActionError)) {
         return createErrorResponse(error.message)
       }

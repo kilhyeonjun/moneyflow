@@ -35,6 +35,7 @@ import {
   createOrganization as createOrganizationAction,
 } from '@/lib/server-actions/organizations'
 import { createDefaultCategories } from '@/lib/server-actions/categories'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import type { UserOrganization } from '@/lib/types'
 
 interface ReceivedInvitation {
@@ -71,18 +72,11 @@ export default function OrganizationsPage() {
   }, [])
 
   const fetchOrganizations = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
       const result = await getUserOrganizations()
-      
-      if (result.success && result.data) {
-        setOrganizations(result.data)
-      } else {
-        throw new Error(result.error || '조직 목록을 불러오는데 실패했습니다')
-      }
-    } catch (error) {
-      console.error('조직 목록 조회 실패:', error)
-      toast.error('조직 목록을 불러오는데 실패했습니다.')
+      const organizations = handleServerActionResult(result)
+      setOrganizations(organizations)
     } finally {
       setLoading(false)
     }
@@ -98,24 +92,14 @@ export default function OrganizationsPage() {
         name: newOrgName.trim(),
         description: newOrgDescription.trim() || undefined,
       })
-
-      if (!orgResult.success || !orgResult.data) {
-        throw new Error(orgResult.error || '조직 생성에 실패했습니다')
-      }
-
-      const org = orgResult.data
+      
+      const org = handleServerActionResult(orgResult)
 
       // 기본 카테고리 생성
       try {
         const categoriesResult = await createDefaultCategories(org.id)
-        
-        if (!categoriesResult.success) {
-          console.error('기본 카테고리 생성 실패:', categoriesResult.error)
-          toast.error('조직은 생성되었지만 기본 카테고리 생성에 실패했습니다.')
-        } else {
-          console.log('기본 카테고리 생성 완료:', categoriesResult.data)
-          toast.success('조직이 성공적으로 생성되었습니다!')
-        }
+        handleServerActionResult(categoriesResult)
+        toast.success('조직이 성공적으로 생성되었습니다!')
       } catch (dataError) {
         console.error('기본 데이터 생성 실패:', dataError)
         toast.error('조직은 생성되었지만 기본 데이터 생성에 실패했습니다.')
@@ -129,17 +113,6 @@ export default function OrganizationsPage() {
       onClose()
       setNewOrgName('')
       setNewOrgDescription('')
-    } catch (error: any) {
-      console.error('조직 생성 실패:', error)
-      let errorMessage = '조직 생성에 실패했습니다.'
-      if (error?.message?.includes('duplicate')) {
-        errorMessage = '이미 존재하는 조직명입니다.'
-      } else if (error?.message?.includes('permission')) {
-        errorMessage = '조직 생성 권한이 없습니다.'
-      } else if (error?.message?.includes('network')) {
-        errorMessage = '네트워크 연결을 확인해주세요.'
-      }
-      toast.error(errorMessage)
     } finally {
       setCreating(false)
     }

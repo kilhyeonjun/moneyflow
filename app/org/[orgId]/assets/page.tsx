@@ -50,6 +50,7 @@ import {
   updateLiability,
   deleteLiability,
 } from '@/lib/server-actions/assets'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 
 // Prisma 타입 import
@@ -150,13 +151,8 @@ export default function AssetsPage() {
       }
 
       // 서버 액션으로 모든 자산 데이터 한 번에 로드
-      const result = await getAssetData(orgId)
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || '자산 데이터를 불러오는데 실패했습니다')
-      }
-
-      const { assetCategories, assets, liabilities, summary } = result.data
+      const data = handleServerActionResult(await getAssetData(orgId))
+      const { assetCategories, assets, liabilities, summary } = data
 
       // 카테고리가 없으면 기본 카테고리 생성
       if (!assetCategories || assetCategories.length === 0) {
@@ -186,13 +182,9 @@ export default function AssetsPage() {
 
   const createDefaultCategories = async (orgId: string) => {
     try {
-      const result = await createDefaultAssetCategories(orgId)
+      const data = handleServerActionResult(await createDefaultAssetCategories(orgId))
       
-      if (!result.success) {
-        throw new Error(result.error || '기본 카테고리 생성에 실패했습니다')
-      }
-      
-      console.log('초기 데이터 생성 완료:', result)
+      console.log('초기 데이터 생성 완료:', data)
       toast.success('기본 카테고리가 생성되었습니다!')
     } catch (error) {
       console.error('기본 카테고리 생성 실패:', error)
@@ -237,11 +229,7 @@ export default function AssetsPage() {
         organizationId: orgId,
       }
 
-      const result = await createAsset(assetData)
-
-      if (!result.success) {
-        throw new Error(result.error || '자산 생성에 실패했습니다')
-      }
+      const data = handleServerActionResult(await createAsset(assetData))
 
       toast.success('자산이 성공적으로 추가되었습니다! 🎉')
 
@@ -312,11 +300,7 @@ export default function AssetsPage() {
         organizationId: orgId,
       }
 
-      const result = await updateAsset(assetData)
-
-      if (!result.success) {
-        throw new Error(result.error || '자산 수정에 실패했습니다')
-      }
+      const data = handleServerActionResult(await updateAsset(assetData))
 
       toast.success('자산이 성공적으로 수정되었습니다! ✅')
 
@@ -349,11 +333,7 @@ export default function AssetsPage() {
     setDeleting(true)
 
     try {
-      const result = await deleteAsset(selectedAsset.id, orgId)
-
-      if (!result.success) {
-        throw new Error(result.error || '자산 삭제에 실패했습니다')
-      }
+      const data = handleServerActionResult(await deleteAsset(selectedAsset.id, orgId))
 
       toast.success('자산이 성공적으로 삭제되었습니다! 🗑️')
 

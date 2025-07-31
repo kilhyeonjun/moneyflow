@@ -38,6 +38,7 @@ import {
 import { Calendar, TrendingUp, TrendingDown, DollarSign, RefreshCw } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { getAnalyticsData } from '@/lib/server-actions/analytics'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 
 interface MonthlyData {
@@ -142,18 +143,12 @@ export default function AnalyticsPage() {
       }
 
       // 서버 액션으로 분석 데이터 로드
-      const result = await getAnalyticsData({
+      const data = handleServerActionResult(await getAnalyticsData({
         organizationId: orgId,
         period,
         year: selectedYear,
         month: period === 'monthly' ? selectedMonth : undefined,
-      })
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error || '분석 데이터를 불러오는데 실패했습니다')
-      }
-
-      const data = result.data
+      }))
       setAnalyticsData(data)
 
       if (period === 'monthly') {

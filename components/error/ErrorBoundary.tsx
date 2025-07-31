@@ -29,6 +29,12 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    
+    // Handle UNAUTHORIZED error by redirecting to login
+    if (error.message === 'UNAUTHORIZED' || error instanceof UnauthorizedError) {
+      window.location.href = '/login'
+      return
+    }
   }
 
   resetError = () => {
@@ -99,4 +105,29 @@ export function useErrorHandler() {
   }, [])
 
   return { handleError }
+}
+
+// UNAUTHORIZED 에러를 위한 전역 에러 핸들러
+export class UnauthorizedError extends Error {
+  constructor(message = 'UNAUTHORIZED') {
+    super(message)
+    this.name = 'UnauthorizedError'
+  }
+}
+
+// Server Action 결과를 처리하는 유틸리티
+export function handleServerActionResult<T>(
+  result: { success: boolean; data?: T; error?: string }
+): T {
+  if (result.success && result.data) {
+    return result.data
+  }
+  
+  // UNAUTHORIZED 에러는 특별한 에러 클래스로 throw
+  if (result.error === 'UNAUTHORIZED') {
+    throw new UnauthorizedError()
+  }
+  
+  // 다른 에러들
+  throw new Error(result.error || '작업에 실패했습니다')
 }

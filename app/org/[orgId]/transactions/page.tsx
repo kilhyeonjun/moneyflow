@@ -55,6 +55,7 @@ import {
 import {
   getCategories,
 } from '@/lib/server-actions/categories'
+import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import type {
   CategoryWithHierarchy,
   TransactionCreateInput,
@@ -127,31 +128,24 @@ export default function TransactionsPage() {
         getCategories(organizationId),
       ])
 
-      // Handle transactions result
-      if (!transactionsResult.success) {
-        if (transactionsResult.error === 'UNAUTHORIZED') {
-          router.push('/login')
-          return
+      try {
+        const transactionsData = handleServerActionResult(transactionsResult)
+        const categoriesData = handleServerActionResult(categoriesResult)
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('로드된 거래 데이터:', transactionsData)
+          console.log('로드된 카테고리 데이터:', categoriesData)
         }
-        if (transactionsResult.error === 'FORBIDDEN') {
+        
+        setTransactions(transactionsData ? transactionsData.data : [])
+        setTransactionCategories(categoriesData || [])
+      } catch (error) {
+        if (error instanceof Error && error.message === 'FORBIDDEN') {
           setError('이 조직에 접근할 권한이 없습니다.')
           return
         }
-        throw new Error(transactionsResult.message || 'Failed to load transactions')
+        throw error // re-throw for Error Boundary
       }
-
-      // Handle categories result
-      if (!categoriesResult.success) {
-        throw new Error(categoriesResult.message || 'Failed to load categories')
-      }
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('로드된 거래 데이터:', transactionsResult.data)
-        console.log('로드된 카테고리 데이터:', categoriesResult.data)
-      }
-      
-      setTransactions(transactionsResult.data ? transactionsResult.data.data : [])
-      setTransactionCategories(categoriesResult.data || [])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
       const errorMessage = error instanceof Error ? error.message : '데이터를 불러오는데 실패했습니다.'
@@ -201,32 +195,28 @@ export default function TransactionsPage() {
         console.log('Server action 요청 데이터:', requestData)
       }
 
-      const result = await createTransaction(requestData)
-
-      if (!result.success) {
-        if (result.error === 'UNAUTHORIZED') {
-          router.push('/login')
-          return
-        }
-        if (result.error === 'FORBIDDEN') {
+      try {
+        const data = handleServerActionResult(await createTransaction(requestData))
+        
+        toast.success('거래가 성공적으로 추가되었습니다!')
+        onClose()
+        setFormData({
+          categoryId: '',
+          amount: '',
+          description: '',
+          transactionDate: new Date().toISOString().split('T')[0],
+          transactionType: 'expense',
+        })
+        
+        // 거래 목록 새로고침
+        await loadTransactionsAndCategories(orgId)
+      } catch (error) {
+        if (error instanceof Error && error.message === 'FORBIDDEN') {
           toast.error('이 조직에서 거래를 추가할 권한이 없습니다.')
           return
         }
-        throw new Error(result.message || 'Failed to create transaction')
+        throw error // re-throw for Error Boundary
       }
-
-      toast.success('거래가 성공적으로 추가되었습니다!')
-      onClose()
-      setFormData({
-        categoryId: '',
-        amount: '',
-        description: '',
-        transactionDate: new Date().toISOString().split('T')[0],
-        transactionType: 'expense',
-      })
-      
-      // 거래 목록 새로고침
-      await loadTransactionsAndCategories(orgId)
     } catch (error) {
       console.error('거래 생성 실패:', error)
       
@@ -296,26 +286,22 @@ export default function TransactionsPage() {
         console.log('Server action 수정 요청 데이터:', requestData)
       }
 
-      const result = await updateTransaction(requestData)
-
-      if (!result.success) {
-        if (result.error === 'UNAUTHORIZED') {
-          router.push('/login')
-          return
-        }
-        if (result.error === 'FORBIDDEN') {
+      try {
+        const data = handleServerActionResult(await updateTransaction(requestData))
+        
+        toast.success('거래가 성공적으로 수정되었습니다!')
+        onEditClose()
+        setSelectedTransaction(null)
+        
+        // 거래 목록 새로고침
+        await loadTransactionsAndCategories(orgId)
+      } catch (error) {
+        if (error instanceof Error && error.message === 'FORBIDDEN') {
           toast.error('이 조직에서 거래를 수정할 권한이 없습니다.')
           return
         }
-        throw new Error(result.message || 'Failed to update transaction')
+        throw error // re-throw for Error Boundary
       }
-
-      toast.success('거래가 성공적으로 수정되었습니다!')
-      onEditClose()
-      setSelectedTransaction(null)
-      
-      // 거래 목록 새로고침
-      await loadTransactionsAndCategories(orgId)
     } catch (error) {
       console.error('거래 수정 실패:', error)
       
@@ -335,30 +321,26 @@ export default function TransactionsPage() {
         console.log('거래 삭제 시도 - transaction:', selectedTransaction.id)
       }
 
-      const result = await deleteTransaction(selectedTransaction.id, orgId)
-
-      if (!result.success) {
-        if (result.error === 'UNAUTHORIZED') {
-          router.push('/login')
+      try {
+        const data = handleServerActionResult(await deleteTransaction(selectedTransaction.id, orgId))
+        
+        toast.success('거래가 성공적으로 삭제되었습니다!')
+        onDeleteClose()
+        setSelectedTransaction(null)
+        
+        // 거래 목록 새로고침
+        await loadTransactionsAndCategories(orgId)
+      } catch (error) {
+        if (error instanceof Error && (error.message === 'FORBIDDEN' || error.message === 'NOT_FOUND')) {
+          if (error.message === 'FORBIDDEN') {
+            toast.error('이 거래를 삭제할 권한이 없습니다.')
+          } else {
+            toast.error('삭제하려는 거래를 찾을 수 없습니다.')
+          }
           return
         }
-        if (result.error === 'FORBIDDEN') {
-          toast.error('이 거래를 삭제할 권한이 없습니다.')
-          return
-        }
-        if (result.error === 'NOT_FOUND') {
-          toast.error('삭제하려는 거래를 찾을 수 없습니다.')
-          return
-        }
-        throw new Error(result.message || 'Failed to delete transaction')
+        throw error // re-throw for Error Boundary
       }
-
-      toast.success('거래가 성공적으로 삭제되었습니다!')
-      onDeleteClose()
-      setSelectedTransaction(null)
-      
-      // 거래 목록 새로고침
-      await loadTransactionsAndCategories(orgId)
     } catch (error) {
       console.error('거래 삭제 실패:', error)
       
