@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   Card,
   CardBody,
@@ -45,6 +45,9 @@ const goalTypes = [
 
 export default function GoalsPage() {
   const router = useRouter()
+  const params = useParams()
+  const orgId = params?.orgId as string
+
   const { isOpen, onOpen, onClose } = useDisclosure()
   const {
     isOpen: isEditOpen,
@@ -58,7 +61,6 @@ export default function GoalsPage() {
   } = useDisclosure()
 
   const [loading, setLoading] = useState(true)
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -73,29 +75,15 @@ export default function GoalsPage() {
   })
 
   useEffect(() => {
-    checkOrganizationAndLoadData()
-  }, [])
-
-  const checkOrganizationAndLoadData = async () => {
-    try {
-      const storedOrgId = localStorage.getItem('selectedOrganization')
-
-      if (!storedOrgId) {
-        router.push('/organizations')
-        return
-      }
-
-      setSelectedOrgId(storedOrgId)
-      await loadGoals(storedOrgId)
-    } catch (error) {
-      console.error('데이터 로드 실패:', error)
-    } finally {
-      setLoading(false)
+    if (orgId) {
+      loadGoals(orgId)
     }
-  }
+  }, [orgId])
 
-  const loadGoals = async (orgId: string) => {
+  const loadGoals = async (organizationId: string) => {
     try {
+      setLoading(true)
+
       // Supabase Auth 토큰 가져오기
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -105,7 +93,7 @@ export default function GoalsPage() {
       }
 
       // API 경로를 통해 목표 로드
-      const response = await fetch(`/api/financial-goals?organizationId=${orgId}`, {
+      const response = await fetch(`/api/financial-goals?organizationId=${organizationId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -149,12 +137,14 @@ export default function GoalsPage() {
       console.error('목표 로드 실패:', error)
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
       toast.error(`목표 로드 실패: ${errorMessage}`)
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleCreateGoal = async () => {
     if (
-      !selectedOrgId ||
+      !orgId ||
       !formData.title ||
       !formData.type ||
       !formData.targetAmount ||
@@ -181,7 +171,7 @@ export default function GoalsPage() {
         type: formData.type,
         target_amount: parseFloat(formData.targetAmount),
         target_date: formData.targetDate,
-        organization_id: selectedOrgId,
+        organization_id: orgId,
       }
 
       const response = await fetch('/api/financial-goals', {
@@ -224,7 +214,7 @@ export default function GoalsPage() {
         targetDate: '',
       })
       onClose()
-      await loadGoals(selectedOrgId)
+      await loadGoals(orgId)
     } catch (error) {
       console.error('목표 생성 중 오류:', error)
       toast.error('목표 생성 중 오류가 발생했습니다.')
@@ -247,7 +237,7 @@ export default function GoalsPage() {
   const handleUpdateGoal = async () => {
     if (
       !selectedGoal ||
-      !selectedOrgId ||
+      !orgId ||
       !formData.title ||
       !formData.type ||
       !formData.targetAmount ||
@@ -317,7 +307,7 @@ export default function GoalsPage() {
       })
       setSelectedGoal(null)
       onEditClose()
-      await loadGoals(selectedOrgId)
+      await loadGoals(orgId)
     } catch (error) {
       console.error('목표 수정 중 오류:', error)
       toast.error('목표 수정 중 오류가 발생했습니다.')
@@ -332,7 +322,7 @@ export default function GoalsPage() {
   }
 
   const confirmDeleteGoal = async () => {
-    if (!selectedGoal || !selectedOrgId) return
+    if (!selectedGoal || !orgId) return
 
     setDeleting(true)
 
@@ -364,7 +354,7 @@ export default function GoalsPage() {
       toast.success('목표가 성공적으로 삭제되었습니다!')
       setSelectedGoal(null)
       onDeleteClose()
-      await loadGoals(selectedOrgId)
+      await loadGoals(orgId)
     } catch (error) {
       console.error('목표 삭제 중 오류:', error)
       toast.error('목표 삭제 중 오류가 발생했습니다.')

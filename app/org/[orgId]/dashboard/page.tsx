@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardHeader, CardBody, Button, Chip } from '@heroui/react'
 import {
   TrendingUp,
@@ -31,11 +31,12 @@ interface DashboardStats {
   previousMonthSavings: number
 }
 
-
 export default function DashboardPage() {
   const router = useRouter()
+  const params = useParams()
+  const orgId = params?.orgId as string
+  
   const [loading, setLoading] = useState(true)
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
     monthlyIncome: 0,
     monthlyExpense: 0,
@@ -45,35 +46,19 @@ export default function DashboardPage() {
     previousMonthExpense: 0,
     previousMonthSavings: 0,
   })
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
-    []
-  )
+  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
 
   useEffect(() => {
-    checkOrganizationAndLoadData()
-  }, [])
-
-  const checkOrganizationAndLoadData = async () => {
-    try {
-      const storedOrgId = localStorage.getItem('selectedOrganization')
-
-      if (!storedOrgId) {
-        router.push('/organizations')
-        return
-      }
-
-      setSelectedOrgId(storedOrgId)
-      await loadDashboardData(storedOrgId)
-    } catch (error) {
-      console.error('대시보드 데이터 로드 실패:', error)
-    } finally {
-      setLoading(false)
+    if (orgId) {
+      loadDashboardData(orgId)
     }
-  }
+  }, [orgId])
 
-  const loadDashboardData = async (orgId: string) => {
+  const loadDashboardData = async (organizationId: string) => {
     try {
+      setLoading(true)
+      
       // Supabase Auth 토큰 가져오기
       const { data: { session } } = await supabase.auth.getSession()
       
@@ -83,7 +68,7 @@ export default function DashboardPage() {
       }
 
       // API 경로를 통해 거래 내역 로드
-      const response = await fetch(`/api/dashboard?organizationId=${orgId}`, {
+      const response = await fetch(`/api/dashboard?organizationId=${organizationId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -174,6 +159,8 @@ export default function DashboardPage() {
       })
     } catch (error) {
       console.error('대시보드 데이터 처리 실패:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -197,7 +184,6 @@ export default function DashboardPage() {
     return change > 0 ? 'text-green-500' : 'text-red-500'
   }
 
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -220,7 +206,7 @@ export default function DashboardPage() {
         <Button
           color="primary"
           startContent={<Plus className="w-4 h-4" />}
-          onPress={() => router.push('/transactions')}
+          onPress={() => router.push(`/org/${orgId}/transactions`)}
         >
           거래 추가
         </Button>
@@ -366,7 +352,6 @@ export default function DashboardPage() {
         <CategoryPieChart transactions={allTransactions} type="expense" />
       </div>
 
-
       {/* 최근 거래 내역 */}
       <Card>
         <CardHeader>
@@ -375,7 +360,7 @@ export default function DashboardPage() {
             <Button
               size="sm"
               variant="light"
-              onPress={() => router.push('/transactions')}
+              onPress={() => router.push(`/org/${orgId}/transactions`)}
             >
               전체 보기
             </Button>
@@ -391,7 +376,7 @@ export default function DashboardPage() {
               <p className="text-gray-500 mb-4">첫 번째 거래를 추가해보세요!</p>
               <Button
                 color="primary"
-                onPress={() => router.push('/transactions')}
+                onPress={() => router.push(`/org/${orgId}/transactions`)}
               >
                 거래 추가하기
               </Button>

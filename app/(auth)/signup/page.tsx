@@ -33,9 +33,9 @@ export default function SignupPage() {
             localStorage.removeItem('selectedOrganization')
           }
         } else if (session) {
-          // 이미 로그인된 경우 대시보드로 리다이렉트
-          console.log('이미 로그인됨, 대시보드로 이동')
-          router.push('/dashboard')
+          // 이미 로그인된 경우 조직 선택 페이지로 리다이렉트
+          console.log('이미 로그인됨, 조직 선택 페이지로 이동')
+          router.push('/organizations')
         }
       } catch (err) {
         // 토큰 관련 오류 발생 시 강제 로그아웃
@@ -54,8 +54,8 @@ export default function SignupPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        // 로그인 성공 시 대시보드로 이동
-        router.push('/dashboard')
+        // 로그인 성공 시 조직 선택 페이지로 이동
+        router.push('/organizations')
       } else if (event === 'SIGNED_OUT') {
         // 로그아웃 시 localStorage 정리
         if (typeof window !== 'undefined') {

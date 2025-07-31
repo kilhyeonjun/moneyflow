@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   Card,
   CardBody,
@@ -81,6 +81,9 @@ interface Invitation {
 
 export default function SettingsPage() {
   const router = useRouter()
+  const params = useParams()
+  const orgId = params?.orgId as string
+
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { 
     isOpen: isInviteModalOpen, 
@@ -89,7 +92,6 @@ export default function SettingsPage() {
   } = useDisclosure()
   
   const [loading, setLoading] = useState(true)
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [members, setMembers] = useState<OrganizationMember[]>([])
@@ -137,9 +139,11 @@ export default function SettingsPage() {
   })
 
   useEffect(() => {
-    checkOrganizationAndLoadData()
+    if (orgId) {
+      loadSettingsData()
+    }
     // loadUserSettings() - 추후 구현 예정
-  }, [])
+  }, [orgId])
 
   // const loadUserSettings = () => {
   //   try {
@@ -152,19 +156,13 @@ export default function SettingsPage() {
   //   }
   // }
 
-  const checkOrganizationAndLoadData = async () => {
+  const loadSettingsData = async () => {
     try {
-      const storedOrgId = localStorage.getItem('selectedOrganization')
-
-      if (!storedOrgId) {
-        router.push('/organizations')
-        return
-      }
-
-      setSelectedOrgId(storedOrgId)
+      setLoading(true)
+      
       await Promise.all([
         loadUserProfile(),
-        loadOrganization(storedOrgId),
+        loadOrganization(orgId),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -198,7 +196,7 @@ export default function SettingsPage() {
     }
   }
 
-  const loadOrganization = async (orgId: string) => {
+  const loadOrganization = async (organizationId: string) => {
     try {
       // Supabase Auth 토큰 가져오기
       const { data: { session } } = await supabase.auth.getSession()
@@ -209,7 +207,7 @@ export default function SettingsPage() {
       }
 
       // API 경로를 통해 조직 및 멤버 데이터 로드
-      const response = await fetch(`/api/settings?organizationId=${orgId}`, {
+      const response = await fetch(`/api/settings?organizationId=${organizationId}`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -234,7 +232,7 @@ export default function SettingsPage() {
       })
       
       // 초대 목록도 함께 로드
-      await loadInvitations(orgId, session)
+      await loadInvitations(organizationId, session)
     } catch (error) {
       console.error('설정 데이터 로드 실패:', error)
     }
@@ -245,9 +243,9 @@ export default function SettingsPage() {
     // 호환성을 위해 빈 함수로 유지
   }
 
-  const loadInvitations = async (orgId: string, session: any) => {
+  const loadInvitations = async (organizationId: string, session: any) => {
     try {
-      const response = await fetch(`/api/organizations/${orgId}/invitations`, {
+      const response = await fetch(`/api/organizations/${organizationId}/invitations`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
         },
@@ -263,7 +261,7 @@ export default function SettingsPage() {
   }
 
   const handleInviteMember = async () => {
-    if (!selectedOrgId || !inviteData.email.trim()) {
+    if (!orgId || !inviteData.email.trim()) {
       toast.error('이메일을 입력하세요.')
       return
     }
@@ -285,7 +283,7 @@ export default function SettingsPage() {
         return
       }
 
-      const response = await fetch(`/api/organizations/${selectedOrgId}/invitations`, {
+      const response = await fetch(`/api/organizations/${orgId}/invitations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -331,7 +329,7 @@ export default function SettingsPage() {
       toast.success('초대가 성공적으로 발송되었습니다!')
       
       // 초대 목록 새로고침
-      await loadInvitations(selectedOrgId, session)
+      await loadInvitations(orgId, session)
       
       // 모달 닫기 및 폼 초기화
       setInviteData({ email: '', role: 'member' })
@@ -346,7 +344,7 @@ export default function SettingsPage() {
   }
 
   const handleCancelInvitation = async (invitationId: string) => {
-    if (!selectedOrgId) return
+    if (!orgId) return
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -357,7 +355,7 @@ export default function SettingsPage() {
       }
 
       const response = await fetch(
-        `/api/organizations/${selectedOrgId}/invitations?invitationId=${invitationId}`,
+        `/api/organizations/${orgId}/invitations?invitationId=${invitationId}`,
         {
           method: 'DELETE',
           headers: {
@@ -373,7 +371,7 @@ export default function SettingsPage() {
       toast.success('초대가 취소되었습니다.')
       
       // 초대 목록 새로고침
-      await loadInvitations(selectedOrgId, session)
+      await loadInvitations(orgId, session)
       
     } catch (error: any) {
       console.error('초대 취소 실패:', error)
@@ -449,7 +447,7 @@ export default function SettingsPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       
-      if (!session || !selectedOrgId) {
+      if (!session || !orgId) {
         toast.error('권한이 없습니다.')
         return
       }
@@ -463,7 +461,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           type: 'organization',
           data: {
-            organizationId: selectedOrgId,
+            organizationId: orgId,
             name: editOrgData.name,
             description: editOrgData.description,
           },
@@ -491,7 +489,7 @@ export default function SettingsPage() {
 
   const handleExportData = async () => {
     try {
-      if (!selectedOrgId) {
+      if (!orgId) {
         toast.error('조직을 선택하세요.')
         return
       }

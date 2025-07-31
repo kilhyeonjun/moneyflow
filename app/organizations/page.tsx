@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Button,
   Card,
@@ -58,6 +59,7 @@ export default function OrganizationsPage() {
   const [invitationsLoading, setInvitationsLoading] = useState(false)
   const [processingInvitation, setProcessingInvitation] = useState<string | null>(null)
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const router = useRouter()
 
   useEffect(() => {
     fetchOrganizations()
@@ -273,9 +275,8 @@ export default function OrganizationsPage() {
   }
 
   const selectOrganization = (orgId: string) => {
-    // 조직 선택 후 대시보드로 이동
-    localStorage.setItem('selectedOrganization', orgId)
-    window.location.href = '/dashboard'
+    // 새로운 URL 구조로 이동
+    router.push(`/org/${orgId}/dashboard`)
   }
 
   if (loading) {
@@ -459,7 +460,8 @@ export default function OrganizationsPage() {
               </Card>
             ))}
           </div>
-        )}{' '}
+        )}
+
         {/* 조직 생성 모달 */}
         <Modal isOpen={isOpen} onClose={onClose} size="md">
           <ModalContent>
@@ -496,6 +498,7 @@ export default function OrganizationsPage() {
             </ModalFooter>
           </ModalContent>
         </Modal>
+
         {/* Toast 알림 */}
         <Toaster
           position="top-right"

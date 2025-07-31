@@ -24,28 +24,37 @@ import {
   Check,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
 
-type Organization = Database['public']['Tables']['organizations']['Row']
+type Organization = {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+}
 
 type DropdownMenuItemType = Organization | { id: 'manage'; name: '조직 관리' }
 
-const navigation = [
-  { name: '대시보드', href: '/dashboard', icon: Home },
-  { name: '거래 관리', href: '/transactions', icon: CreditCard },
-  { name: '자산 관리', href: '/assets', icon: Wallet },
-  { name: '재정 목표', href: '/goals', icon: Target },
-  { name: '통계 분석', href: '/analytics', icon: BarChart3 },
-  { name: '설정', href: '/settings', icon: Settings },
-]
+interface SidebarProps {
+  currentOrg?: Organization | null
+  orgId: string
+}
 
-export function Sidebar() {
+export function Sidebar({ currentOrg, orgId }: SidebarProps) {
   const [isMounted, setIsMounted] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [currentOrg, setCurrentOrg] = useState<Organization | null>(null)
   const [userOrgs, setUserOrgs] = useState<Organization[]>([])
   const pathname = usePathname()
   const router = useRouter()
+
+  // URL 기반 네비게이션 메뉴
+  const navigation = [
+    { name: '대시보드', href: `/org/${orgId}/dashboard`, icon: Home },
+    { name: '거래 관리', href: `/org/${orgId}/transactions`, icon: CreditCard },
+    { name: '자산 관리', href: `/org/${orgId}/assets`, icon: Wallet },
+    { name: '재정 목표', href: `/org/${orgId}/goals`, icon: Target },
+    { name: '통계 분석', href: `/org/${orgId}/analytics`, icon: BarChart3 },
+    { name: '설정', href: `/org/${orgId}/settings`, icon: Settings },
+  ]
 
   useEffect(() => {
     setIsMounted(true)
@@ -53,95 +62,9 @@ export function Sidebar() {
 
   useEffect(() => {
     if (isMounted) {
-      loadCurrentOrganization()
       loadUserOrganizations()
     }
   }, [isMounted])
-
-  const loadCurrentOrganization = async () => {
-    if (typeof window === 'undefined') return
-
-    const selectedOrgId = localStorage.getItem('selectedOrganization')
-    
-    if (!selectedOrgId) {
-      // 선택된 조직이 없으면 사용자 조직 목록을 먼저 로드하고 첫 번째 조직을 선택
-      await loadUserOrganizations()
-      return
-    }
-
-    try {
-      // 현재 사용자 정보 가져오기
-      const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser()
-      
-      if (userError || !user) {
-        console.error('사용자 정보를 가져올 수 없습니다:', userError)
-        localStorage.removeItem('selectedOrganization')
-        return
-      }
-
-      // API를 통해 사용자가 속한 조직인지 확인하며 조직 정보 가져오기
-      const response = await fetch(`/api/organizations/${selectedOrgId}/check-membership?userId=${user.id}`)
-      
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('API error:', errorData)
-        console.warn('선택된 조직에 접근할 수 없습니다. 다른 조직을 선택합니다.')
-        localStorage.removeItem('selectedOrganization')
-        await loadUserOrganizations()
-        return
-      }
-
-      const orgData = await response.json()
-      setCurrentOrg(orgData)
-    } catch (error) {
-      console.error('현재 조직 정보 로드 실패:', error)
-      localStorage.removeItem('selectedOrganization')
-      await loadUserOrganizations()
-    }
-  }
-
-  const createDefaultOrganization = async (user: any) => {
-    try {
-      // 기본 조직 생성
-      const response = await fetch('/api/organizations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: '개인 가계부',
-          description: '개인 재정 관리를 위한 기본 조직입니다.',
-          createdBy: user.id,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('조직 생성 실패')
-      }
-
-      const newOrg = await response.json()
-
-      // 기본 데이터 생성 (카테고리, 결제수단 등)
-      const initResponse = await fetch(`/api/organizations/${newOrg.id}/initial-data`, {
-        method: 'POST',
-      })
-
-      if (!initResponse.ok) {
-        console.warn('기본 데이터 생성 실패, 조직은 생성되었습니다.')
-      }
-
-      // 조직 목록 다시 로드
-      await loadUserOrganizations()
-    } catch (error) {
-      console.error('기본 조직 생성 실패:', error)
-      // 조직 생성에 실패해도 앱은 계속 사용할 수 있도록 함
-      setCurrentOrg(null)
-      setUserOrgs([])
-    }
-  }
 
   const loadUserOrganizations = async () => {
     try {
@@ -175,52 +98,23 @@ export function Sidebar() {
       }))
       
       setUserOrgs(organizationList || [])
-
-      // 조직이 없는 경우 기본 조직 생성
-      if (!organizationList || organizationList.length === 0) {
-        console.info('사용자가 속한 조직이 없습니다. 기본 조직을 생성합니다.')
-        await createDefaultOrganization(user)
-        return
-      }
-
-      // 현재 선택된 조직이 없고 조직이 존재한다면 첫 번째 조직을 자동 선택
-      // 단, localStorage에 이미 선택된 조직이 있다면 자동 선택하지 않음
-      const selectedOrgId = typeof window !== 'undefined' ? localStorage.getItem('selectedOrganization') : null
-      if (!currentOrg && organizationList.length > 0 && !selectedOrgId && typeof window !== 'undefined') {
-        const firstOrg = organizationList[0]
-        localStorage.setItem('selectedOrganization', firstOrg.id)
-        setCurrentOrg(firstOrg)
-      }
     } catch (error) {
       console.error('사용자 조직 목록 로드 중 예상치 못한 오류:', error)
     }
   }
 
-  const switchOrganization = (orgId: string) => {
-    if (typeof window === 'undefined') return
-    
+  const switchOrganization = (newOrgId: string) => {
     // 현재 선택된 조직과 동일하면 아무것도 하지 않음
-    if (currentOrg?.id === orgId) {
+    if (orgId === newOrgId) {
       return
     }
     
-    // 선택할 조직 찾기
-    const selectedOrg = userOrgs.find(org => org.id === orgId)
-    if (selectedOrg) {
-      // 즉시 UI 상태 업데이트
-      setCurrentOrg(selectedOrg)
-    }
-    
-    // localStorage 업데이트 후 대시보드로 이동
-    localStorage.setItem('selectedOrganization', orgId)
-    window.location.href = '/dashboard'
+    // URL 기반 조직 전환 - 대시보드로 이동
+    router.push(`/org/${newOrgId}/dashboard`)
   }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('selectedOrganization')
-    }
     router.push('/login')
   }
 

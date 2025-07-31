@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   Card,
   CardBody,
@@ -89,9 +89,11 @@ interface AnalyticsData {
 
 export default function AnalyticsPage() {
   const router = useRouter()
+  const params = useParams()
+  const orgId = params?.orgId as string
+
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString())
   const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString())
   
@@ -103,35 +105,19 @@ export default function AnalyticsPage() {
   const [currentMonthData, setCurrentMonthData] = useState<MonthlyData | null>(null)
 
   useEffect(() => {
-    checkOrganizationAndLoadData()
-  }, [])
-
-  useEffect(() => {
-    if (selectedOrgId) {
+    if (orgId) {
       loadAnalyticsData('monthly')
     }
-  }, [selectedOrgId, selectedYear, selectedMonth])
+  }, [orgId])
 
-  const checkOrganizationAndLoadData = async () => {
-    try {
-      const storedOrgId = localStorage.getItem('selectedOrganization')
-
-      if (!storedOrgId) {
-        router.push('/organizations')
-        return
-      }
-
-      setSelectedOrgId(storedOrgId)
-    } catch (error) {
-      console.error('데이터 로드 실패:', error)
-      toast.error('데이터 로드 중 오류가 발생했습니다.')
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    if (orgId) {
+      loadAnalyticsData('monthly')
     }
-  }
+  }, [orgId, selectedYear, selectedMonth])
 
   const loadAnalyticsData = async (period: 'monthly' | 'yearly') => {
-    if (!selectedOrgId) return
+    if (!orgId) return
     
     try {
       setRefreshing(true)
@@ -146,7 +132,7 @@ export default function AnalyticsPage() {
 
       // API 파라미터 구성
       const params = new URLSearchParams({
-        organizationId: selectedOrgId,
+        organizationId: orgId,
         period,
         year: selectedYear,
       })
@@ -188,6 +174,7 @@ export default function AnalyticsPage() {
       toast.error(`분석 데이터 로드 실패: ${errorMessage}`)
     } finally {
       setRefreshing(false)
+      setLoading(false)
     }
   }
 

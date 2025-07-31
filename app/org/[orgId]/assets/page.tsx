@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import {
   Card,
   CardBody,
@@ -64,6 +64,9 @@ interface AssetSummary {
 
 export default function AssetsPage() {
   const router = useRouter()
+  const params = useParams()
+  const orgId = params?.orgId as string
+
   const { isOpen, onOpen, onClose } = useDisclosure()
   const {
     isOpen: isEditOpen,
@@ -79,7 +82,6 @@ export default function AssetsPage() {
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [selectedAsset, setSelectedAsset] = useState<AssetWithCategory | null>(
     null
   )
@@ -109,19 +111,14 @@ export default function AssetsPage() {
   const [liabilities, setLiabilities] = useState<Liability[]>([])
 
   useEffect(() => {
-    checkOrganizationAndLoadData()
-  }, [])
+    if (orgId) {
+      loadAssetData()
+    }
+  }, [orgId])
 
-  const checkOrganizationAndLoadData = async () => {
+  const loadAssetData = async () => {
     try {
-      const storedOrgId = localStorage.getItem('selectedOrganization')
-
-      if (!storedOrgId) {
-        router.push('/organizations')
-        return
-      }
-
-      setSelectedOrgId(storedOrgId)
+      setLoading(true)
 
       // 사용자 인증 상태 확인 (Supabase Auth 유지)
       const {
@@ -141,9 +138,9 @@ export default function AssetsPage() {
       }
 
       await Promise.all([
-        loadAssetCategories(storedOrgId),
-        loadAssets(storedOrgId),
-        loadLiabilities(storedOrgId),
+        loadAssetCategories(orgId),
+        loadAssets(orgId),
+        loadLiabilities(orgId),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -290,7 +287,7 @@ export default function AssetsPage() {
 
   const handleCreateAsset = async () => {
     if (
-      !selectedOrgId ||
+      !orgId ||
       !formData.name ||
       !formData.categoryId ||
       !formData.currentValue
@@ -316,7 +313,7 @@ export default function AssetsPage() {
         description: formData.description || null,
         categoryId: formData.categoryId,
         currentValue: parseFloat(formData.currentValue),
-        organizationId: selectedOrgId,
+        organizationId: orgId,
         createdBy: user.id,
       }
 
@@ -344,7 +341,7 @@ export default function AssetsPage() {
         currentValue: '',
       })
       onClose()
-      await loadAssets(selectedOrgId)
+      await loadAssets(orgId)
     } catch (error) {
       console.error('자산 생성 중 오류:', error)
 
@@ -371,7 +368,7 @@ export default function AssetsPage() {
   }
 
   const handleUpdateAsset = async () => {
-    if (!selectedAsset || !selectedOrgId) {
+    if (!selectedAsset || !orgId) {
       toast.error('선택된 자산이 없습니다.')
       return
     }
@@ -397,7 +394,7 @@ export default function AssetsPage() {
         targetValue: editFormData.targetValue
           ? parseFloat(editFormData.targetValue)
           : null,
-        organizationId: selectedOrgId,
+        organizationId: orgId,
       }
 
       const response = await fetch('/api/assets', {
@@ -416,7 +413,7 @@ export default function AssetsPage() {
       toast.success('자산이 성공적으로 수정되었습니다! ✅')
 
       onEditClose()
-      await loadAssets(selectedOrgId)
+      await loadAssets(orgId)
     } catch (error) {
       console.error('자산 수정 중 오류:', error)
 
@@ -436,7 +433,7 @@ export default function AssetsPage() {
   }
 
   const confirmDeleteAsset = async () => {
-    if (!selectedAsset || !selectedOrgId) {
+    if (!selectedAsset || !orgId) {
       toast.error('선택된 자산이 없습니다.')
       return
     }
@@ -445,7 +442,7 @@ export default function AssetsPage() {
 
     try {
       const response = await fetch(
-        `/api/assets?id=${selectedAsset.id}&organizationId=${selectedOrgId}`,
+        `/api/assets?id=${selectedAsset.id}&organizationId=${orgId}`,
         {
           method: 'DELETE',
         }
@@ -459,7 +456,7 @@ export default function AssetsPage() {
       toast.success('자산이 성공적으로 삭제되었습니다! 🗑️')
 
       onDeleteClose()
-      await loadAssets(selectedOrgId)
+      await loadAssets(orgId)
     } catch (error) {
       console.error('자산 삭제 중 오류:', error)
 
