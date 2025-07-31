@@ -29,12 +29,10 @@ import {
   Trash2,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
-
-type FinancialGoal = Database['public']['Tables']['financial_goals']['Row']
-type FinancialGoalInsert =
-  Database['public']['Tables']['financial_goals']['Insert']
+import { getGoals, createGoal, updateGoal, deleteGoal } from '@/lib/server-actions/goals'
+import { createClient } from '@/lib/supabase'
+// Import Prisma types directly
+import type { FinancialGoal } from '@prisma/client'
 
 const goalTypes = [
   { key: 'asset_growth', label: '자산 증가' },
@@ -84,45 +82,46 @@ export default function GoalsPage() {
     try {
       setLoading(true)
 
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
+      // 사용자 인증 상태 확인 (Supabase Auth 유지)
+      const supabase = createClient()
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      if (authError) {
+        toast.error('사용자 인증에 실패했습니다.')
+        return
+      }
+
+      if (!user) {
+        toast.error('로그인이 필요합니다.')
         router.push('/login')
         return
       }
 
-      // API 경로를 통해 목표 로드
-      const response = await fetch(`/api/financial-goals?organizationId=${organizationId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login')
-          return
-        }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+      // 서버 액션으로 목표 로드
+      const result = await getGoals(organizationId)
+      
+      if (!result.success) {
+        throw new Error(result.error || '목표를 불러오는데 실패했습니다')
       }
 
-      const { goals } = await response.json()
+      const goalsList = result.data || []
       
-      // 새로 달성된 목표가 있는지 확인
+      // 새로 달성된 목표가 있는지 확인 (기존 로직 유지)
       const previousGoals = goals || []
-      const newlyCompletedGoals = previousGoals.filter((goal: any) => 
+      const newlyCompletedGoals = goalsList.filter((goal: FinancialGoal) => 
         goal.status === 'completed' && 
-        goal.achievement_rate >= 100 &&
-        !goals?.find((existingGoal: any) => 
+        (Number(goal.currentAmount || 0) / Number(goal.targetAmount)) * 100 >= 100 &&
+        !previousGoals.find((existingGoal: FinancialGoal) => 
           existingGoal.id === goal.id && existingGoal.status === 'completed'
         )
       )
 
       // 달성 축하 메시지 표시
-      newlyCompletedGoals.forEach((goal: any) => {
-        toast.success(`🎉 축하합니다! "${goal.title}" 목표를 달성했습니다!`, {
+      newlyCompletedGoals.forEach((goal: FinancialGoal) => {
+        toast.success(`🎉 축하합니다! "${goal.name}" 목표를 달성했습니다!`, {
           duration: 6000,
           style: {
             background: '#10B981',
@@ -132,7 +131,7 @@ export default function GoalsPage() {
         })
       })
 
-      setGoals(goals || [])
+      setGoals(goalsList)
     } catch (error) {
       console.error('목표 로드 실패:', error)
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
@@ -157,45 +156,35 @@ export default function GoalsPage() {
     setCreating(true)
 
     try {
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
         toast.error('로그인이 필요합니다.')
-        router.push('/login')
         return
       }
 
       const goalData = {
-        title: formData.title,
-        type: formData.type,
-        target_amount: parseFloat(formData.targetAmount),
-        target_date: formData.targetDate,
-        organization_id: orgId,
+        name: formData.title,
+        category: formData.type,
+        targetAmount: parseFloat(formData.targetAmount),
+        targetDate: formData.targetDate,
+        organizationId: orgId,
       }
 
-      const response = await fetch('/api/financial-goals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(goalData),
-      })
+      const result = await createGoal(goalData)
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login')
-          return
-        }
-        throw new Error('Failed to create goal')
+      if (!result.success) {
+        throw new Error(result.error || '목표 생성에 실패했습니다')
       }
 
-      const { goal } = await response.json()
+      const goal = result.data
       
       // 새로 생성된 목표가 바로 달성된 경우 축하 메시지
-      if (goal.status === 'completed' && goal.achievement_rate >= 100) {
-        toast.success(`🎉 축하합니다! "${goal.title}" 목표를 바로 달성했습니다!`, {
+      if (goal && goal.status === 'completed' && (Number(goal.currentAmount || 0) / Number(goal.targetAmount)) * 100 >= 100) {
+        toast.success(`🎉 축하합니다! "${goal.name}" 목표를 바로 달성했습니다!`, {
           duration: 6000,
           style: {
             background: '#10B981',
@@ -217,7 +206,8 @@ export default function GoalsPage() {
       await loadGoals(orgId)
     } catch (error) {
       console.error('목표 생성 중 오류:', error)
-      toast.error('목표 생성 중 오류가 발생했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '목표 생성 중 오류가 발생했습니다.'
+      toast.error(errorMessage)
     } finally {
       setCreating(false)
     }
@@ -226,10 +216,10 @@ export default function GoalsPage() {
   const handleEditGoal = (goal: FinancialGoal) => {
     setSelectedGoal(goal)
     setFormData({
-      title: goal.title,
-      type: goal.type,
-      targetAmount: goal.target_amount.toString(),
-      targetDate: goal.target_date,
+      title: goal.name,
+      type: goal.category || 'asset_growth',
+      targetAmount: goal.targetAmount.toString(),
+      targetDate: goal.targetDate ? new Date(goal.targetDate).toISOString().split('T')[0] : '',
     })
     onEditOpen()
   }
@@ -250,44 +240,26 @@ export default function GoalsPage() {
     setUpdating(true)
 
     try {
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        router.push('/login')
-        return
-      }
-
       const goalData = {
-        title: formData.title,
-        type: formData.type,
-        target_amount: parseFloat(formData.targetAmount),
-        target_date: formData.targetDate,
+        id: selectedGoal.id,
+        name: formData.title,
+        category: formData.type,
+        targetAmount: parseFloat(formData.targetAmount),
+        targetDate: formData.targetDate,
+        organizationId: orgId,
       }
 
-      const response = await fetch(`/api/financial-goals/${selectedGoal.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(goalData),
-      })
+      const result = await updateGoal(goalData)
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login')
-          return
-        }
-        throw new Error('Failed to update goal')
+      if (!result.success) {
+        throw new Error(result.error || '목표 수정에 실패했습니다')
       }
 
-      const { goal } = await response.json()
+      const goal = result.data
       
       // 수정된 목표가 달성된 경우 축하 메시지
-      if (goal.status === 'completed' && goal.achievement_rate >= 100 && selectedGoal?.status !== 'completed') {
-        toast.success(`🎉 축하합니다! "${goal.title}" 목표를 달성했습니다!`, {
+      if (goal && goal.status === 'completed' && (Number(goal.currentAmount || 0) / Number(goal.targetAmount)) * 100 >= 100 && selectedGoal?.status !== 'completed') {
+        toast.success(`🎉 축하합니다! "${goal.name}" 목표를 달성했습니다!`, {
           duration: 6000,
           style: {
             background: '#10B981',
@@ -310,7 +282,8 @@ export default function GoalsPage() {
       await loadGoals(orgId)
     } catch (error) {
       console.error('목표 수정 중 오류:', error)
-      toast.error('목표 수정 중 오류가 발생했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '목표 수정 중 오류가 발생했습니다.'
+      toast.error(errorMessage)
     } finally {
       setUpdating(false)
     }
@@ -327,28 +300,10 @@ export default function GoalsPage() {
     setDeleting(true)
 
     try {
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        router.push('/login')
-        return
-      }
+      const result = await deleteGoal(selectedGoal.id, orgId)
 
-      const response = await fetch(`/api/financial-goals/${selectedGoal.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login')
-          return
-        }
-        throw new Error('Failed to delete goal')
+      if (!result.success) {
+        throw new Error(result.error || '목표 삭제에 실패했습니다')
       }
 
       toast.success('목표가 성공적으로 삭제되었습니다!')
@@ -357,7 +312,8 @@ export default function GoalsPage() {
       await loadGoals(orgId)
     } catch (error) {
       console.error('목표 삭제 중 오류:', error)
-      toast.error('목표 삭제 중 오류가 발생했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '목표 삭제 중 오류가 발생했습니다.'
+      toast.error(errorMessage)
     } finally {
       setDeleting(false)
     }
@@ -409,11 +365,11 @@ export default function GoalsPage() {
   }
 
   const getGoalProgress = (goal: FinancialGoal) => {
-    const achievementRate = goal.achievement_rate || 0
-    const currentAmount = goal.current_amount || 0
-    const targetAmount = goal.target_amount
+    const currentAmount = Number(goal.currentAmount || 0)
+    const targetAmount = Number(goal.targetAmount)
+    const achievementRate = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0
     const remainingAmount = Math.max(0, targetAmount - currentAmount)
-    const daysRemaining = getDaysRemaining(goal.target_date)
+    const daysRemaining = getDaysRemaining(goal.targetDate ? new Date(goal.targetDate).toISOString().split('T')[0] : '')
     
     // 현재 페이스로 목표 달성까지 걸리는 시간 계산
     const dailyProgress = currentAmount > 0 ? currentAmount / Math.max(1, new Date().getDate()) : 0
@@ -544,7 +500,7 @@ export default function GoalsPage() {
                 ? (
                     goals.reduce(
                       (sum, goal) =>
-                        sum + Math.max(0, goal.achievement_rate || 0),
+                        sum + Math.max(0, (Number(goal.currentAmount || 0) / Number(goal.targetAmount)) * 100),
                       0
                     ) / goals.length
                   ).toFixed(1)
@@ -589,14 +545,14 @@ export default function GoalsPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div>
-                    <h3 className="text-lg font-semibold">{goal.title}</h3>
+                    <h3 className="text-lg font-semibold">{goal.name}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <Chip
-                        color={getGoalTypeColor(goal.type) as any}
+                        color={getGoalTypeColor(goal.category || 'asset_growth') as any}
                         size="sm"
                         variant="flat"
                       >
-                        {getGoalTypeLabel(goal.type)}
+                        {getGoalTypeLabel(goal.category || 'asset_growth')}
                       </Chip>
                       <Chip
                         color={getStatusColor(goal.status) as any}
@@ -648,19 +604,19 @@ export default function GoalsPage() {
                     <div>
                       <p className="text-sm text-gray-600">목표 금액</p>
                       <p className="text-lg font-semibold">
-                        {formatCurrency(goal.target_amount)}
+                        {formatCurrency(Number(goal.targetAmount))}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">현재 달성</p>
                       <p
                         className={`text-lg font-semibold ${
-                          (goal.current_amount || 0) >= 0
+                          (Number(goal.currentAmount) || 0) >= 0
                             ? 'text-green-600'
                             : 'text-red-600'
                         }`}
                       >
-                        {formatCurrency(Math.abs(goal.current_amount || 0))}
+                        {formatCurrency(Math.abs(Number(goal.currentAmount) || 0))}
                       </p>
                     </div>
                     <div>
@@ -719,7 +675,7 @@ export default function GoalsPage() {
                       <Calendar className="w-4 h-4" />
                       <span>
                         목표일:{' '}
-                        {new Date(goal.target_date).toLocaleDateString('ko-KR')}
+                        {goal.targetDate ? new Date(goal.targetDate).toLocaleDateString('ko-KR') : '-'}
                       </span>
                     </div>
                     <div className={progress.daysRemaining <= 7 ? 'text-red-600 font-medium' : ''}>
@@ -874,17 +830,17 @@ export default function GoalsPage() {
             {selectedGoal && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
                 <p>
-                  <strong>제목:</strong> {selectedGoal.title}
+                  <strong>제목:</strong> {selectedGoal.name}
                 </p>
                 <p>
                   <strong>목표 금액:</strong>{' '}
-                  {formatCurrency(selectedGoal.target_amount)}
+                  {formatCurrency(Number(selectedGoal.targetAmount))}
                 </p>
                 <p>
                   <strong>목표일:</strong>{' '}
-                  {new Date(selectedGoal.target_date).toLocaleDateString(
+                  {selectedGoal.targetDate ? new Date(selectedGoal.targetDate).toLocaleDateString(
                     'ko-KR'
-                  )}
+                  ) : '-'}
                 </p>
               </div>
             )}

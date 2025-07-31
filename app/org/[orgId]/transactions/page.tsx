@@ -43,36 +43,28 @@ import {
   Building,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
 import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
 
-// 카멜 케이스 타입 정의
-interface Transaction {
-  id: string
-  organizationId: string
-  userId: string
-  amount: number
-  description: string
-  transactionDate: string
-  transactionType: string
-  categoryId: string | null
-  paymentMethodId: string | null
-  tags: string[] | null
-  memo: string | null
-  receiptUrl: string | null
-  createdAt: string
-  updatedAt: string
-  category?: { name: string; transactionType: string } | null
-  paymentMethod?: { name: string } | null
-}
+// Import server actions and types
+import {
+  getTransactions,
+  createTransaction,
+  updateTransaction,
+  deleteTransaction,
+} from '@/lib/server-actions/transactions'
+import {
+  getCategories,
+} from '@/lib/server-actions/categories'
+import type {
+  CategoryWithHierarchy,
+  TransactionCreateInput,
+  TransactionUpdateInput,
+  transformTransactionForFrontend,
+} from '@/lib/types'
 
-interface Category {
-  id: string
-  name: string
-  transactionType: string
-  parentId: string | null
-  level: number
-}
+// Use the actual transformation type from server actions
+type TransactionForFrontend = ReturnType<typeof transformTransactionForFrontend>
+type CategoryForFrontend = CategoryWithHierarchy
 
 export default function TransactionsPage() {
   const router = useRouter()
@@ -96,10 +88,10 @@ export default function TransactionsPage() {
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selectedTransaction, setSelectedTransaction] =
-    useState<Transaction | null>(null)
+    useState<TransactionForFrontend | null>(null)
 
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [transactionCategories, setTransactionCategories] = useState<Category[]>([])
+  const [transactions, setTransactions] = useState<TransactionForFrontend[]>([])
+  const [transactionCategories, setTransactionCategories] = useState<CategoryForFrontend[]>([])
   const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
@@ -129,55 +121,37 @@ export default function TransactionsPage() {
       setLoading(true)
       setError(null)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-        return
-      }
-
-      // 거래 내역과 카테고리를 병렬로 로드
-      const [transactionsResponse, categoriesResponse] = await Promise.all([
-        fetch(`/api/transactions?organizationId=${organizationId}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }),
-        fetch(`/api/transaction-categories?organizationId=${organizationId}`, {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }),
+      // Load transactions and categories using server actions
+      const [transactionsResult, categoriesResult] = await Promise.all([
+        getTransactions(organizationId),
+        getCategories(organizationId),
       ])
 
-      // 응답 상태 확인 및 에러 처리
-      if (!transactionsResponse.ok) {
-        if (transactionsResponse.status === 401) {
+      // Handle transactions result
+      if (!transactionsResult.success) {
+        if (transactionsResult.error === 'UNAUTHORIZED') {
           router.push('/login')
           return
         }
-        if (transactionsResponse.status === 403) {
+        if (transactionsResult.error === 'FORBIDDEN') {
           setError('이 조직에 접근할 권한이 없습니다.')
           return
         }
-        throw new Error(`거래 내역 로드 실패: ${transactionsResponse.status}`)
+        throw new Error(transactionsResult.message || 'Failed to load transactions')
       }
 
-      if (!categoriesResponse.ok) {
-        throw new Error(`카테고리 로드 실패: ${categoriesResponse.status}`)
+      // Handle categories result
+      if (!categoriesResult.success) {
+        throw new Error(categoriesResult.message || 'Failed to load categories')
       }
-
-      const [transactionsData, categoriesData] = await Promise.all([
-        transactionsResponse.json(),
-        categoriesResponse.json(),
-      ])
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('로드된 거래 데이터:', transactionsData)
-        console.log('로드된 카테고리 데이터:', categoriesData)
+        console.log('로드된 거래 데이터:', transactionsResult.data)
+        console.log('로드된 카테고리 데이터:', categoriesResult.data)
       }
       
-      setTransactions(transactionsData.transactions || [])
-      setTransactionCategories(categoriesData || [])
+      setTransactions(transactionsResult.data ? transactionsResult.data.data : [])
+      setTransactionCategories(categoriesResult.data || [])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
       const errorMessage = error instanceof Error ? error.message : '데이터를 불러오는데 실패했습니다.'
@@ -188,12 +162,12 @@ export default function TransactionsPage() {
     }
   }
 
-  const createTransaction = async () => {
+  const handleCreateTransaction = async () => {
     if (process.env.NODE_ENV === 'development') {
       console.log('거래 생성 시도 - formData:', formData)
     }
     
-    // 상세한 폼 검증
+    // 기본 클라이언트 검증
     const validationErrors = []
     if (!formData.categoryId || formData.categoryId.trim() === '') {
       validationErrors.push('카테고리를 선택해주세요.')
@@ -208,70 +182,37 @@ export default function TransactionsPage() {
     }
     
     if (validationErrors.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('폼 검증 실패:', {
-          amount: formData.amount,
-          description: formData.description,
-          categoryId: formData.categoryId,
-          errors: validationErrors
-        })
-      }
       toast.error(validationErrors.join(' '))
       return
     }
 
     setCreating(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session || !session.user) {
-        router.push('/login')
-        return
-      }
-
-      const requestData = {
+      const requestData: TransactionCreateInput = {
         organizationId: orgId,
         categoryId: formData.categoryId,
         amount: parseFloat(formData.amount),
         description: formData.description,
         transactionDate: formData.transactionDate,
         transactionType: formData.transactionType,
-        userId: session.user.id, // 누락된 userId 추가
       }
-      if (process.env.NODE_ENV === 'development') {
-        console.log('API 요청 데이터:', requestData)
-      }
-
-      const response = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(requestData),
-      })
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('응답 상태:', response.status, response.statusText)
+        console.log('Server action 요청 데이터:', requestData)
       }
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        if (process.env.NODE_ENV === 'development') {
-          console.log('오류 응답:', errorText)
+      const result = await createTransaction(requestData)
+
+      if (!result.success) {
+        if (result.error === 'UNAUTHORIZED') {
+          router.push('/login')
+          return
         }
-        let errorMessage = 'Failed to create transaction'
-        
-        try {
-          const errorData = JSON.parse(errorText)
-          errorMessage = errorData.message || errorData.error || errorMessage
-        } catch (e) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
-          }
-          errorMessage = errorText || errorMessage
+        if (result.error === 'FORBIDDEN') {
+          toast.error('이 조직에서 거래를 추가할 권한이 없습니다.')
+          return
         }
-        
-        throw new Error(errorMessage)
+        throw new Error(result.message || 'Failed to create transaction')
       }
 
       toast.success('거래가 성공적으로 추가되었습니다!')
@@ -289,29 +230,14 @@ export default function TransactionsPage() {
     } catch (error) {
       console.error('거래 생성 실패:', error)
       
-      // 오류 메시지 파싱
-      let userMessage = '거래 추가에 실패했습니다.'
-      if (error instanceof Error) {
-        if (error.message.includes('categoryId')) {
-          userMessage = '선택한 카테고리에 문제가 있습니다. 다른 카테고리를 선택해 주세요.'
-        } else if (error.message.includes('amount')) {
-          userMessage = '금액 정보에 문제가 있습니다. 올바른 금액을 입력해 주세요.'
-        } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-          userMessage = '로그인이 필요합니다. 다시 로그인해 주세요.'
-        } else if (error.message.includes('Forbidden') || error.message.includes('403')) {
-          userMessage = '이 조직에서 거래를 추가할 권한이 없습니다.'
-        } else if (error.message !== 'Failed to create transaction') {
-          userMessage = error.message
-        }
-      }
-      
+      const userMessage = error instanceof Error ? error.message : '거래 추가에 실패했습니다.'
       toast.error(userMessage)
     } finally {
       setCreating(false)
     }
   }
 
-  const editTransaction = (transaction: Transaction) => {
+  const editTransaction = (transaction: TransactionForFrontend) => {
     setSelectedTransaction(transaction)
     setEditFormData({
       categoryId: transaction.categoryId || '',
@@ -325,7 +251,7 @@ export default function TransactionsPage() {
     onEditOpen()
   }
 
-  const updateTransaction = async () => {
+  const handleUpdateTransaction = async () => {
     if (!selectedTransaction) {
       toast.error('수정할 거래를 선택해주세요.')
       return
@@ -335,7 +261,7 @@ export default function TransactionsPage() {
       console.log('거래 수정 시도 - editFormData:', editFormData)
     }
     
-    // 상세한 폼 검증
+    // 기본 클라이언트 검증
     const validationErrors = []
     if (!editFormData.categoryId || editFormData.categoryId.trim() === '') {
       validationErrors.push('카테고리를 선택해주세요.')
@@ -350,66 +276,38 @@ export default function TransactionsPage() {
     }
     
     if (validationErrors.length > 0) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('폼 검증 실패:', {
-          amount: editFormData.amount,
-          description: editFormData.description,
-          categoryId: editFormData.categoryId,
-          errors: validationErrors
-        })
-      }
       toast.error(validationErrors.join(' '))
       return
     }
 
     setUpdating(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session || !session.user) {
-        router.push('/login')
-        return
+      const requestData: TransactionUpdateInput = {
+        id: selectedTransaction.id,
+        organizationId: orgId,
+        categoryId: editFormData.categoryId,
+        amount: parseFloat(editFormData.amount),
+        description: editFormData.description,
+        transactionDate: editFormData.transactionDate,
+        transactionType: editFormData.transactionType,
       }
-
-      const response = await fetch('/api/transactions', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          id: selectedTransaction.id,
-          organizationId: orgId,
-          categoryId: editFormData.categoryId,
-          amount: parseFloat(editFormData.amount),
-          description: editFormData.description,
-          transactionDate: editFormData.transactionDate,
-          transactionType: editFormData.transactionType,
-          userId: session.user.id, // userId 추가
-        }),
-      })
 
       if (process.env.NODE_ENV === 'development') {
-        console.log('응답 상태:', response.status, response.statusText)
+        console.log('Server action 수정 요청 데이터:', requestData)
       }
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        if (process.env.NODE_ENV === 'development') {
-          console.log('오류 응답:', errorText)
+      const result = await updateTransaction(requestData)
+
+      if (!result.success) {
+        if (result.error === 'UNAUTHORIZED') {
+          router.push('/login')
+          return
         }
-        let errorMessage = 'Failed to update transaction'
-        
-        try {
-          const errorData = JSON.parse(errorText)
-          errorMessage = errorData.message || errorData.error || errorMessage
-        } catch (e) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
-          }
-          errorMessage = errorText || errorMessage
+        if (result.error === 'FORBIDDEN') {
+          toast.error('이 조직에서 거래를 수정할 권한이 없습니다.')
+          return
         }
-        
-        throw new Error(errorMessage)
+        throw new Error(result.message || 'Failed to update transaction')
       }
 
       toast.success('거래가 성공적으로 수정되었습니다!')
@@ -421,58 +319,38 @@ export default function TransactionsPage() {
     } catch (error) {
       console.error('거래 수정 실패:', error)
       
-      // 오류 메시지 파싱
-      let userMessage = '거래 수정에 실패했습니다.'
-      if (error instanceof Error) {
-        if (error.message.includes('categoryId')) {
-          userMessage = '선택한 카테고리에 문제가 있습니다. 다른 카테고리를 선택해 주세요.'
-        } else if (error.message.includes('amount')) {
-          userMessage = '금액 정보에 문제가 있습니다. 올바른 금액을 입력해 주세요.'
-        } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-          userMessage = '로그인이 필요합니다. 다시 로그인해 주세요.'
-        } else if (error.message.includes('Forbidden') || error.message.includes('403')) {
-          userMessage = '이 조직에서 거래를 수정할 권한이 없습니다.'
-        } else if (error.message !== 'Failed to update transaction') {
-          userMessage = error.message
-        }
-      }
-      
+      const userMessage = error instanceof Error ? error.message : '거래 수정에 실패했습니다.'
       toast.error(userMessage)
     } finally {
       setUpdating(false)
     }
   }
 
-  const deleteTransaction = async () => {
+  const handleDeleteTransaction = async () => {
     if (!selectedTransaction) return
 
     setDeleting(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        router.push('/login')
-        return
+      if (process.env.NODE_ENV === 'development') {
+        console.log('거래 삭제 시도 - transaction:', selectedTransaction.id)
       }
 
-      const response = await fetch(`/api/transactions?id=${selectedTransaction.id}&organizationId=${orgId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
+      const result = await deleteTransaction(selectedTransaction.id, orgId)
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        let errorMessage = 'Failed to delete transaction'
-        
-        try {
-          const errorData = JSON.parse(errorText)
-          errorMessage = errorData.message || errorData.error || errorMessage
-        } catch (e) {
-          errorMessage = errorText || errorMessage
+      if (!result.success) {
+        if (result.error === 'UNAUTHORIZED') {
+          router.push('/login')
+          return
         }
-        
-        throw new Error(errorMessage)
+        if (result.error === 'FORBIDDEN') {
+          toast.error('이 거래를 삭제할 권한이 없습니다.')
+          return
+        }
+        if (result.error === 'NOT_FOUND') {
+          toast.error('삭제하려는 거래를 찾을 수 없습니다.')
+          return
+        }
+        throw new Error(result.message || 'Failed to delete transaction')
       }
 
       toast.success('거래가 성공적으로 삭제되었습니다!')
@@ -484,20 +362,7 @@ export default function TransactionsPage() {
     } catch (error) {
       console.error('거래 삭제 실패:', error)
       
-      // 오류 메시지 파싱
-      let userMessage = '거래 삭제에 실패했습니다.'
-      if (error instanceof Error) {
-        if (error.message.includes('not found') || error.message.includes('404')) {
-          userMessage = '삭제하려는 거래를 찾을 수 없습니다.'
-        } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
-          userMessage = '로그인이 필요합니다. 다시 로그인해 주세요.'
-        } else if (error.message.includes('Forbidden') || error.message.includes('403')) {
-          userMessage = '이 거래를 삭제할 권한이 없습니다.'
-        } else if (error.message !== 'Failed to delete transaction') {
-          userMessage = error.message
-        }
-      }
-      
+      const userMessage = error instanceof Error ? error.message : '거래 삭제에 실패했습니다.'
       toast.error(userMessage)
     } finally {
       setDeleting(false)
@@ -796,7 +661,7 @@ export default function TransactionsPage() {
             </Button>
             <Button
               color="primary"
-              onPress={createTransaction}
+              onPress={handleCreateTransaction}
               isLoading={creating}
             >
               추가하기
@@ -888,7 +753,7 @@ export default function TransactionsPage() {
             </Button>
             <Button
               color="primary"
-              onPress={updateTransaction}
+              onPress={handleUpdateTransaction}
               isLoading={updating}
             >
               수정하기
@@ -913,7 +778,7 @@ export default function TransactionsPage() {
             </Button>
             <Button
               color="danger"
-              onPress={deleteTransaction}
+              onPress={handleDeleteTransaction}
               isLoading={deleting}
             >
               삭제하기

@@ -11,15 +11,16 @@ import {
   Plus,
   Calendar,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
+import toast from 'react-hot-toast'
 import MonthlyTrendChart from '@/components/dashboard/MonthlyTrendChart'
 import CategoryPieChart from '@/components/dashboard/CategoryPieChart'
 
-type Transaction = Database['public']['Tables']['transactions']['Row'] & {
-  categories?: { name: string; transaction_type: string }
-  payment_methods?: { name: string }
-}
+// Import server actions and types
+import { getDashboardData } from '@/lib/server-actions/dashboard'
+import { transformTransactionForFrontend } from '@/lib/types'
+
+// Use the actual transformation type from server actions
+type TransactionForFrontend = ReturnType<typeof transformTransactionForFrontend>
 
 interface DashboardStats {
   monthlyIncome: number
@@ -46,8 +47,9 @@ export default function DashboardPage() {
     previousMonthExpense: 0,
     previousMonthSavings: 0,
   })
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([])
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([])
+  const [recentTransactions, setRecentTransactions] = useState<TransactionForFrontend[]>([])
+  const [allTransactions, setAllTransactions] = useState<TransactionForFrontend[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (orgId) {
@@ -58,107 +60,40 @@ export default function DashboardPage() {
   const loadDashboardData = async (organizationId: string) => {
     try {
       setLoading(true)
+      setError(null)
       
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        router.push('/login')
-        return
-      }
+      // Load dashboard data using server action
+      const result = await getDashboardData(organizationId)
 
-      // API 경로를 통해 거래 내역 로드
-      const response = await fetch(`/api/dashboard?organizationId=${organizationId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
+      // Handle result from server action
+      if (!result.success) {
+        if (result.error === 'UNAUTHORIZED') {
           router.push('/login')
           return
         }
-        throw new Error('Failed to fetch dashboard data')
-      }
-
-      const { transactions } = await response.json()
-      const allTxns = transactions || []
-      setAllTransactions(allTxns)
-      setRecentTransactions(allTxns.slice(0, 5))
-
-      // 통계 계산
-      const now = new Date()
-      const currentMonth = now.getMonth()
-      const currentYear = now.getFullYear()
-      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1
-      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
-
-      const currentMonthTxns = allTxns.filter((txn: Transaction) => {
-        const txnDate = new Date(txn.transaction_date)
-        return (
-          txnDate.getMonth() === currentMonth &&
-          txnDate.getFullYear() === currentYear
-        )
-      })
-
-      const previousMonthTxns = allTxns.filter((txn: Transaction) => {
-        const txnDate = new Date(txn.transaction_date)
-        return (
-          txnDate.getMonth() === previousMonth &&
-          txnDate.getFullYear() === previousYear
-        )
-      })
-
-      const calculateStats = (transactions: Transaction[]) => {
-        return transactions.reduce(
-          (acc, txn) => {
-            const type =
-              txn.categories?.transaction_type || (txn as any).transaction_type
-            const amount = Math.abs(txn.amount)
-
-            if (type === 'income') {
-              acc.income += amount
-            } else if (type === 'expense') {
-              acc.expense += amount
-            } else if (type === 'savings') {
-              acc.savings += amount
-            }
-
-            return acc
-          },
-          { income: 0, expense: 0, savings: 0 }
-        )
-      }
-
-      const currentStats = calculateStats(currentMonthTxns)
-      const previousStats = calculateStats(previousMonthTxns)
-
-      // 총 잔액 계산 (수입 - 지출)
-      const totalBalance = allTxns.reduce((acc: number, txn: Transaction) => {
-        const type = txn.categories?.transaction_type || 'expense' // default to expense if no category
-        const amount = txn.amount
-
-        if (type === 'income') {
-          return acc + amount
-        } else if (type === 'expense') {
-          return acc - Math.abs(amount)
+        if (result.error === 'FORBIDDEN') {
+          setError('이 조직에 접근할 권한이 없습니다.')
+          return
         }
+        throw new Error(result.message || 'Failed to load dashboard data')
+      }
 
-        return acc
-      }, 0)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('로드된 대시보드 데이터:', result.data)
+      }
 
-      setStats({
-        monthlyIncome: currentStats.income,
-        monthlyExpense: currentStats.expense,
-        monthlySavings: currentStats.savings,
-        totalBalance,
-        previousMonthIncome: previousStats.income,
-        previousMonthExpense: previousStats.expense,
-        previousMonthSavings: previousStats.savings,
-      })
+      // Set data from server action result
+      if (result.data) {
+        const { stats: dashboardStats, recentTransactions: recent, allTransactions: all } = result.data
+        setStats(dashboardStats)
+        setRecentTransactions(recent)
+        setAllTransactions(all)
+      }
     } catch (error) {
       console.error('대시보드 데이터 처리 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '대시보드 데이터를 불러오는데 실패했습니다.'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -184,12 +119,38 @@ export default function DashboardPage() {
     return change > 0 ? 'text-green-500' : 'text-red-500'
   }
 
+  const retryLoadData = () => {
+    if (orgId) {
+      loadDashboardData(orgId)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p>대시보드를 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            데이터 로드 오류
+          </h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button
+            color="primary"
+            onPress={retryLoadData}
+          >
+            다시 시도
+          </Button>
         </div>
       </div>
     )
@@ -390,10 +351,9 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-white rounded-full">
-                      {transaction.categories?.transaction_type === 'income' ? (
+                      {transaction.transactionType === 'income' ? (
                         <TrendingUp className="w-4 h-4 text-green-500" />
-                      ) : transaction.categories?.transaction_type ===
-                        'expense' ? (
+                      ) : transaction.transactionType === 'expense' ? (
                         <TrendingDown className="w-4 h-4 text-red-500" />
                       ) : (
                         <Wallet className="w-4 h-4 text-blue-500" />
@@ -403,12 +363,12 @@ export default function DashboardPage() {
                       <p className="font-medium">{transaction.description}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Chip size="sm" variant="flat">
-                          {transaction.categories?.name || '기타'}
+                          {transaction.category?.name || '기타'}
                         </Chip>
                         <span className="text-xs text-gray-500">
-                          {new Date(
-                            transaction.transaction_date
-                          ).toLocaleDateString('ko-KR')}
+                          {transaction.transactionDate
+                            ? new Date(transaction.transactionDate).toLocaleDateString('ko-KR')
+                            : '-'}
                         </span>
                       </div>
                     </div>
@@ -416,21 +376,18 @@ export default function DashboardPage() {
                   <div className="text-right">
                     <p
                       className={`font-semibold ${
-                        transaction.categories?.transaction_type === 'income'
+                        transaction.transactionType === 'income'
                           ? 'text-green-600'
-                          : transaction.categories?.transaction_type ===
-                              'expense'
+                          : transaction.transactionType === 'expense'
                             ? 'text-red-600'
                             : 'text-blue-600'
                       }`}
                     >
-                      {transaction.categories?.transaction_type === 'income'
-                        ? '+'
-                        : '-'}
-                      {formatCurrency(Math.abs(transaction.amount))}
+                      {transaction.transactionType === 'income' ? '+' : '-'}
+                      {formatCurrency(Math.abs(Number(transaction.amount)))}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {transaction.payment_methods?.name}
+                      {transaction.paymentMethod?.name}
                     </p>
                   </div>
                 </div>

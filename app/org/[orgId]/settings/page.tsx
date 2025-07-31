@@ -35,21 +35,15 @@ import {
   FolderTree,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
+import { createClient } from '@/lib/supabase'
 import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
 import { formatCategoryDisplay } from '@/lib/category-utils'
 
-type Organization = Database['public']['Tables']['organizations']['Row']
-type OrganizationMember =
-  Database['public']['Tables']['organization_members']['Row'] & {
-    user_profile?: {
-      id: string
-      email: string | null
-      full_name: string | null
-      avatar_url: string | null
-    }
-  }
+// Import server actions
+import { getSettingsData, getOrganizationInvitations, updateUserProfile, resendInvitation } from '@/lib/server-actions/settings'
+import { getCategories, createCategory, updateCategory, deleteCategory, createDefaultCategories } from '@/lib/server-actions/categories'
+import { updateOrganization, createInvitation, cancelInvitation } from '@/lib/server-actions/organizations'
+import type { Category, Organization, OrganizationMember } from '@/lib/types'
 
 interface UserProfile {
   id: string
@@ -63,23 +57,9 @@ interface Invitation {
   email: string
   role: string
   status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'cancelled'
-  created_at: string
-  expires_at: string
-  organizations: { name: string }
-}
-
-interface Category {
-  id: string
-  name: string
-  transactionType: 'income' | 'expense' | 'transfer'
-  icon?: string
-  color?: string
-  level: number
-  parentId?: string
-  isDefault: boolean
-  organizationId: string
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  expiresAt: Date
+  organization: { name: string }
 }
 
 // Settings types - 추후 구현 예정
@@ -214,10 +194,40 @@ export default function SettingsPage() {
     try {
       setLoading(true)
       
+      // 서버 액션으로 설정 데이터 로드
+      const result = await getSettingsData(orgId)
+      
+      if (!result.success || !result.data) {
+        console.error('설정 데이터 로드 실패:', result.error)
+        if (result.error?.includes('FORBIDDEN') || result.error?.includes('Unauthorized')) {
+          router.push('/login')
+        }
+        return
+      }
+
+      const { organization, members, userProfile, currentUserRole } = result.data
+      
+      // 상태 업데이트
+      setOrganization(organization)
+      setMembers(members || [])
+      setUserProfile(userProfile)
+      setCurrentUserRole(currentUserRole as 'owner' | 'admin' | 'member' | null)
+      
+      // 편집 폼 데이터 초기화
+      setEditProfileData({
+        full_name: userProfile?.full_name || '',
+        avatar_url: userProfile?.avatar_url || '',
+      })
+      
+      setEditOrgData({
+        name: organization?.name || '',
+        description: organization?.description || '',
+      })
+      
+      // 카테고리와 초대 목록을 병렬로 로드
       await Promise.all([
-        loadUserProfile(),
-        loadOrganization(orgId),
         loadCategories(orgId),
+        (currentUserRole === 'admin' || currentUserRole === 'owner') ? loadInvitations(orgId) : Promise.resolve(),
       ])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
@@ -226,93 +236,15 @@ export default function SettingsPage() {
     }
   }
 
-  const loadUserProfile = async () => {
+
+  const loadInvitations = async (organizationId: string) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        const profile = {
-          id: user.id,
-          email: user.email || '',
-          full_name: user.user_metadata?.full_name,
-          avatar_url: user.user_metadata?.avatar_url,
-        }
-        
-        setUserProfile(profile)
-        setEditProfileData({
-          full_name: profile.full_name || '',
-          avatar_url: profile.avatar_url || '',
-        })
-      }
-    } catch (error) {
-      console.error('사용자 프로필 로드 실패:', error)
-    }
-  }
-
-  const loadOrganization = async (organizationId: string) => {
-    try {
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
+      const result = await getOrganizationInvitations(organizationId)
       
-      if (!session) {
-        router.push('/login')
-        return
-      }
-
-      // API 경로를 통해 조직 및 멤버 데이터 로드
-      const response = await fetch(`/api/settings?organizationId=${organizationId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login')
-          return
-        }
-        throw new Error('Failed to fetch settings data')
-      }
-
-      const { organization, members } = await response.json()
-      setOrganization(organization)
-      setMembers(members || [])
-      
-      // 현재 사용자의 역할 찾기
-      const currentUser = members?.find((member: OrganizationMember) => member.user_id === session.user.id)
-      setCurrentUserRole(currentUser?.role || null)
-      
-      // 조직 편집 데이터 초기화
-      setEditOrgData({
-        name: organization?.name || '',
-        description: organization?.description || '',
-      })
-      
-      // 초대 목록도 함께 로드
-      await loadInvitations(organizationId, session)
-    } catch (error) {
-      console.error('설정 데이터 로드 실패:', error)
-    }
-  }
-
-  const loadMembers = async (orgId: string) => {
-    // 멤버 로드는 이제 loadOrganization에서 함께 처리됨
-    // 호환성을 위해 빈 함수로 유지
-  }
-
-  const loadInvitations = async (organizationId: string, session: any) => {
-    try {
-      const response = await fetch(`/api/organizations/${organizationId}/invitations`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (response.ok) {
-        const { invitations } = await response.json()
-        setInvitations(invitations || [])
+      if (result.success && result.data) {
+        setInvitations(result.data as Invitation[])
+      } else {
+        console.error('초대 목록 로드 실패:', result.error)
       }
     } catch (error) {
       console.error('초대 목록 로드 실패:', error)
@@ -321,25 +253,14 @@ export default function SettingsPage() {
 
   const loadCategories = async (organizationId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const result = await getCategories(organizationId)
       
-      if (!session) {
-        router.push('/login')
-        return
+      if (result.success && result.data) {
+        setCategories(result.data)
+      } else {
+        console.error('카테고리 로드 실패:', result.error)
+        toast.error('카테고리를 불러오는데 실패했습니다.')
       }
-
-      const response = await fetch(`/api/transaction-categories?organizationId=${organizationId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to load categories')
-      }
-
-      const categoriesData = await response.json()
-      setCategories(categoriesData || [])
     } catch (error) {
       console.error('카테고리 로드 실패:', error)
       toast.error('카테고리를 불러오는데 실패했습니다.')
@@ -368,60 +289,21 @@ export default function SettingsPage() {
     try {
       setInviting(true)
       
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        return
-      }
-
-      const response = await fetch(`/api/organizations/${orgId}/invitations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          email: inviteData.email,
-          role: inviteData.role,
-        }),
+      // 서버 액션으로 초대 생성
+      const result = await createInvitation({
+        organizationId: orgId,
+        email: inviteData.email,
+        role: inviteData.role,
       })
 
-      if (!response.ok) {
-        let errorMessage = 'Failed to send invitation'
-        
-        // response를 복제하여 multiple read 방지
-        const responseClone = response.clone()
-        
-        try {
-          const errorData = await response.json()
-          console.error('초대 API 에러:', errorData)
-          errorMessage = errorData.details || errorData.error || errorMessage
-        } catch (jsonError) {
-          // JSON 파싱 실패 시 복제된 response로 text 시도
-          try {
-            const errorText = await responseClone.text()
-            console.error('초대 API 응답 (텍스트):', errorText)
-            errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`
-          } catch (textError) {
-            console.error('응답 읽기 실패:', textError)
-            errorMessage = `HTTP ${response.status}: ${response.statusText}`
-          }
-        }
-        throw new Error(errorMessage)
-      }
-
-      try {
-        const result = await response.json()
-        console.log('초대 성공:', result)
-      } catch (jsonError) {
-        console.log('응답 JSON 파싱 실패 (성공적인 응답이지만 JSON이 아님):', jsonError)
+      if (!result.success) {
+        throw new Error(result.error || '초대 발송에 실패했습니다.')
       }
       
       toast.success('초대가 성공적으로 발송되었습니다!')
       
       // 초대 목록 새로고침
-      await loadInvitations(orgId, session)
+      await loadInvitations(orgId)
       
       // 모달 닫기 및 폼 초기화
       setInviteData({ email: '', role: 'member' })
@@ -439,35 +321,21 @@ export default function SettingsPage() {
     if (!orgId) return
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        return
-      }
+      // 서버 액션으로 초대 취소
+      const result = await cancelInvitation(invitationId, orgId)
 
-      const response = await fetch(
-        `/api/organizations/${orgId}/invitations?invitationId=${invitationId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to cancel invitation')
+      if (!result.success) {
+        throw new Error(result.error || '초대 취소에 실패했습니다.')
       }
 
       toast.success('초대가 취소되었습니다.')
       
       // 초대 목록 새로고침
-      await loadInvitations(orgId, session)
+      await loadInvitations(orgId)
       
     } catch (error: any) {
       console.error('초대 취소 실패:', error)
-      toast.error('초대 취소에 실패했습니다.')
+      toast.error(error.message || '초대 취소에 실패했습니다.')
     }
   }
 
@@ -494,27 +362,11 @@ export default function SettingsPage() {
 
   const handleUpdateProfile = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        return
-      }
+      // 서버 액션으로 프로필 업데이트
+      const result = await updateUserProfile(editProfileData)
 
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          type: 'profile',
-          data: editProfileData,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile')
+      if (!result.success) {
+        throw new Error(result.error || '프로필 업데이트에 실패했습니다.')
       }
 
       // UI 업데이트
@@ -527,11 +379,9 @@ export default function SettingsPage() {
       setIsEditingProfile(false)
       toast.success('프로필이 업데이트되었습니다.')
 
-      // 페이지 새로고침하여 변경사항 반영
-      window.location.reload()
-    } catch (error) {
+    } catch (error: any) {
       console.error('프로필 업데이트 실패:', error)
-      toast.error('프로필 업데이트에 실패했습니다.')
+      toast.error(error.message || '프로필 업데이트에 실패했습니다.')
     }
   }
 
@@ -542,32 +392,21 @@ export default function SettingsPage() {
       return
     }
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session || !orgId) {
-        toast.error('권한이 없습니다.')
-        return
-      }
+    if (!orgId) {
+      toast.error('조직 ID가 없습니다.')
+      return
+    }
 
-      const response = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          type: 'organization',
-          data: {
-            organizationId: orgId,
-            name: editOrgData.name,
-            description: editOrgData.description,
-          },
-        }),
+    try {
+      // 서버 액션으로 조직 업데이트
+      const result = await updateOrganization({
+        id: orgId,
+        name: editOrgData.name,
+        description: editOrgData.description,
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update organization')
+      if (!result.success) {
+        throw new Error(result.error || '조직 정보 업데이트에 실패했습니다.')
       }
 
       // UI 업데이트
@@ -579,9 +418,9 @@ export default function SettingsPage() {
 
       setIsEditingOrganization(false)
       toast.success('조직 정보가 업데이트되었습니다.')
-    } catch (error) {
+    } catch (error: any) {
       console.error('조직 업데이트 실패:', error)
-      toast.error('조직 정보 업데이트에 실패했습니다.')
+      toast.error(error.message || '조직 정보 업데이트에 실패했습니다.')
     }
   }
 
@@ -598,6 +437,7 @@ export default function SettingsPage() {
         return
       }
 
+      const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session) {
@@ -664,31 +504,18 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        return
-      }
-
-      const response = await fetch('/api/transaction-categories', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          name: categoryFormData.name,
-          type: categoryFormData.transactionType,
-          icon: categoryFormData.icon,
-          color: categoryFormData.color,
-          parentId: categoryFormData.parentId || null,
-          organizationId: orgId,
-        }),
+      const result = await createCategory({
+        name: categoryFormData.name,
+        transactionType: categoryFormData.transactionType,
+        icon: categoryFormData.icon,
+        color: categoryFormData.color,
+        parentId: categoryFormData.parentId || undefined,
+        organizationId: orgId,
+        level: 0, // Will be calculated by server action
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to create category')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create category')
       }
 
       toast.success('카테고리가 성공적으로 생성되었습니다!')
@@ -703,9 +530,9 @@ export default function SettingsPage() {
       
       // 카테고리 목록 새로고침
       await loadCategories(orgId)
-    } catch (error) {
+    } catch (error: any) {
       console.error('카테고리 생성 실패:', error)
-      toast.error('카테고리 생성에 실패했습니다.')
+      toast.error(error.message || '카테고리 생성에 실패했습니다.')
     } finally {
       setCategoryLoading(false)
     }
@@ -715,7 +542,7 @@ export default function SettingsPage() {
     setSelectedCategory(category)
     setCategoryFormData({
       name: category.name,
-      transactionType: category.transactionType,
+      transactionType: category.transactionType as 'income' | 'expense' | 'transfer',
       icon: category.icon || '',
       color: category.color || '#3B82F6',
       parentId: category.parentId || '',
@@ -737,31 +564,17 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        return
-      }
-
-      const response = await fetch('/api/transaction-categories', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          id: selectedCategory.id,
-          name: categoryFormData.name,
-          icon: categoryFormData.icon,
-          color: categoryFormData.color,
-          parentId: categoryFormData.parentId || null,
-          organizationId: orgId,
-        }),
+      const result = await updateCategory({
+        id: selectedCategory.id,
+        name: categoryFormData.name,
+        icon: categoryFormData.icon,
+        color: categoryFormData.color,
+        parentId: categoryFormData.parentId || undefined,
+        organizationId: orgId,
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to update category')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update category')
       }
 
       toast.success('카테고리가 성공적으로 수정되었습니다!')
@@ -770,9 +583,9 @@ export default function SettingsPage() {
       
       // 카테고리 목록 새로고침
       await loadCategories(orgId)
-    } catch (error) {
+    } catch (error: any) {
       console.error('카테고리 수정 실패:', error)
-      toast.error('카테고리 수정에 실패했습니다.')
+      toast.error(error.message || '카테고리 수정에 실패했습니다.')
     } finally {
       setCategoryLoading(false)
     }
@@ -789,28 +602,10 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        toast.error('로그인이 필요합니다.')
-        return
-      }
+      const result = await deleteCategory(selectedCategory.id, orgId)
 
-      const response = await fetch('/api/transaction-categories', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          id: selectedCategory.id,
-          organizationId: orgId,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete category')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete category')
       }
 
       toast.success('카테고리가 성공적으로 삭제되었습니다!')
@@ -1008,9 +803,9 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   {members.map(member => {
-                    const profile = member.user_profile
-                    const displayName = profile?.full_name || profile?.email || `사용자 ${member.user_id.slice(0, 8)}`
-                    const displayEmail = profile?.email || '이메일 없음'
+                    // OrganizationMember now has userId instead of user_id
+                    const displayName = `사용자 ${member.userId.slice(0, 8)}`
+                    const displayEmail = '이메일 정보 없음'
                     
                     return (
                       <div
@@ -1020,7 +815,6 @@ export default function SettingsPage() {
                         <div className="flex items-center gap-3">
                           <Avatar 
                             size="sm" 
-                            src={profile?.avatar_url || undefined}
                             name={displayName}
                           />
                           <div>
@@ -1031,10 +825,10 @@ export default function SettingsPage() {
                               {displayEmail}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {new Date(member.joined_at).toLocaleDateString(
-                                'ko-KR'
-                              )}{' '}
-                              가입
+                              {member.joinedAt 
+                                ? new Date(member.joinedAt).toLocaleDateString('ko-KR') + ' 가입'
+                                : '가입일 불명'
+                              }
                             </p>
                           </div>
                         </div>
@@ -1089,7 +883,7 @@ export default function SettingsPage() {
                                     <span>•</span>
                                     <span>
                                       {(() => {
-                                        const expiresAt = new Date(invitation.expires_at)
+                                        const expiresAt = new Date(invitation.expiresAt)
                                         return !isNaN(expiresAt.getTime()) 
                                           ? expiresAt.toLocaleDateString('ko-KR') + ' 만료'
                                           : '날짜 오류'
@@ -1202,7 +996,7 @@ export default function SettingsPage() {
                           variant="light"
                           startContent={<Edit className="w-3 h-3" />}
                           onPress={() => handleEditCategory(category)}
-                          isDisabled={category.isDefault}
+                          isDisabled={category.isDefault ?? false}
                         >
                           수정
                         </Button>
@@ -1215,7 +1009,7 @@ export default function SettingsPage() {
                             setSelectedCategory(category)
                             onDeleteCategoryModalOpen()
                           }}
-                          isDisabled={category.isDefault}
+                          isDisabled={category.isDefault ?? false}
                         >
                           삭제
                         </Button>

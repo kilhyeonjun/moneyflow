@@ -29,26 +29,17 @@ import {
   Calendar,
   Clock,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { showToast } from '@/lib/utils/toast'
 import { LoadingSpinner } from '@/components/ui/LoadingStates'
+import { getOrganizationData, createInvitation, cancelInvitation } from '@/lib/server-actions/invitations'
 
-interface Member {
-  id: string
-  user_id: string
-  role: string
-  joined_at: string
-}
+// Import Prisma types directly
+import type { OrganizationMember, OrganizationInvitation } from '@prisma/client'
 
-interface Invitation {
-  id: string
-  email: string
-  role: string
-  status: string
-  created_at: string
-  expires_at: string
-  token?: string
-}
+// Type aliases for compatibility
+type Member = OrganizationMember
+type Invitation = OrganizationInvitation
 
 interface InvitationManagerProps {
   organizationId: string
@@ -75,74 +66,42 @@ export default function InvitationManager({
   const loadData = async () => {
     try {
       setLoading(true)
-      await Promise.all([loadMembers(), loadInvitations()])
-    } catch (error) {
-      console.error('데이터 로드 실패:', error)
-      showToast.error('데이터를 불러오는데 실패했습니다')
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const loadMembers = async () => {
-    try {
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        console.error('사용자 세션이 없습니다')
+      // 사용자 인증 상태 확인 (Supabase Auth 유지)
+      const supabase = createClient()
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      if (authError) {
+        showToast.error('사용자 인증에 실패했습니다.')
         return
       }
 
-      // API 경로를 통해 멤버 데이터 로드
-      const response = await fetch(`/api/settings?organizationId=${organizationId}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch members data')
+      if (!user) {
+        showToast.error('로그인이 필요합니다.')
+        return
       }
 
-      const { members } = await response.json()
-      
-      // 응답 형식을 기존 형식에 맞게 변환
-      const formattedMembers = (members || []).map((member: any) => ({
-        id: member.id,
-        user_id: member.user_id,
-        role: member.role,
-        joined_at: member.joined_at,
-      }))
+      // 서버 액션으로 조직 데이터 로드
+      const result = await getOrganizationData(organizationId)
 
-      setMembers(formattedMembers)
-    } catch (error) {
-      console.error('멤버 목록 로드 실패:', error)
-    }
-  }
+      if (!result.success) {
+        throw new Error(result.error || '조직 데이터를 불러오는데 실패했습니다')
+      }
 
-  const loadInvitations = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (!session) return
-
-    try {
-      const response = await fetch(
-        `/api/organizations/${organizationId}/invitations`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      )
-
-      if (response.ok) {
-        const data = await response.json()
+      const data = result.data
+      if (data) {
+        setMembers(data.members || [])
         setInvitations(data.invitations || [])
       }
     } catch (error) {
-      console.error('초대 목록 로드 실패:', error)
+      console.error('데이터 로드 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      showToast.error(`데이터 로드 실패: ${errorMessage}`)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -161,43 +120,35 @@ export default function InvitationManager({
     try {
       setInviting(true)
 
+      const supabase = createClient()
       const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
         showToast.error('로그인이 필요합니다')
         return
       }
 
-      const response = await fetch(
-        `/api/organizations/${organizationId}/invitations`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            email: inviteEmail,
-            role: inviteRole,
-          }),
-        }
-      )
+      const result = await createInvitation({
+        organizationId,
+        email: inviteEmail,
+        role: inviteRole,
+      })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || '초대 발송에 실패했습니다')
+      if (!result.success) {
+        throw new Error(result.error || '초대 발송에 실패했습니다')
       }
 
       showToast.success('초대를 발송했습니다')
       setInviteEmail('')
       setInviteRole('member')
       onClose()
-      loadInvitations()
+      loadData() // Reload data to show new invitation
     } catch (error: any) {
       console.error('초대 발송 실패:', error)
-      showToast.error(error.message)
+      const errorMessage = error instanceof Error ? error.message : '초대 발송 중 오류가 발생했습니다.'
+      showToast.error(errorMessage)
     } finally {
       setInviting(false)
     }
@@ -205,30 +156,28 @@ export default function InvitationManager({
 
   const handleCancelInvitation = async (invitationId: string) => {
     try {
+      const supabase = createClient()
       const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) return
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      const response = await fetch(
-        `/api/organizations/${organizationId}/invitations?invitationId=${invitationId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        }
-      )
-
-      if (response.ok) {
-        showToast.success('초대를 취소했습니다')
-        loadInvitations()
-      } else {
-        throw new Error('초대 취소에 실패했습니다')
+      if (!user) {
+        showToast.error('로그인이 필요합니다')
+        return
       }
+
+      const result = await cancelInvitation(invitationId, organizationId)
+
+      if (!result.success) {
+        throw new Error(result.error || '초대 취소에 실패했습니다')
+      }
+
+      showToast.success('초대를 취소했습니다')
+      loadData() // Reload data to update invitation list
     } catch (error: any) {
       console.error('초대 취소 실패:', error)
-      showToast.error(error.message)
+      const errorMessage = error instanceof Error ? error.message : '초대 취소 중 오류가 발생했습니다.'
+      showToast.error(errorMessage)
     }
   }
 
@@ -265,11 +214,11 @@ export default function InvitationManager({
   }
 
   const getInvitationStatus = (invitation: Invitation) => {
-    const isExpired = new Date(invitation.expires_at) < new Date()
+    const isExpired = new Date(invitation.expiresAt) < new Date()
     if (isExpired) return { text: '만료됨', color: 'danger' }
 
     const expiresIn = Math.ceil(
-      (new Date(invitation.expires_at).getTime() - new Date().getTime()) /
+      (new Date(invitation.expiresAt).getTime() - new Date().getTime()) /
         (1000 * 60 * 60 * 24)
     )
 
@@ -320,16 +269,16 @@ export default function InvitationManager({
                   >
                     <div className="flex items-center gap-3">
                       <Avatar
-                        name={member.user_id}
+                        name={member.userId}
                         size="sm"
                         className="bg-blue-100 text-blue-600"
                       />
                       <div>
-                        <p className="font-medium">{member.user_id}</p>
+                        <p className="font-medium">{member.userId}</p>
                         <p className="text-sm text-gray-600">
-                          {new Date(member.joined_at).toLocaleDateString(
+                          {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString(
                             'ko-KR'
-                          )}{' '}
+                          ) : '-'}{' '}
                           가입
                         </p>
                       </div>
@@ -389,7 +338,7 @@ export default function InvitationManager({
                                 <Calendar className="w-3 h-3" />
                                 <span>
                                   {new Date(
-                                    invitation.created_at
+                                    invitation.createdAt
                                   ).toLocaleDateString('ko-KR')}{' '}
                                   초대됨
                                 </span>

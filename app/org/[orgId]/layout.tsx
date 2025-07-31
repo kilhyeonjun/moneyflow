@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { isValidUUID } from '@/lib/utils/validation'
+import { checkMembership, getOrganizationDetails } from '@/lib/server-actions/organizations'
 
 export default function OrgLayout({
   children,
@@ -25,7 +26,8 @@ export default function OrgLayout({
   const checkAuthAndOrganization = async () => {
     try {
       // 1. 인증 상태 확인
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const supabase = createClient()
+      const { data: { user }, error } = await supabase.auth.getUser()
       
       if (error) {
         console.error('Auth session error:', error)
@@ -34,7 +36,7 @@ export default function OrgLayout({
         return
       }
 
-      if (!session) {
+      if (!user) {
         setIsAuthenticated(false)
         router.push('/login')
         return
@@ -49,18 +51,31 @@ export default function OrgLayout({
         return
       }
 
-      // 3. 조직 접근 권한 확인
-      const response = await fetch(`/api/organizations/${orgId}/check-membership?userId=${session.user.id}`)
+      // 3. 조직 접근 권한 확인 (서버 액션 사용)
+      const membershipResult = await checkMembership(orgId)
       
-      if (!response.ok) {
-        console.error('Organization access denied:', response.status)
+      if (!membershipResult.success || !membershipResult.data?.isMember) {
+        console.error('Organization access denied')
         setHasOrgAccess(false)
         router.push('/organizations')
         return
       }
 
-      const orgData = await response.json()
-      setCurrentOrg(orgData)
+      // 4. 조직 상세 정보 가져오기
+      const orgDetailsResult = await getOrganizationDetails(orgId)
+      
+      if (!orgDetailsResult.success) {
+        console.error('Failed to get organization details')
+        setHasOrgAccess(false)
+        router.push('/organizations')
+        return
+      }
+
+      setCurrentOrg({
+        ...orgDetailsResult.data,
+        member: membershipResult.data.member,
+        role: membershipResult.data.role,
+      })
       setHasOrgAccess(true)
 
     } catch (error) {
@@ -73,6 +88,7 @@ export default function OrgLayout({
 
   // 인증 상태 변경 감지
   useEffect(() => {
+    const supabase = createClient()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {

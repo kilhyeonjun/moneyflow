@@ -23,7 +23,9 @@ import {
   Target,
   Check,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { getUserOrganizations } from '@/lib/server-actions/organizations'
+import type { UserOrganization } from '@/lib/types'
+import { createClient } from '@/lib/supabase'
 
 type Organization = {
   id: string
@@ -68,38 +70,27 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
 
   const loadUserOrganizations = async () => {
     try {
-      const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser()
+      // 서버 액션으로 사용자 조직 목록 조회
+      const result = await getUserOrganizations()
       
-      if (userError || !user) {
-        console.error('사용자 정보를 가져올 수 없습니다:', userError)
-        return
-      }
-
-      // API를 통해 사용자 조직 목록 조회
-      const response = await fetch(`/api/organizations?userId=${user.id}`)
-      
-      if (!response.ok) {
-        console.error('사용자 조직 목록 조회 실패:', response.status, response.statusText)
+      if (!result.success || !result.data) {
+        console.error('사용자 조직 목록 조회 실패:', result.error)
         setUserOrgs([])
         return
       }
 
-      const orgs = await response.json()
-      
-      // API 응답에서 필요한 조직 정보만 추출
-      const organizationList = orgs.map((org: any) => ({
+      // UserOrganization을 Organization 타입으로 변환
+      const organizationList = result.data.map((org) => ({
         id: org.id,
         name: org.name,
-        description: org.description,
-        created_at: org.createdAt,
+        description: org.description || undefined,
+        created_at: org.createdAt ? org.createdAt.toISOString() : new Date().toISOString(),
       }))
       
-      setUserOrgs(organizationList || [])
+      setUserOrgs(organizationList)
     } catch (error) {
       console.error('사용자 조직 목록 로드 중 예상치 못한 오류:', error)
+      setUserOrgs([])
     }
   }
 
@@ -114,6 +105,7 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
   }
 
   const handleLogout = async () => {
+    const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
   }

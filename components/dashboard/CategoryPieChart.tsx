@@ -9,15 +9,15 @@ import {
   Tooltip,
   Legend,
 } from 'recharts'
-import { Database } from '@/types/database'
 
-type Transaction = Database['public']['Tables']['transactions']['Row'] & {
-  categories?: { name: string; transaction_type: string }
-}
+// Use the transformed transaction type from server actions
+import { transformTransactionForFrontend } from '@/lib/types'
+
+type TransactionForChart = ReturnType<typeof transformTransactionForFrontend>
 
 interface CategoryPieChartProps {
-  transactions: Transaction[]
-  type?: 'expense' | 'income' | 'savings'
+  transactions: TransactionForChart[]
+  type?: 'expense' | 'income' | 'transfer'
 }
 
 export default function CategoryPieChart({
@@ -27,15 +27,13 @@ export default function CategoryPieChart({
   // 카테고리별 데이터 집계
   const categoryData = transactions
     .filter(transaction => {
-      const transactionType =
-        transaction.categories?.transaction_type ||
-        (transaction as Transaction & { transaction_type?: string }).transaction_type
+      const transactionType = transaction.transactionType || 'expense'
       return transactionType === type
     })
     .reduce(
       (acc, transaction) => {
-        const categoryName = transaction.categories?.name || '기타'
-        const amount = Math.abs(transaction.amount)
+        const categoryName = transaction.category?.name || '기타'
+        const amount = Math.abs(Number(transaction.amount))
 
         if (!acc[categoryName]) {
           acc[categoryName] = 0
@@ -89,8 +87,8 @@ export default function CategoryPieChart({
         return '수입'
       case 'expense':
         return '지출'
-      case 'savings':
-        return '저축'
+      case 'transfer':
+        return '이체'
       default:
         return '기타'
     }

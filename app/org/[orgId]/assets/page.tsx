@@ -39,7 +39,18 @@ import {
   MoreVertical,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
+// Server actions import
+import {
+  getAssetData,
+  createDefaultAssetCategories,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+  createLiability,
+  updateLiability,
+  deleteLiability,
+} from '@/lib/server-actions/assets'
+import { createClient } from '@/lib/supabase'
 
 // Prisma 타입 import
 import type {
@@ -121,6 +132,7 @@ export default function AssetsPage() {
       setLoading(true)
 
       // 사용자 인증 상태 확인 (Supabase Auth 유지)
+      const supabase = createClient()
       const {
         data: { user },
         error: authError,
@@ -137,153 +149,56 @@ export default function AssetsPage() {
         return
       }
 
-      await Promise.all([
-        loadAssetCategories(orgId),
-        loadAssets(orgId),
-        loadLiabilities(orgId),
-      ])
+      // 서버 액션으로 모든 자산 데이터 한 번에 로드
+      const result = await getAssetData(orgId)
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || '자산 데이터를 불러오는데 실패했습니다')
+      }
+
+      const { assetCategories, assets, liabilities, summary } = result.data
+
+      // 카테고리가 없으면 기본 카테고리 생성
+      if (!assetCategories || assetCategories.length === 0) {
+        await createDefaultCategories(orgId)
+        // 다시 데이터 로드
+        const retryResult = await getAssetData(orgId)
+        if (retryResult.success && retryResult.data) {
+          setAssetCategories(retryResult.data.assetCategories)
+          setAssets(retryResult.data.assets)
+          setLiabilities(retryResult.data.liabilities)
+          setAssetSummary(retryResult.data.summary)
+        }
+      } else {
+        setAssetCategories(assetCategories)
+        setAssets(assets)
+        setLiabilities(liabilities)
+        setAssetSummary(summary)
+      }
     } catch (error) {
       console.error('데이터 로드 실패:', error)
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      toast.error(`데이터 로드 실패: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
   }
 
-  const loadAssetCategories = async (orgId: string) => {
-    try {
-      const response = await fetch(
-        `/api/asset-categories?organizationId=${orgId}`
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
-
-      const categories = await response.json()
-
-      // 카테고리가 없으면 기본 카테고리 생성
-      if (!categories || categories.length === 0) {
-        await createDefaultCategories(orgId)
-        // 다시 카테고리 로드
-        const retryResponse = await fetch(
-          `/api/asset-categories?organizationId=${orgId}`
-        )
-        if (retryResponse.ok) {
-          const retryCategories = await retryResponse.json()
-          setAssetCategories(retryCategories || [])
-        }
-      } else {
-        setAssetCategories(categories)
-      }
-    } catch (error) {
-      console.error('자산 카테고리 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-      toast.error(`자산 카테고리 로드 실패: ${errorMessage}`)
-    }
-  }
-
   const createDefaultCategories = async (orgId: string) => {
     try {
-      const response = await fetch(`/api/organizations/${orgId}/initial-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to create initial data')
+      const result = await createDefaultAssetCategories(orgId)
+      
+      if (!result.success) {
+        throw new Error(result.error || '기본 카테고리 생성에 실패했습니다')
       }
-
-      const result = await response.json()
+      
       console.log('초기 데이터 생성 완료:', result)
       toast.success('기본 카테고리가 생성되었습니다!')
     } catch (error) {
       console.error('기본 카테고리 생성 실패:', error)
-      toast.error('기본 카테고리 생성에 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '기본 카테고리 생성에 실패했습니다.'
+      toast.error(errorMessage)
     }
-  }
-
-  const loadAssets = async (orgId: string) => {
-    try {
-      const response = await fetch(`/api/assets?organizationId=${orgId}`)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
-
-      const assetsData = await response.json()
-      setAssets(assetsData || [])
-
-      // 자산 요약 계산
-      const totalAssets = (assetsData || []).reduce(
-        (sum: number, asset: Asset) => sum + Number(asset.currentValue),
-        0
-      )
-      updateAssetSummary(totalAssets)
-    } catch (error) {
-      console.error('자산 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-      toast.error(`자산 로드 실패: ${errorMessage}`)
-    }
-  }
-
-  const loadLiabilities = async (orgId: string) => {
-    try {
-      const response = await fetch(`/api/liabilities?organizationId=${orgId}`)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
-
-      const liabilitiesData = await response.json()
-      setLiabilities(liabilitiesData || [])
-
-      // 부채 요약 계산
-      const totalLiabilities = (liabilitiesData || []).reduce(
-        (sum: number, liability: Liability) =>
-          sum + Number(liability.currentAmount),
-        0
-      )
-      updateLiabilitySummary(totalLiabilities)
-    } catch (error) {
-      console.error('부채 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-      toast.error(`부채 로드 실패: ${errorMessage}`)
-    }
-  }
-
-  const updateAssetSummary = (totalAssets: number) => {
-    setAssetSummary(prev => {
-      const netWorth = totalAssets - prev.totalLiabilities
-      const achievementRate =
-        prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal) * 100 : 0
-
-      return {
-        ...prev,
-        totalAssets,
-        netWorth,
-        achievementRate,
-      }
-    })
-  }
-
-  const updateLiabilitySummary = (totalLiabilities: number) => {
-    setAssetSummary(prev => {
-      const netWorth = prev.totalAssets - totalLiabilities
-      const achievementRate =
-        prev.yearlyGoal > 0 ? (netWorth / prev.yearlyGoal) * 100 : 0
-
-      return {
-        ...prev,
-        totalLiabilities,
-        netWorth,
-        achievementRate,
-      }
-    })
   }
 
   const handleCreateAsset = async () => {
@@ -300,6 +215,7 @@ export default function AssetsPage() {
     setCreating(true)
 
     try {
+      const supabase = createClient()
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -309,29 +225,23 @@ export default function AssetsPage() {
         return
       }
 
+      // Get selected category to determine asset type
+      const selectedCategory = assetCategories.find(cat => cat.id === formData.categoryId)
+      
       const assetData = {
         name: formData.name,
-        description: formData.description || null,
+        description: formData.description || undefined,
+        type: selectedCategory?.type || 'asset', // Use category type or default to asset
         categoryId: formData.categoryId,
         currentValue: parseFloat(formData.currentValue),
         organizationId: orgId,
-        createdBy: user.id,
       }
 
-      const response = await fetch('/api/assets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(assetData),
-      })
+      const result = await createAsset(assetData)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create asset')
+      if (!result.success) {
+        throw new Error(result.error || '자산 생성에 실패했습니다')
       }
-
-      const newAsset = await response.json()
 
       toast.success('자산이 성공적으로 추가되었습니다! 🎉')
 
@@ -342,7 +252,7 @@ export default function AssetsPage() {
         currentValue: '',
       })
       onClose()
-      await loadAssets(orgId)
+      await loadAssetData()
     } catch (error) {
       console.error('자산 생성 중 오류:', error)
 
@@ -386,35 +296,32 @@ export default function AssetsPage() {
     setUpdating(true)
 
     try {
+      // Get selected category to determine asset type
+      const selectedCategory = assetCategories.find(cat => cat.id === editFormData.categoryId)
+      
       const assetData = {
         id: selectedAsset.id,
         name: editFormData.name,
-        description: editFormData.description || null,
+        description: editFormData.description || undefined,
+        type: selectedCategory?.type || selectedAsset.type, // Use category type or keep existing type
         categoryId: editFormData.categoryId,
         currentValue: parseFloat(editFormData.currentValue),
         targetValue: editFormData.targetValue
           ? parseFloat(editFormData.targetValue)
-          : null,
+          : undefined,
         organizationId: orgId,
       }
 
-      const response = await fetch('/api/assets', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(assetData),
-      })
+      const result = await updateAsset(assetData)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update asset')
+      if (!result.success) {
+        throw new Error(result.error || '자산 수정에 실패했습니다')
       }
 
       toast.success('자산이 성공적으로 수정되었습니다! ✅')
 
       onEditClose()
-      await loadAssets(orgId)
+      await loadAssetData()
     } catch (error) {
       console.error('자산 수정 중 오류:', error)
 
@@ -442,22 +349,16 @@ export default function AssetsPage() {
     setDeleting(true)
 
     try {
-      const response = await fetch(
-        `/api/assets?id=${selectedAsset.id}&organizationId=${orgId}`,
-        {
-          method: 'DELETE',
-        }
-      )
+      const result = await deleteAsset(selectedAsset.id, orgId)
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete asset')
+      if (!result.success) {
+        throw new Error(result.error || '자산 삭제에 실패했습니다')
       }
 
       toast.success('자산이 성공적으로 삭제되었습니다! 🗑️')
 
       onDeleteClose()
-      await loadAssets(orgId)
+      await loadAssetData()
     } catch (error) {
       console.error('자산 삭제 중 오류:', error)
 

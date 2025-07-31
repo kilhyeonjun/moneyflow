@@ -11,14 +11,14 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
-import { Database } from '@/types/database'
 
-type Transaction = Database['public']['Tables']['transactions']['Row'] & {
-  categories?: { transaction_type: string }
-}
+// Use the transformed transaction type from server actions
+import { transformTransactionForFrontend } from '@/lib/types'
+
+type TransactionForChart = ReturnType<typeof transformTransactionForFrontend>
 
 interface MonthlyTrendChartProps {
-  transactions: Transaction[]
+  transactions: TransactionForChart[]
 }
 
 type MonthlyDataItem = {
@@ -34,7 +34,12 @@ export default function MonthlyTrendChart({
   // 월별 데이터 집계
   const monthlyData = transactions.reduce(
     (acc, transaction) => {
-      const date = new Date(transaction.transaction_date)
+      // Handle transaction date safely
+      if (!transaction.transactionDate) return acc
+      
+      const date = new Date(transaction.transactionDate)
+      if (isNaN(date.getTime())) return acc // Skip invalid dates
+      
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
       if (!acc[monthKey]) {
@@ -46,16 +51,15 @@ export default function MonthlyTrendChart({
         }
       }
 
-      const amount = Math.abs(transaction.amount)
-      const type =
-        transaction.categories?.transaction_type ||
-        (transaction as Transaction & { transaction_type?: string }).transaction_type
+      const amount = Math.abs(Number(transaction.amount))
+      const type = transaction.transactionType || 'expense'
 
       if (type === 'income') {
         acc[monthKey].income += amount
       } else if (type === 'expense') {
         acc[monthKey].expense += amount
-      } else if (type === 'savings') {
+      } else if (type === 'transfer') {
+        // For now, treat transfers as savings
         acc[monthKey].savings += amount
       }
 

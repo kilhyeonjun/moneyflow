@@ -37,7 +37,8 @@ import {
 } from 'recharts'
 import { Calendar, TrendingUp, TrendingDown, DollarSign, RefreshCw } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { supabase } from '@/lib/supabase'
+import { getAnalyticsData } from '@/lib/server-actions/analytics'
+import { createClient } from '@/lib/supabase'
 
 interface MonthlyData {
   month: string
@@ -122,41 +123,37 @@ export default function AnalyticsPage() {
     try {
       setRefreshing(true)
 
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
+      // 사용자 인증 상태 확인 (Supabase Auth 유지)
+      const supabase = createClient()
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      if (authError) {
+        toast.error('사용자 인증에 실패했습니다.')
+        return
+      }
+
+      if (!user) {
+        toast.error('로그인이 필요합니다.')
         router.push('/login')
         return
       }
 
-      // API 파라미터 구성
-      const params = new URLSearchParams({
+      // 서버 액션으로 분석 데이터 로드
+      const result = await getAnalyticsData({
         organizationId: orgId,
         period,
         year: selectedYear,
+        month: period === 'monthly' ? selectedMonth : undefined,
       })
 
-      if (period === 'monthly' && selectedMonth) {
-        params.append('month', selectedMonth)
+      if (!result.success || !result.data) {
+        throw new Error(result.error || '분석 데이터를 불러오는데 실패했습니다')
       }
 
-      const response = await fetch(`/api/analytics?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          router.push('/login')
-          return
-        }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
+      const data = result.data
       setAnalyticsData(data)
 
       if (period === 'monthly') {

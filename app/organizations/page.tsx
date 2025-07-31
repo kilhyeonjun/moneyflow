@@ -25,15 +25,17 @@ import {
   Clock,
   Building,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { Database } from '@/types/database'
 import toast, { Toaster } from 'react-hot-toast'
 import { Chip } from '@heroui/react'
 import { formatDateSafe, calculateExpirationDays, formatExpirationStatus, formatCreationDate } from '@/lib/utils/date'
 
-type Organization = Database['public']['Tables']['organizations']['Row']
-type OrganizationInsert =
-  Database['public']['Tables']['organizations']['Insert']
+// Import server actions
+import {
+  getUserOrganizations,
+  createOrganization as createOrganizationAction,
+} from '@/lib/server-actions/organizations'
+import { createDefaultCategories } from '@/lib/server-actions/categories'
+import type { UserOrganization } from '@/lib/types'
 
 interface ReceivedInvitation {
   id: string
@@ -51,7 +53,7 @@ interface ReceivedInvitation {
 }
 
 export default function OrganizationsPage() {
-  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [organizations, setOrganizations] = useState<UserOrganization[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [newOrgName, setNewOrgName] = useState('')
@@ -64,26 +66,20 @@ export default function OrganizationsPage() {
 
   useEffect(() => {
     fetchOrganizations()
-    loadReceivedInvitations()
+    // TODO: Implement invitation server actions
+    // loadReceivedInvitations()
   }, [])
 
   const fetchOrganizations = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) return
-
-      // API 라우트를 통해 조직 목록 조회
-      const response = await fetch(`/api/organizations?userId=${user.id}`)
+      setLoading(true)
+      const result = await getUserOrganizations()
       
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || '조직 목록을 불러오는데 실패했습니다')
+      if (result.success && result.data) {
+        setOrganizations(result.data)
+      } else {
+        throw new Error(result.error || '조직 목록을 불러오는데 실패했습니다')
       }
-
-      const data = await response.json()
-      setOrganizations(data || [])
     } catch (error) {
       console.error('조직 목록 조회 실패:', error)
       toast.error('조직 목록을 불러오는데 실패했습니다.')
@@ -97,48 +93,29 @@ export default function OrganizationsPage() {
 
     setCreating(true)
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) throw new Error('사용자 인증이 필요합니다')
-
-      // API 라우트를 통해 조직 생성
-      const response = await fetch('/api/organizations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: newOrgName.trim(),
-          description: newOrgDescription.trim() || null,
-          createdBy: user.id,
-        }),
+      // 서버 액션으로 조직 생성
+      const orgResult = await createOrganizationAction({
+        name: newOrgName.trim(),
+        description: newOrgDescription.trim() || undefined,
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || '조직 생성에 실패했습니다')
+      if (!orgResult.success || !orgResult.data) {
+        throw new Error(orgResult.error || '조직 생성에 실패했습니다')
       }
 
-      const org = await response.json()
+      const org = orgResult.data
 
-      // 기본 카테고리 및 결제수단 생성
+      // 기본 카테고리 생성
       try {
-        const initialDataResponse = await fetch(`/api/organizations/${org.id}/initial-data`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-
-        if (!initialDataResponse.ok) {
-          const errorData = await initialDataResponse.json()
-          throw new Error(errorData.error || '기본 데이터 생성에 실패했습니다')
+        const categoriesResult = await createDefaultCategories(org.id)
+        
+        if (!categoriesResult.success) {
+          console.error('기본 카테고리 생성 실패:', categoriesResult.error)
+          toast.error('조직은 생성되었지만 기본 카테고리 생성에 실패했습니다.')
+        } else {
+          console.log('기본 카테고리 생성 완료:', categoriesResult.data)
+          toast.success('조직이 성공적으로 생성되었습니다!')
         }
-
-        const initialDataResult = await initialDataResponse.json()
-        console.log('기본 데이터 생성 완료:', initialDataResult)
-        toast.success('조직이 성공적으로 생성되었습니다!')
       } catch (dataError) {
         console.error('기본 데이터 생성 실패:', dataError)
         toast.error('조직은 생성되었지만 기본 데이터 생성에 실패했습니다.')
@@ -168,37 +145,12 @@ export default function OrganizationsPage() {
     }
   }
 
+  // TODO: Implement invitation server actions
+  /*
   const loadReceivedInvitations = async () => {
     try {
       setInvitationsLoading(true)
-      console.log('=== 받은 초대 로드 시작 ===')
-
-      // Supabase Auth 토큰 가져오기
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        console.log('세션이 없어서 초대 로드를 건너뜁니다')
-        return
-      }
-
-      console.log('현재 사용자 이메일:', session.user?.email)
-      
-      const response = await fetch('/api/invitations/received', {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      })
-
-      console.log('API 응답 상태:', response.status)
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('받은 초대 데이터:', data)
-        setReceivedInvitations(data.invitations || [])
-      } else {
-        const errorData = await response.json()
-        console.error('초대 로드 API 에러:', response.status, errorData)
-      }
+      // TODO: Replace with server action
     } catch (error) {
       console.error('받은 초대 로드 실패:', error)
     } finally {
@@ -209,38 +161,7 @@ export default function OrganizationsPage() {
   const handleInvitationAction = async (invitationId: string, action: 'accept' | 'reject') => {
     try {
       setProcessingInvitation(invitationId)
-
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        toast.error('로그인이 필요합니다')
-        return
-      }
-
-      const response = await fetch('/api/invitations/received', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ invitationId, action }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${action} invitation`)
-      }
-
-      // 초대 목록에서 처리된 초대 제거
-      setReceivedInvitations(prev => prev.filter(inv => inv.id !== invitationId))
-
-      if (action === 'accept') {
-        toast.success('초대를 수락했습니다!')
-        // 조직 목록 새로고침
-        await fetchOrganizations()
-      } else {
-        toast.success('초대를 거절했습니다')
-      }
+      // TODO: Replace with server action
     } catch (error: any) {
       console.error(`초대 ${action} 실패:`, error)
       toast.error(error.message)
@@ -248,6 +169,7 @@ export default function OrganizationsPage() {
       setProcessingInvitation(null)
     }
   }
+  */
 
   const getRoleDisplayName = (role: string) => {
     switch (role) {
@@ -310,8 +232,8 @@ export default function OrganizationsPage() {
           </Button>
         </div>
 
-        {/* 받은 초대 섹션 */}
-        {receivedInvitations.length > 0 && (
+        {/* 받은 초대 섹션 - TODO: Implement invitation server actions */}
+        {false && receivedInvitations.length > 0 && (
           <Card className="mb-8">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -377,9 +299,9 @@ export default function OrganizationsPage() {
                             color="success"
                             size="sm"
                             startContent={<CheckCircle className="w-4 h-4" />}
-                            onPress={() => handleInvitationAction(invitation.id, 'accept')}
+                            onPress={() => {/* TODO: Implement invitation actions */}}
                             isLoading={isProcessing}
-                            isDisabled={isProcessing || !expiration.isValid || expiration.isExpired}
+                            isDisabled={true /* TODO: Enable after implementing invitation server actions */}
                           >
                             수락
                           </Button>
@@ -388,9 +310,9 @@ export default function OrganizationsPage() {
                             variant="bordered"
                             size="sm"
                             startContent={<XCircle className="w-4 h-4" />}
-                            onPress={() => handleInvitationAction(invitation.id, 'reject')}
+                            onPress={() => {/* TODO: Implement invitation actions */}}
                             isLoading={isProcessing}
-                            isDisabled={isProcessing || !expiration.isValid || expiration.isExpired}
+                            isDisabled={true /* TODO: Enable after implementing invitation server actions */}
                           >
                             거절
                           </Button>
@@ -441,7 +363,7 @@ export default function OrganizationsPage() {
                         {org.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {formatCreationDate(org.created_at)}
+                        {org.createdAt ? formatCreationDate(org.createdAt.toISOString()) : '날짜 없음'}
                       </p>
                     </div>
                   </div>

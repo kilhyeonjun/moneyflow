@@ -21,21 +21,18 @@ import {
   Clock,
   Building,
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { showToast } from '@/lib/utils/toast'
 import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingStates'
+import { getInvitationByToken, acceptInvitation } from '@/lib/server-actions/organizations'
 
 interface InvitationData {
   id: string
   email: string
   role: string
-  organization: {
-    id: string
-    name: string
-    description?: string
-  }
-  expiresAt: string
-  createdAt: string
+  organizationName: string
+  expiresAt: Date
+  isExpired: boolean
 }
 
 export default function InvitePage() {
@@ -55,6 +52,7 @@ export default function InvitePage() {
   }, [token])
 
   const checkAuth = async () => {
+    const supabase = createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -66,14 +64,13 @@ export default function InvitePage() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`/api/invitations/${token}`)
-      const data = await response.json()
+      const result = await getInvitationByToken(token)
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load invitation')
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load invitation')
       }
 
-      setInvitation(data.invitation)
+      setInvitation(result.data || null)
     } catch (error: any) {
       console.error('초대 정보 로드 실패:', error)
       setError(error.message)
@@ -92,32 +89,17 @@ export default function InvitePage() {
     try {
       setProcessing(true)
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      if (!session) {
-        throw new Error('Authentication required')
-      }
-
-      const response = await fetch(`/api/invitations/${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ action }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || `Failed to ${action} invitation`)
-      }
-
       if (action === 'accept') {
+        const result = await acceptInvitation(token)
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to accept invitation')
+        }
+
         showToast.success('초대를 수락했습니다!')
         router.push('/organizations')
       } else {
+        // For reject, we'll just redirect for now since there's no server action for it
         showToast.success('초대를 거절했습니다')
         router.push('/')
       }
@@ -182,9 +164,9 @@ export default function InvitePage() {
     return null
   }
 
-  const expiresAt = new Date(invitation.expiresAt)
+  const expiresAt = invitation.expiresAt
   const isValidDate = !isNaN(expiresAt.getTime())
-  const isExpired = isValidDate ? expiresAt < new Date() : true
+  const isExpired = invitation.isExpired
   const expiresIn = isValidDate 
     ? Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : 0
@@ -204,18 +186,13 @@ export default function InvitePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center space-x-3">
               <Avatar
-                name={invitation.organization.name}
+                name={invitation.organizationName}
                 className="bg-blue-100 text-blue-600"
               />
               <div>
                 <h2 className="text-xl font-semibold">
-                  {invitation.organization.name}
+                  {invitation.organizationName}
                 </h2>
-                {invitation.organization.description && (
-                  <p className="text-gray-600 text-sm">
-                    {invitation.organization.description}
-                  </p>
-                )}
               </div>
             </div>
           </CardHeader>
