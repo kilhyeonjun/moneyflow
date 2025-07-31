@@ -175,6 +175,34 @@ export async function GET(request: NextRequest) {
       orderBy: { joinedAt: 'desc' },
     })
 
+    // 멤버들의 사용자 프로필 정보를 Supabase Auth에서 가져오기
+    const memberUserIds = members.map(member => member.userId)
+    const userProfiles = new Map()
+
+    // 배치로 사용자 프로필 정보 가져오기
+    for (const userId of memberUserIds) {
+      try {
+        const { data: userProfile, error: profileError } = await supabaseClient.auth.admin.getUserById(userId)
+        if (!profileError && userProfile?.user) {
+          userProfiles.set(userId, {
+            id: userProfile.user.id,
+            email: userProfile.user.email,
+            full_name: userProfile.user.user_metadata?.full_name || null,
+            avatar_url: userProfile.user.user_metadata?.avatar_url || null,
+          })
+        }
+      } catch (error) {
+        console.error(`Failed to fetch profile for user ${userId}:`, error)
+        // 프로필을 가져올 수 없는 경우 기본값 설정
+        userProfiles.set(userId, {
+          id: userId,
+          email: null,
+          full_name: null,
+          avatar_url: null,
+        })
+      }
+    }
+
     // 응답 형식을 기존 Supabase 형식과 맞추기
     const formattedOrganization = {
       id: organization.id,
@@ -185,13 +213,23 @@ export async function GET(request: NextRequest) {
       updated_at: organization.updatedAt,
     }
 
-    const formattedMembers = members.map((member) => ({
-      id: member.id,
-      organization_id: organizationId,
-      user_id: member.userId,
-      role: member.role,
-      joined_at: member.joinedAt,
-    }))
+    const formattedMembers = members.map((member) => {
+      const userProfile = userProfiles.get(member.userId)
+      return {
+        id: member.id,
+        organization_id: organizationId,
+        user_id: member.userId,
+        role: member.role,
+        joined_at: member.joinedAt,
+        // 사용자 프로필 정보 추가
+        user_profile: userProfile || {
+          id: member.userId,
+          email: null,
+          full_name: null,
+          avatar_url: null,
+        },
+      }
+    })
 
     return NextResponse.json({
       organization: formattedOrganization,

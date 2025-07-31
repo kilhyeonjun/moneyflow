@@ -40,7 +40,14 @@ import { Database } from '@/types/database'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 type OrganizationMember =
-  Database['public']['Tables']['organization_members']['Row']
+  Database['public']['Tables']['organization_members']['Row'] & {
+    user_profile?: {
+      id: string
+      email: string | null
+      full_name: string | null
+      avatar_url: string | null
+    }
+  }
 
 interface UserProfile {
   id: string
@@ -950,43 +957,56 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {members.map(member => (
-                    <div
-                      key={member.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar size="sm" />
-                        <div>
-                          <p className="font-medium">
-                            멤버 {member.user_id.slice(0, 8)}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            {new Date(member.joined_at).toLocaleDateString(
-                              'ko-KR'
-                            )}{' '}
-                            가입
-                          </p>
-                        </div>
-                      </div>
-                      <Chip
-                        color={
-                          member.role === 'owner'
-                            ? 'primary'
-                            : member.role === 'admin'
-                              ? 'secondary'
-                              : 'default'
-                        }
-                        size="sm"
+                  {members.map(member => {
+                    const profile = member.user_profile
+                    const displayName = profile?.full_name || profile?.email || `사용자 ${member.user_id.slice(0, 8)}`
+                    const displayEmail = profile?.email || '이메일 없음'
+                    
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                       >
-                        {member.role === 'owner'
-                          ? '소유자'
-                          : member.role === 'admin'
-                            ? '관리자'
-                            : '멤버'}
-                      </Chip>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3">
+                          <Avatar 
+                            size="sm" 
+                            src={profile?.avatar_url || undefined}
+                            name={displayName}
+                          />
+                          <div>
+                            <p className="font-medium">
+                              {displayName}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              {displayEmail}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(member.joined_at).toLocaleDateString(
+                                'ko-KR'
+                              )}{' '}
+                              가입
+                            </p>
+                          </div>
+                        </div>
+                        <Chip
+                          color={
+                            member.role === 'owner'
+                              ? 'primary'
+                              : member.role === 'admin'
+                                ? 'secondary'
+                                : 'default'
+                          }
+                          size="sm"
+                        >
+                          {member.role === 'owner'
+                            ? '소유자'
+                            : member.role === 'admin'
+                              ? '관리자'
+                              : '멤버'}
+                        </Chip>
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {/* 초대 목록 */}
