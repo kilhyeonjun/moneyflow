@@ -113,11 +113,71 @@ The application uses a multi-tenant architecture where:
 - **Organization Isolation**: All user data scoped to organization membership via Prisma queries
 
 ### Data Flow Patterns
-1. **API Routes**: Use Prisma for database operations with Supabase Auth for authorization
-2. **Client Components**: Use fetch API to call backend routes, with Supabase Auth tokens for authentication
-3. **Form Handling**: TanStack Form for complex forms with validation
-4. **Server State**: TanStack Query for caching and synchronization
-5. **Optimistic Updates**: Immediate UI updates with server reconciliation
+1. **Server Actions**: Use Next.js Server Actions for form submissions and data mutations with Supabase Auth for authorization
+2. **API Routes**: Use Prisma for database operations with Supabase Auth for authorization (legacy endpoints)
+3. **Client Components**: Use Server Actions for mutations, fetch API for queries with Supabase Auth tokens
+4. **Form Handling**: TanStack Form with Server Actions for submission, or native form actions
+5. **Server State**: TanStack Query for caching and synchronization
+6. **Optimistic Updates**: Immediate UI updates with server reconciliation
+
+### Server Actions Implementation
+
+#### Core Principles
+- **Server-first**: All data mutations happen on the server with proper authentication
+- **Progressive Enhancement**: Forms work without JavaScript, enhanced with client-side features
+- **Type Safety**: Full TypeScript support with automatic type inference
+- **Error Handling**: Structured error responses with validation feedback
+
+#### Authentication Pattern
+```typescript
+import { createClient } from '@/lib/supabase-server'
+import { redirect } from 'next/navigation'
+
+export async function myServerAction(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  
+  if (error || !user) {
+    redirect('/login')
+  }
+  
+  // Your server action logic here
+}
+```
+
+#### Organization-Scoped Actions
+```typescript
+export async function createTransaction(formData: FormData) {
+  // 1. Authenticate user
+  const user = await authenticateUser()
+  
+  // 2. Get user's organization
+  const orgId = await getUserOrganization(user.id)
+  
+  // 3. Perform database operation with organization scope
+  const result = await prisma.transactions.create({
+    data: {
+      ...transactionData,
+      organization_id: orgId
+    }
+  })
+  
+  // 4. Revalidate and redirect
+  revalidatePath('/dashboard/transactions')
+}
+```
+
+#### Common Patterns
+- **Form Actions**: Direct form submission with `action` prop
+- **Button Actions**: Programmatic calls with `useTransition` hook
+- **Validation**: Zod schemas for input validation
+- **Error Handling**: Return objects with success/error states
+- **Revalidation**: Use `revalidatePath()` or `revalidateTag()` for cache invalidation
+
+#### File Locations
+- `actions/` - Directory containing all server actions organized by domain
+- Server Actions are co-located with components when appropriate
+- Shared actions in `lib/actions.ts` for common operations
 
 ### Testing & Development Notes
 - Test account: `admin@moneyflow.com` / `admin123`
