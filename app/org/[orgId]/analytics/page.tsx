@@ -38,7 +38,7 @@ import {
 import { Calendar, TrendingUp, TrendingDown, DollarSign, RefreshCw } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { getAnalyticsData } from '@/lib/server-actions/analytics'
-import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 
 interface MonthlyData {
@@ -93,6 +93,7 @@ export default function AnalyticsPage() {
   const router = useRouter()
   const params = useParams()
   const orgId = params?.orgId as string
+  const { handleError } = useErrorHandler()
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -161,9 +162,10 @@ export default function AnalyticsPage() {
 
       console.log('📊 분석 데이터 로드 완료:', data)
     } catch (error) {
-      console.error('분석 데이터 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-      toast.error(`분석 데이터 로드 실패: ${errorMessage}`)
+      const errorMessage = handleError(error, 'loadAnalyticsData')
+      if (errorMessage) {
+        toast.error(`분석 데이터 로드 실패: ${errorMessage}`)
+      }
     } finally {
       setRefreshing(false)
       setLoading(false)

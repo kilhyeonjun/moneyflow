@@ -184,16 +184,31 @@ export async function createTransaction(formData: FormData) {
 #### Client-Side Error Handling
 - **Throw Pattern**: All Server Action calls use `handleServerActionResult()` utility and throw errors
 - **Error Boundary**: Global Error Boundary catches and handles all errors
-- **No Try-Catch**: Avoid try-catch blocks in client components for Server Action calls
-- **UNAUTHORIZED**: Automatically redirects to `/login` via Error Boundary
+- **useErrorHandler Hook**: For async functions that need UNAUTHORIZED redirect handling
+- **UNAUTHORIZED**: Automatically redirects to `/login` via Error Boundary or useErrorHandler
 
-#### Error Handling Utility
+#### Error Handling Utilities
 ```typescript
 // Import in client components
-import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
 
-// Usage pattern
+// For direct Server Action results (synchronous)
 const data = handleServerActionResult(serverActionResult) // Throws on error
+
+// For async error handling with automatic UNAUTHORIZED redirect
+const { handleError } = useErrorHandler()
+
+// Usage in async functions
+try {
+  const result = await serverAction()
+  const data = handleServerActionResult(result)
+  // handle success
+} catch (error) {
+  const errorMessage = handleError(error, 'functionName')
+  if (errorMessage) {
+    toast.error(errorMessage) // Only shows if not UNAUTHORIZED
+  }
+}
 ```
 
 #### Server Action Results
@@ -202,9 +217,35 @@ const data = handleServerActionResult(serverActionResult) // Throws on error
 - **UNAUTHORIZED**: Triggers automatic redirect to login
 - **FORBIDDEN**: Can be handled specifically in components if needed
 
-#### Implementation Pattern
+#### Implementation Patterns
+
+**For useEffect and async functions:**
 ```typescript
-// ❌ Old pattern - avoid
+// ✅ Recommended pattern with useErrorHandler
+const { handleError } = useErrorHandler()
+
+const loadData = async () => {
+  try {
+    const result = await serverAction()
+    const data = handleServerActionResult(result)
+    setData(data)
+  } catch (error) {
+    const errorMessage = handleError(error, 'loadData')
+    if (errorMessage) {
+      toast.error(errorMessage)
+    }
+  }
+}
+```
+
+**For direct Server Action calls:**
+```typescript
+// ✅ Simple pattern - Error Boundary handles all cases
+const data = handleServerActionResult(await serverAction())
+```
+
+**❌ Old pattern - avoid:**
+```typescript
 try {
   const result = await serverAction()
   if (!result.success) {
@@ -215,10 +256,6 @@ try {
 } catch (error) {
   toast.error('Error occurred')
 }
-
-// ✅ New pattern - preferred
-const data = handleServerActionResult(await serverAction())
-// Error Boundary handles all error cases automatically
 ```
 
 ### Testing & Development Notes

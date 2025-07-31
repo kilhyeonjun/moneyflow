@@ -30,7 +30,7 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { getGoals, createGoal, updateGoal, deleteGoal } from '@/lib/server-actions/goals'
-import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 // Import Prisma types directly
 import type { FinancialGoal } from '@prisma/client'
@@ -46,6 +46,7 @@ export default function GoalsPage() {
   const router = useRouter()
   const params = useParams()
   const orgId = params?.orgId as string
+  const { handleError } = useErrorHandler()
 
   const { isOpen, onOpen, onClose } = useDisclosure()
   const {
@@ -128,9 +129,10 @@ export default function GoalsPage() {
 
       setGoals(goalsList)
     } catch (error) {
-      console.error('목표 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-      toast.error(`목표 로드 실패: ${errorMessage}`)
+      const errorMessage = handleError(error, 'loadGoals')
+      if (errorMessage) {
+        toast.error(`목표 로드 실패: ${errorMessage}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -194,9 +196,10 @@ export default function GoalsPage() {
       onClose()
       await loadGoals(orgId)
     } catch (error) {
-      console.error('목표 생성 중 오류:', error)
-      const errorMessage = error instanceof Error ? error.message : '목표 생성 중 오류가 발생했습니다.'
-      toast.error(errorMessage)
+      const errorMessage = handleError(error, 'handleCreateGoal')
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
     } finally {
       setCreating(false)
     }
@@ -264,9 +267,10 @@ export default function GoalsPage() {
       onEditClose()
       await loadGoals(orgId)
     } catch (error) {
-      console.error('목표 수정 중 오류:', error)
-      const errorMessage = error instanceof Error ? error.message : '목표 수정 중 오류가 발생했습니다.'
-      toast.error(errorMessage)
+      const errorMessage = handleError(error, 'handleUpdateGoal')
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
     } finally {
       setUpdating(false)
     }
@@ -290,9 +294,10 @@ export default function GoalsPage() {
       onDeleteClose()
       await loadGoals(orgId)
     } catch (error) {
-      console.error('목표 삭제 중 오류:', error)
-      const errorMessage = error instanceof Error ? error.message : '목표 삭제 중 오류가 발생했습니다.'
-      toast.error(errorMessage)
+      const errorMessage = handleError(error, 'confirmDeleteGoal')
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
     } finally {
       setDeleting(false)
     }

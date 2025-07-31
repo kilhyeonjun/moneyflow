@@ -101,6 +101,13 @@ export function useErrorHandler() {
     const errorMessage =
       error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다'
     console.error(`Error in ${context || 'unknown context'}:`, error)
+    
+    // UNAUTHORIZED 에러인 경우 직접 리다이렉트
+    if (error instanceof Error && (error.message === 'UNAUTHORIZED' || error.name === 'UnauthorizedError')) {
+      window.location.href = '/login'
+      return
+    }
+    
     return errorMessage
   }, [])
 

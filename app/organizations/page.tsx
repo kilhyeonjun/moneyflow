@@ -35,7 +35,7 @@ import {
   createOrganization as createOrganizationAction,
 } from '@/lib/server-actions/organizations'
 import { createDefaultCategories } from '@/lib/server-actions/categories'
-import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
 import type { UserOrganization } from '@/lib/types'
 
 interface ReceivedInvitation {
@@ -64,6 +64,7 @@ export default function OrganizationsPage() {
   const [processingInvitation, setProcessingInvitation] = useState<string | null>(null)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const router = useRouter()
+  const { handleError } = useErrorHandler()
 
   useEffect(() => {
     fetchOrganizations()
@@ -77,6 +78,8 @@ export default function OrganizationsPage() {
       const result = await getUserOrganizations()
       const organizations = handleServerActionResult(result)
       setOrganizations(organizations)
+    } catch (error) {
+      handleError(error, 'fetchOrganizations')
     } finally {
       setLoading(false)
     }
@@ -113,6 +116,11 @@ export default function OrganizationsPage() {
       onClose()
       setNewOrgName('')
       setNewOrgDescription('')
+    } catch (error) {
+      const errorMessage = handleError(error, 'createOrganization')
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
     } finally {
       setCreating(false)
     }

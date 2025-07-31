@@ -25,7 +25,7 @@ import { createClient } from '@/lib/supabase'
 import { showToast } from '@/lib/utils/toast'
 import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingStates'
 import { getInvitationByToken, acceptInvitation } from '@/lib/server-actions/organizations'
-import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
 
 interface InvitationData {
   id: string
@@ -40,6 +40,7 @@ export default function InvitePage() {
   const params = useParams()
   const router = useRouter()
   const token = params.token as string
+  const { handleError } = useErrorHandler()
 
   const [invitation, setInvitation] = useState<InvitationData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -67,8 +68,10 @@ export default function InvitePage() {
 
       setInvitation(handleServerActionResult(await getInvitationByToken(token)) || null)
     } catch (error: any) {
-      console.error('초대 정보 로드 실패:', error)
-      setError(error.message)
+      const errorMessage = handleError(error, 'loadInvitation')
+      if (errorMessage) {
+        setError(errorMessage)
+      }
     } finally {
       setLoading(false)
     }
@@ -95,8 +98,10 @@ export default function InvitePage() {
         router.push('/')
       }
     } catch (error: any) {
-      console.error(`초대 ${action} 실패:`, error)
-      showToast.error(error.message)
+      const errorMessage = handleError(error, `handleInvitation-${action}`)
+      if (errorMessage) {
+        showToast.error(errorMessage)
+      }
     } finally {
       setProcessing(false)
     }

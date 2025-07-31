@@ -50,7 +50,7 @@ import {
   updateLiability,
   deleteLiability,
 } from '@/lib/server-actions/assets'
-import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 
 // Prisma 타입 import
@@ -78,6 +78,7 @@ export default function AssetsPage() {
   const router = useRouter()
   const params = useParams()
   const orgId = params?.orgId as string
+  const { handleError } = useErrorHandler()
 
   const { isOpen, onOpen, onClose } = useDisclosure()
   const {
@@ -172,9 +173,10 @@ export default function AssetsPage() {
         setAssetSummary(summary)
       }
     } catch (error) {
-      console.error('데이터 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
-      toast.error(`데이터 로드 실패: ${errorMessage}`)
+      const errorMessage = handleError(error, 'loadAssetData')
+      if (errorMessage) {
+        toast.error(`데이터 로드 실패: ${errorMessage}`)
+      }
     } finally {
       setLoading(false)
     }
@@ -187,9 +189,10 @@ export default function AssetsPage() {
       console.log('초기 데이터 생성 완료:', data)
       toast.success('기본 카테고리가 생성되었습니다!')
     } catch (error) {
-      console.error('기본 카테고리 생성 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '기본 카테고리 생성에 실패했습니다.'
-      toast.error(errorMessage)
+      const errorMessage = handleError(error, 'createDefaultCategories')
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
     }
   }
 
@@ -242,12 +245,9 @@ export default function AssetsPage() {
       onClose()
       await loadAssetData()
     } catch (error) {
-      console.error('자산 생성 중 오류:', error)
-
-      if (error instanceof Error) {
-        toast.error(`자산 생성 실패: ${error.message}`)
-      } else {
-        toast.error('자산 생성 중 알 수 없는 오류가 발생했습니다.')
+      const errorMessage = handleError(error, 'handleCreateAsset')
+      if (errorMessage) {
+        toast.error(`자산 생성 실패: ${errorMessage}`)
       }
     } finally {
       setCreating(false)
@@ -307,12 +307,9 @@ export default function AssetsPage() {
       onEditClose()
       await loadAssetData()
     } catch (error) {
-      console.error('자산 수정 중 오류:', error)
-
-      if (error instanceof Error) {
-        toast.error(`자산 수정 실패: ${error.message}`)
-      } else {
-        toast.error('자산 수정 중 알 수 없는 오류가 발생했습니다.')
+      const errorMessage = handleError(error, 'handleUpdateAsset')
+      if (errorMessage) {
+        toast.error(`자산 수정 실패: ${errorMessage}`)
       }
     } finally {
       setUpdating(false)
@@ -340,12 +337,9 @@ export default function AssetsPage() {
       onDeleteClose()
       await loadAssetData()
     } catch (error) {
-      console.error('자산 삭제 중 오류:', error)
-
-      if (error instanceof Error) {
-        toast.error(`자산 삭제 실패: ${error.message}`)
-      } else {
-        toast.error('자산 삭제 중 알 수 없는 오류가 발생했습니다.')
+      const errorMessage = handleError(error, 'confirmDeleteAsset')
+      if (errorMessage) {
+        toast.error(`자산 삭제 실패: ${errorMessage}`)
       }
     } finally {
       setDeleting(false)
