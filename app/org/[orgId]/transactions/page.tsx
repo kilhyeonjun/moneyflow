@@ -534,7 +534,27 @@ export default function TransactionsPage() {
                   .map(category => (
                     <SelectItem key={category.id}>
                       <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{category.name}</span>
+                        <div className="flex items-center">
+                          {/* 레벨별 들여쓰기 */}
+                          <span style={{ marginLeft: `${(category.level - 1) * 20}px` }}>
+                            {/* 계층 표시 아이콘 */}
+                            {category.level > 1 && (
+                              <span className="text-gray-400 mr-2 text-sm font-mono">
+                                {category.level === 2 ? '├─' : '└─'}
+                              </span>
+                            )}
+                            {/* 카테고리 아이콘과 이름 */}
+                            <span className={`${
+                              category.level === 1 
+                                ? 'font-semibold text-gray-900' 
+                                : category.level === 2 
+                                ? 'font-medium text-gray-700' 
+                                : 'font-normal text-gray-600'
+                            }`}>
+                              {category.icon && `${category.icon} `}{category.name}
+                            </span>
+                          </span>
+                        </div>
                         <Chip
                           size="sm"
                           variant="flat"
@@ -645,7 +665,27 @@ export default function TransactionsPage() {
                   .map(category => (
                     <SelectItem key={category.id}>
                       <div className="flex items-center justify-between w-full">
-                        <span className="font-medium">{category.name}</span>
+                        <div className="flex items-center">
+                          {/* 레벨별 들여쓰기 */}
+                          <span style={{ marginLeft: `${(category.level - 1) * 20}px` }}>
+                            {/* 계층 표시 아이콘 */}
+                            {category.level > 1 && (
+                              <span className="text-gray-400 mr-2 text-sm font-mono">
+                                {category.level === 2 ? '├─' : '└─'}
+                              </span>
+                            )}
+                            {/* 카테고리 아이콘과 이름 */}
+                            <span className={`${
+                              category.level === 1 
+                                ? 'font-semibold text-gray-900' 
+                                : category.level === 2 
+                                ? 'font-medium text-gray-700' 
+                                : 'font-normal text-gray-600'
+                            }`}>
+                              {category.icon && `${category.icon} `}{category.name}
+                            </span>
+                          </span>
+                        </div>
                         <Chip
                           size="sm"
                           variant="flat"

@@ -87,6 +87,32 @@ export const defaultTransactionCategories: DefaultTransactionCategoryData[] = [
     icon: '🏠',
     color: '#EF4444',
   },
+  // 생활비 하위 카테고리 (Level 2) - 계층 구조 테스트용
+  {
+    name: '식비',
+    level: 2,
+    parentName: '생활비',
+    transactionType: 'expense',
+    icon: '🍽️',
+    color: '#F87171',
+  },
+  {
+    name: '주거비',
+    level: 2,
+    parentName: '생활비',
+    transactionType: 'expense',
+    icon: '🏘️',
+    color: '#FCA5A5',
+  },
+  // 식비 하위 카테고리 (Level 3) - 계층 구조 테스트용
+  {
+    name: '외식',
+    level: 3,
+    parentName: '식비',
+    transactionType: 'expense',
+    icon: '🍴',
+    color: '#FECACA',
+  },
   {
     name: '교통비',
     level: 1,

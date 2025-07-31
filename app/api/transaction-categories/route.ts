@@ -35,10 +35,40 @@ export async function GET(request: NextRequest) {
 
     const categories = await prisma.category.findMany({
       where,
-      orderBy: {
-        name: 'asc',
-      },
+      orderBy: [
+        { level: 'asc' },
+        { name: 'asc' },
+      ],
     })
+
+    // 계층형 정렬: 부모 카테고리 다음에 자식 카테고리가 오도록 정렬
+    const sortedHierarchically = (categories: any[]) => {
+      const result: any[] = []
+      const processed = new Set<string>()
+      
+      // 1단계 카테고리들을 먼저 추가
+      const level1Categories = categories.filter(cat => cat.level === 1).sort((a, b) => a.name.localeCompare(b.name))
+      
+      const addCategoryWithChildren = (category: any) => {
+        if (processed.has(category.id)) return
+        
+        result.push(category)
+        processed.add(category.id)
+        
+        // 이 카테고리의 자식들을 찾아서 추가
+        const children = categories
+          .filter(cat => cat.parentId === category.id)
+          .sort((a, b) => a.name.localeCompare(b.name))
+        
+        children.forEach(child => addCategoryWithChildren(child))
+      }
+      
+      level1Categories.forEach(category => addCategoryWithChildren(category))
+      
+      return result
+    }
+    
+    const hierarchicalCategories = sortedHierarchically(categories)
 
     // 카테고리가 없으면 기본 카테고리를 자동으로 생성
     if (!categories || categories.length === 0) {
@@ -50,12 +80,14 @@ export async function GET(request: NextRequest) {
         // 다시 카테고리 조회
         const newCategories = await prisma.category.findMany({
           where,
-          orderBy: {
-            name: 'asc',
-          },
+          orderBy: [
+            { level: 'asc' },
+            { name: 'asc' },
+          ],
         })
         
-        return NextResponse.json(newCategories)
+        const newHierarchicalCategories = sortedHierarchically(newCategories)
+        return NextResponse.json(newHierarchicalCategories)
       } catch (initError) {
         console.error('초기 데이터 생성 실패:', initError)
         // 초기 데이터 생성에 실패해도 빈 배열 반환
@@ -63,7 +95,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(categories)
+    return NextResponse.json(hierarchicalCategories)
   } catch (error) {
     console.error(
       'Transaction categories fetch error:',
