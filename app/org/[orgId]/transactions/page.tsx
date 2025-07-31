@@ -454,20 +454,25 @@ export default function TransactionsPage() {
         return
       }
 
-      const response = await fetch('/api/transactions', {
+      const response = await fetch(`/api/transactions?id=${selectedTransaction.id}&organizationId=${orgId}`, {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          id: selectedTransaction.id,
-          organizationId: orgId,
-        }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to delete transaction')
+        const errorText = await response.text()
+        let errorMessage = 'Failed to delete transaction'
+        
+        try {
+          const errorData = JSON.parse(errorText)
+          errorMessage = errorData.message || errorData.error || errorMessage
+        } catch (e) {
+          errorMessage = errorText || errorMessage
+        }
+        
+        throw new Error(errorMessage)
       }
 
       toast.success('거래가 성공적으로 삭제되었습니다!')
@@ -478,7 +483,22 @@ export default function TransactionsPage() {
       await loadTransactionsAndCategories(orgId)
     } catch (error) {
       console.error('거래 삭제 실패:', error)
-      toast.error('거래 삭제에 실패했습니다.')
+      
+      // 오류 메시지 파싱
+      let userMessage = '거래 삭제에 실패했습니다.'
+      if (error instanceof Error) {
+        if (error.message.includes('not found') || error.message.includes('404')) {
+          userMessage = '삭제하려는 거래를 찾을 수 없습니다.'
+        } else if (error.message.includes('Unauthorized') || error.message.includes('401')) {
+          userMessage = '로그인이 필요합니다. 다시 로그인해 주세요.'
+        } else if (error.message.includes('Forbidden') || error.message.includes('403')) {
+          userMessage = '이 거래를 삭제할 권한이 없습니다.'
+        } else if (error.message !== 'Failed to delete transaction') {
+          userMessage = error.message
+        }
+      }
+      
+      toast.error(userMessage)
     } finally {
       setDeleting(false)
     }
