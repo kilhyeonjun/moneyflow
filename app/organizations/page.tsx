@@ -29,6 +29,7 @@ import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/database'
 import toast, { Toaster } from 'react-hot-toast'
 import { Chip } from '@heroui/react'
+import { formatDateSafe, calculateExpirationDays, formatExpirationStatus, formatCreationDate } from '@/lib/utils/date'
 
 type Organization = Database['public']['Tables']['organizations']['Row']
 type OrganizationInsert =
@@ -330,10 +331,7 @@ export default function OrganizationsPage() {
               ) : (
                 <div className="space-y-4">
                   {receivedInvitations.map(invitation => {
-                    const expiresIn = Math.ceil(
-                      (new Date(invitation.expiresAt).getTime() - new Date().getTime()) /
-                        (1000 * 60 * 60 * 24)
-                    )
+                    const expiration = calculateExpirationDays(invitation.expiresAt)
                     const isProcessing = processingInvitation === invitation.id
 
                     return (
@@ -363,10 +361,7 @@ export default function OrganizationsPage() {
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 <span>
-                                  {expiresIn > 0 
-                                    ? `${expiresIn}일 남음`
-                                    : '만료됨'
-                                  }
+                                  {formatExpirationStatus(invitation.expiresAt)}
                                 </span>
                               </div>
                             </div>
@@ -384,7 +379,7 @@ export default function OrganizationsPage() {
                             startContent={<CheckCircle className="w-4 h-4" />}
                             onPress={() => handleInvitationAction(invitation.id, 'accept')}
                             isLoading={isProcessing}
-                            isDisabled={isProcessing || expiresIn <= 0}
+                            isDisabled={isProcessing || !expiration.isValid || expiration.isExpired}
                           >
                             수락
                           </Button>
@@ -395,7 +390,7 @@ export default function OrganizationsPage() {
                             startContent={<XCircle className="w-4 h-4" />}
                             onPress={() => handleInvitationAction(invitation.id, 'reject')}
                             isLoading={isProcessing}
-                            isDisabled={isProcessing || expiresIn <= 0}
+                            isDisabled={isProcessing || !expiration.isValid || expiration.isExpired}
                           >
                             거절
                           </Button>
@@ -446,8 +441,7 @@ export default function OrganizationsPage() {
                         {org.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {new Date(org.created_at).toLocaleDateString('ko-KR')}{' '}
-                        생성
+                        {formatCreationDate(org.createdAt)}
                       </p>
                     </div>
                   </div>

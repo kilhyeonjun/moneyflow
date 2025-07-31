@@ -786,7 +786,12 @@ export default function SettingsPage() {
                                     </Chip>
                                     <span>•</span>
                                     <span>
-                                      {new Date(invitation.expires_at).toLocaleDateString('ko-KR')} 만료
+                                      {(() => {
+                                        const expiresAt = new Date(invitation.expires_at)
+                                        return !isNaN(expiresAt.getTime()) 
+                                          ? expiresAt.toLocaleDateString('ko-KR') + ' 만료'
+                                          : '날짜 오류'
+                                      })()}
                                     </span>
                                   </div>
                                 </div>
