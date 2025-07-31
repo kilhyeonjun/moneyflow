@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, type, icon, color, organizationId } = body
+    const { name, type, icon, color, organizationId, parentId } = body
 
     if (!name || !type || !organizationId) {
       return NextResponse.json(
@@ -96,12 +96,48 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // parentId가 있으면 UUID 형식 검증
+    if (parentId && !isValidUUID(parentId)) {
+      return NextResponse.json(
+        { error: 'Invalid parent ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
     // 타입 검증
     if (!['income', 'expense', 'transfer'].includes(type)) {
       return NextResponse.json(
         { error: 'Invalid type. Must be income, expense, or transfer' },
         { status: 400 }
       )
+    }
+
+    // 부모 카테고리가 있는 경우 검증
+    let level = 1
+    if (parentId) {
+      const parentCategory = await prisma.category.findFirst({
+        where: {
+          id: parentId,
+          organizationId: organizationId,
+        },
+      })
+
+      if (!parentCategory) {
+        return NextResponse.json(
+          { error: 'Parent category not found' },
+          { status: 400 }
+        )
+      }
+
+      // 부모와 같은 transactionType인지 확인
+      if (parentCategory.transactionType !== type) {
+        return NextResponse.json(
+          { error: 'Child category must have the same transaction type as parent' },
+          { status: 400 }
+        )
+      }
+
+      level = parentCategory.level + 1
     }
 
     const category = await prisma.category.create({
@@ -111,7 +147,8 @@ export async function POST(request: NextRequest) {
         icon,
         color,
         organizationId: organizationId,
-        level: 1, // 기본 레벨
+        parentId: parentId,
+        level: level,
       },
     })
 
@@ -123,6 +160,210 @@ export async function POST(request: NextRequest) {
     )
     return NextResponse.json(
       { error: 'Failed to create transaction category' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, name, icon, color, organizationId, parentId } = body
+
+    if (!id || !name || !organizationId) {
+      return NextResponse.json(
+        { error: 'ID, name, and organizationId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID formats
+    if (!isValidUUID(id) || !isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid UUID format' },
+        { status: 400 }
+      )
+    }
+
+    if (parentId && !isValidUUID(parentId)) {
+      return NextResponse.json(
+        { error: 'Invalid parent ID format. Must be a valid UUID.' },
+        { status: 400 }
+      )
+    }
+
+    // 기존 카테고리 확인
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        id: id,
+        organizationId: organizationId,
+      },
+    })
+
+    if (!existingCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
+      )
+    }
+
+    // 기본 카테고리는 수정할 수 없음
+    if (existingCategory.isDefault) {
+      return NextResponse.json(
+        { error: 'Cannot modify default categories' },
+        { status: 403 }
+      )
+    }
+
+    // 부모 카테고리 변경 시 검증
+    let level = existingCategory.level
+    if (parentId !== undefined) {
+      if (parentId === null) {
+        level = 1
+      } else {
+        // 자기 자신을 부모로 설정하는 것 방지
+        if (parentId === id) {
+          return NextResponse.json(
+            { error: 'Category cannot be its own parent' },
+            { status: 400 }
+          )
+        }
+
+        const parentCategory = await prisma.category.findFirst({
+          where: {
+            id: parentId,
+            organizationId: organizationId,
+          },
+        })
+
+        if (!parentCategory) {
+          return NextResponse.json(
+            { error: 'Parent category not found' },
+            { status: 400 }
+          )
+        }
+
+        // 부모와 같은 transactionType인지 확인
+        if (parentCategory.transactionType !== existingCategory.transactionType) {
+          return NextResponse.json(
+            { error: 'Child category must have the same transaction type as parent' },
+            { status: 400 }
+          )
+        }
+
+        level = parentCategory.level + 1
+      }
+    }
+
+    const updatedCategory = await prisma.category.update({
+      where: { id: id },
+      data: {
+        name,
+        icon,
+        color,
+        parentId: parentId,
+        level: level,
+      },
+    })
+
+    return NextResponse.json(updatedCategory)
+  } catch (error) {
+    console.error(
+      'Transaction category update error:',
+      error || 'Unknown error'
+    )
+    return NextResponse.json(
+      { error: 'Failed to update transaction category' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, organizationId } = body
+
+    if (!id || !organizationId) {
+      return NextResponse.json(
+        { error: 'ID and organizationId are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID formats
+    if (!isValidUUID(id) || !isValidUUID(organizationId)) {
+      return NextResponse.json(
+        { error: 'Invalid UUID format' },
+        { status: 400 }
+      )
+    }
+
+    // 기존 카테고리 확인
+    const existingCategory = await prisma.category.findFirst({
+      where: {
+        id: id,
+        organizationId: organizationId,
+      },
+    })
+
+    if (!existingCategory) {
+      return NextResponse.json(
+        { error: 'Category not found' },
+        { status: 404 }
+      )
+    }
+
+    // 기본 카테고리는 삭제할 수 없음
+    if (existingCategory.isDefault) {
+      return NextResponse.json(
+        { error: 'Cannot delete default categories' },
+        { status: 403 }
+      )
+    }
+
+    // 거래에서 사용 중인 카테고리인지 확인
+    const transactionsUsingCategory = await prisma.transaction.findFirst({
+      where: {
+        categoryId: id,
+        organizationId: organizationId,
+      },
+    })
+
+    if (transactionsUsingCategory) {
+      return NextResponse.json(
+        { error: 'Cannot delete category that is being used by transactions' },
+        { status: 400 }
+      )
+    }
+
+    // 자식 카테고리가 있는지 확인
+    const childCategories = await prisma.category.findFirst({
+      where: {
+        parentId: id,
+        organizationId: organizationId,
+      },
+    })
+
+    if (childCategories) {
+      return NextResponse.json(
+        { error: 'Cannot delete category that has child categories' },
+        { status: 400 }
+      )
+    }
+
+    await prisma.category.delete({
+      where: { id: id },
+    })
+
+    return NextResponse.json({ message: 'Category deleted successfully' })
+  } catch (error) {
+    console.error(
+      'Transaction category deletion error:',
+      error || 'Unknown error'
+    )
+    return NextResponse.json(
+      { error: 'Failed to delete transaction category' },
       { status: 500 }
     )
   }
