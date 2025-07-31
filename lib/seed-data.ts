@@ -61,44 +61,30 @@ export const defaultAssetCategories: DefaultAssetCategoryData[] = [
   },
 ]
 
-// 기본 거래 카테고리 데이터
+// 기본 거래 카테고리 데이터 (통계를 위한 최소 대분류)
 export const defaultTransactionCategories: DefaultTransactionCategoryData[] = [
-  // 수입 카테고리 (Level 1)
+  // 수입 카테고리 (2개)
   {
-    name: '급여',
+    name: '급여소득',
     level: 1,
     transactionType: 'income',
     icon: '💼',
     color: '#10B981',
   },
   {
-    name: '부업',
-    level: 1,
-    transactionType: 'income',
-    icon: '💻',
-    color: '#059669',
-  },
-  {
-    name: '투자 수익',
-    level: 1,
-    transactionType: 'income',
-    icon: '📈',
-    color: '#047857',
-  },
-  {
-    name: '기타 수입',
+    name: '기타수입',
     level: 1,
     transactionType: 'income',
     icon: '💰',
-    color: '#065F46',
+    color: '#059669',
   },
 
-  // 지출 카테고리 (Level 1)
+  // 지출 카테고리 (4개)
   {
-    name: '식비',
+    name: '생활비',
     level: 1,
     transactionType: 'expense',
-    icon: '🍽️',
+    icon: '🏠',
     color: '#EF4444',
   },
   {
@@ -109,147 +95,34 @@ export const defaultTransactionCategories: DefaultTransactionCategoryData[] = [
     color: '#DC2626',
   },
   {
-    name: '주거비',
-    level: 1,
-    transactionType: 'expense',
-    icon: '🏠',
-    color: '#B91C1C',
-  },
-  {
-    name: '의료비',
+    name: '의료/교육',
     level: 1,
     transactionType: 'expense',
     icon: '🏥',
-    color: '#991B1B',
+    color: '#B91C1C',
   },
   {
-    name: '교육비',
-    level: 1,
-    transactionType: 'expense',
-    icon: '📚',
-    color: '#7F1D1D',
-  },
-  {
-    name: '문화생활',
-    level: 1,
-    transactionType: 'expense',
-    icon: '🎬',
-    color: '#F97316',
-  },
-  {
-    name: '쇼핑',
-    level: 1,
-    transactionType: 'expense',
-    icon: '🛍️',
-    color: '#EA580C',
-  },
-  {
-    name: '기타 지출',
+    name: '기타지출',
     level: 1,
     transactionType: 'expense',
     icon: '💸',
-    color: '#9A3412',
+    color: '#991B1B',
   },
 
-  // 이체 카테고리 (Level 1) - 저축과 투자를 이체로 분류
+  // 이체 카테고리 (2개)
   {
-    name: '저축',
+    name: '저축/투자',
     level: 1,
     transactionType: 'transfer',
     icon: '🏦',
     color: '#3B82F6',
   },
   {
-    name: '투자',
-    level: 1,
-    transactionType: 'transfer',
-    icon: '📊',
-    color: '#2563EB',
-  },
-  {
-    name: '대출 상환',
+    name: '대출상환',
     level: 1,
     transactionType: 'transfer',
     icon: '💳',
-    color: '#1D4ED8',
-  },
-
-  // 세부 카테고리 (Level 2) - 식비 하위
-  {
-    name: '외식',
-    level: 2,
-    parentName: '식비',
-    transactionType: 'expense',
-    icon: '🍴',
-    color: '#F87171',
-  },
-  {
-    name: '장보기',
-    level: 2,
-    parentName: '식비',
-    transactionType: 'expense',
-    icon: '🛒',
-    color: '#FCA5A5',
-  },
-  {
-    name: '배달음식',
-    level: 2,
-    parentName: '식비',
-    transactionType: 'expense',
-    icon: '🚚',
-    color: '#FECACA',
-  },
-
-  // 세부 카테고리 (Level 2) - 주거비 하위
-  {
-    name: '월세/관리비',
-    level: 2,
-    parentName: '주거비',
-    transactionType: 'expense',
-    icon: '🏘️',
-    color: '#DC2626',
-  },
-  {
-    name: '공과금',
-    level: 2,
-    parentName: '주거비',
-    transactionType: 'expense',
-    icon: '⚡',
-    color: '#EF4444',
-  },
-  {
-    name: '인테리어',
-    level: 2,
-    parentName: '주거비',
-    transactionType: 'expense',
-    icon: '🪑',
-    color: '#F87171',
-  },
-
-  // 세부 카테고리 (Level 2) - 문화생활 하위
-  {
-    name: '영화/공연',
-    level: 2,
-    parentName: '문화생활',
-    transactionType: 'expense',
-    icon: '🎭',
-    color: '#FB923C',
-  },
-  {
-    name: '여행',
-    level: 2,
-    parentName: '문화생활',
-    transactionType: 'expense',
-    icon: '✈️',
-    color: '#FDBA74',
-  },
-  {
-    name: '취미',
-    level: 2,
-    parentName: '문화생활',
-    transactionType: 'expense',
-    icon: '🎨',
-    color: '#FED7AA',
+    color: '#2563EB',
   },
 ]
 
