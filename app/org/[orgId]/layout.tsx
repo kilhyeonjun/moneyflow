@@ -12,7 +12,6 @@ export default function OrgLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [hasOrgAccess, setHasOrgAccess] = useState<boolean | null>(null)
   const [currentOrg, setCurrentOrg] = useState<any>(null)
   const router = useRouter()
@@ -20,38 +19,19 @@ export default function OrgLayout({
   const orgId = params?.orgId as string
 
   useEffect(() => {
-    checkAuthAndOrganization()
+    checkOrganizationAccess()
   }, [orgId])
 
-  const checkAuthAndOrganization = async () => {
+  const checkOrganizationAccess = async () => {
     try {
-      // 1. 인증 상태 확인
-      const supabase = createClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error) {
-        console.error('Auth session error:', error)
-        setIsAuthenticated(false)
-        router.push('/login')
-        return
-      }
-
-      if (!user) {
-        setIsAuthenticated(false)
-        router.push('/login')
-        return
-      }
-
-      setIsAuthenticated(true)
-
-      // 2. orgId 유효성 검증
+      // middleware가 인증을 보장하므로 조직 접근 권한만 확인
       if (!orgId || !isValidUUID(orgId)) {
         console.error('Invalid organization ID:', orgId)
         router.push('/organizations')
         return
       }
 
-      // 3. 조직 접근 권한 확인 (서버 액션 사용)
+      // 조직 접근 권한 확인
       const membershipResult = await checkMembership(orgId)
       
       if (!membershipResult.success || !membershipResult.data?.isMember) {
@@ -61,7 +41,7 @@ export default function OrgLayout({
         return
       }
 
-      // 4. 조직 상세 정보 가져오기
+      // 조직 상세 정보 가져오기
       const orgDetailsResult = await getOrganizationDetails(orgId)
       
       if (!orgDetailsResult.success) {
@@ -79,57 +59,27 @@ export default function OrgLayout({
       setHasOrgAccess(true)
 
     } catch (error) {
-      console.error('Auth/Organization check failed:', error)
-      setIsAuthenticated(false)
+      console.error('Organization check failed:', error)
       setHasOrgAccess(false)
-      router.push('/login')
+      router.push('/organizations')
     }
   }
 
-  // 인증 상태 변경 감지
+  // 로그아웃 시에만 처리 (로그인 상태 변경은 middleware가 처리)
   useEffect(() => {
     const supabase = createClient()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session) {
-        setIsAuthenticated(false)
         setHasOrgAccess(false)
         setCurrentOrg(null)
-        router.push('/login')
-      } else if (event === 'SIGNED_IN' && session) {
-        setIsAuthenticated(true)
-        // 조직 접근 권한 재확인
-        checkAuthAndOrganization()
+        // middleware가 로그인 페이지로 리다이렉트 처리
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [router, orgId])
-
-  // 로딩 상태 - 인증 확인 중
-  if (isAuthenticated === null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>인증 확인 중...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // 인증되지 않은 경우 (리다이렉트 중)
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>로그인 페이지로 이동 중...</p>
-        </div>
-      </div>
-    )
-  }
+  }, [orgId])
 
   // 로딩 상태 - 조직 권한 확인 중
   if (hasOrgAccess === null) {

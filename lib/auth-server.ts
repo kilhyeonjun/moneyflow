@@ -1,5 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { ServerActionResult, ServerActionError } from '@/lib/types'
@@ -18,29 +17,17 @@ type OrganizationMemberWithOrganization = Prisma.OrganizationMemberGetPayload<{
   }
 }>
 
-// Supabase server client for auth verification
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
 /**
  * Get current authenticated user from Supabase session
  * This should be used in server actions to verify authentication
  */
 export async function getCurrentUser() {
   try {
-    const cookieStore = await cookies()
-    const accessToken = cookieStore.get('sb-access-token')?.value
-    const refreshToken = cookieStore.get('sb-refresh-token')?.value
-
-    if (!accessToken) {
-      return null
-    }
-
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(accessToken)
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
     
-    if (error || !user) {
+    if (error) {
+      console.error('Error getting current user:', error)
       return null
     }
 

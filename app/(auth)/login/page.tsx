@@ -14,45 +14,12 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const router = useRouter()
 
-  // 페이지 로드 시 인증 상태 확인 및 토큰 정리
+  // 인증 상태 변경 감지 (middleware가 주요 리다이렉트 처리)
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
-      try {
-        // 현재 세션 확인
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          // 토큰 관련 오류 발생 시 강제 로그아웃
-          console.warn('토큰 확인 중 오류:', error)
-          await supabase.auth.signOut()
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('selectedOrganization')
-          }
-        } else if (session) {
-          // 이미 로그인된 경우 조직 선택 페이지로 리다이렉트
-          console.log('이미 로그인됨, 조직 선택 페이지로 이동')
-          router.push('/organizations')
-        }
-      } catch (err) {
-        // 토큰 관련 오류 발생 시 강제 로그아웃
-        console.warn('인증 확인 중 오류:', err)
-        await supabase.auth.signOut()
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('selectedOrganization')
-        }
-      }
-    }
-
-    checkAuthAndRedirect()
-
-    // 인증 상태 변경 감지
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // 로그인 성공 시 조직 선택 페이지로 이동
-        router.push('/organizations')
-      } else if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_OUT') {
         // 로그아웃 시 localStorage 정리
         if (typeof window !== 'undefined') {
           localStorage.removeItem('selectedOrganization')
@@ -92,7 +59,11 @@ export default function LoginPage() {
         }
         setError(koreanError)
       } else {
-        router.push('/organizations')
+        // 로그인 성공 시 middleware가 리다이렉트 처리
+        // redirect 파라미터가 있으면 그곳으로, 없으면 /organizations로 이동
+        const searchParams = new URLSearchParams(window.location.search)
+        const redirectTo = searchParams.get('redirect') || '/organizations'
+        router.push(redirectTo)
       }
     } catch (err) {
       setError('로그인 중 오류가 발생했습니다.')
