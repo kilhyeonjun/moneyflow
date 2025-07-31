@@ -46,12 +46,32 @@ import toast, { Toaster } from 'react-hot-toast'
 import { supabase } from '@/lib/supabase'
 import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
 
-// Prisma 타입 import
-import type { Transaction, Category } from '@prisma/client'
+// 카멜 케이스 타입 정의
+interface Transaction {
+  id: string
+  organizationId: string
+  userId: string
+  amount: number
+  description: string
+  transactionDate: string
+  transactionType: string
+  categoryId: string | null
+  paymentMethodId: string | null
+  tags: string[] | null
+  memo: string | null
+  receiptUrl: string | null
+  createdAt: string
+  updatedAt: string
+  category?: { name: string; transactionType: string } | null
+  paymentMethod?: { name: string } | null
+}
 
-// 확장된 타입 정의
-interface TransactionWithCategory extends Transaction {
-  category: Category | null
+interface Category {
+  id: string
+  name: string
+  transactionType: string
+  parentId: string | null
+  level: number
 }
 
 export default function TransactionsPage() {
@@ -76,10 +96,11 @@ export default function TransactionsPage() {
   const [updating, setUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [selectedTransaction, setSelectedTransaction] =
-    useState<TransactionWithCategory | null>(null)
+    useState<Transaction | null>(null)
 
-  const [transactions, setTransactions] = useState<TransactionWithCategory[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [transactionCategories, setTransactionCategories] = useState<Category[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     categoryId: '',
@@ -106,6 +127,7 @@ export default function TransactionsPage() {
   const loadTransactionsAndCategories = async (organizationId: string) => {
     try {
       setLoading(true)
+      setError(null)
 
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
@@ -127,8 +149,21 @@ export default function TransactionsPage() {
         }),
       ])
 
-      if (!transactionsResponse.ok || !categoriesResponse.ok) {
-        throw new Error('Failed to load data')
+      // 응답 상태 확인 및 에러 처리
+      if (!transactionsResponse.ok) {
+        if (transactionsResponse.status === 401) {
+          router.push('/login')
+          return
+        }
+        if (transactionsResponse.status === 403) {
+          setError('이 조직에 접근할 권한이 없습니다.')
+          return
+        }
+        throw new Error(`거래 내역 로드 실패: ${transactionsResponse.status}`)
+      }
+
+      if (!categoriesResponse.ok) {
+        throw new Error(`카테고리 로드 실패: ${categoriesResponse.status}`)
       }
 
       const [transactionsData, categoriesData] = await Promise.all([
@@ -136,19 +171,27 @@ export default function TransactionsPage() {
         categoriesResponse.json(),
       ])
 
-      console.log('로드된 카테고리 데이터:', categoriesData)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('로드된 거래 데이터:', transactionsData)
+        console.log('로드된 카테고리 데이터:', categoriesData)
+      }
+      
       setTransactions(transactionsData.transactions || [])
       setTransactionCategories(categoriesData || [])
     } catch (error) {
       console.error('데이터 로드 실패:', error)
-      toast.error('데이터를 불러오는데 실패했습니다.')
+      const errorMessage = error instanceof Error ? error.message : '데이터를 불러오는데 실패했습니다.'
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
   const createTransaction = async () => {
-    console.log('거래 생성 시도 - formData:', formData)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('거래 생성 시도 - formData:', formData)
+    }
     
     // 상세한 폼 검증
     const validationErrors = []
@@ -165,12 +208,14 @@ export default function TransactionsPage() {
     }
     
     if (validationErrors.length > 0) {
-      console.log('폼 검증 실패:', {
-        amount: formData.amount,
-        description: formData.description,
-        categoryId: formData.categoryId,
-        errors: validationErrors
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log('폼 검증 실패:', {
+          amount: formData.amount,
+          description: formData.description,
+          categoryId: formData.categoryId,
+          errors: validationErrors
+        })
+      }
       toast.error(validationErrors.join(' '))
       return
     }
@@ -192,7 +237,9 @@ export default function TransactionsPage() {
         transactionType: formData.transactionType,
         userId: session.user.id, // 누락된 userId 추가
       }
-      console.log('API 요청 데이터:', requestData)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API 요청 데이터:', requestData)
+      }
 
       const response = await fetch('/api/transactions', {
         method: 'POST',
@@ -203,18 +250,24 @@ export default function TransactionsPage() {
         body: JSON.stringify(requestData),
       })
 
-      console.log('응답 상태:', response.status, response.statusText)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('응답 상태:', response.status, response.statusText)
+      }
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.log('오류 응답:', errorText)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('오류 응답:', errorText)
+        }
         let errorMessage = 'Failed to create transaction'
         
         try {
           const errorData = JSON.parse(errorText)
           errorMessage = errorData.message || errorData.error || errorMessage
         } catch (e) {
-          console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
+          if (process.env.NODE_ENV === 'development') {
+            console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
+          }
           errorMessage = errorText || errorMessage
         }
         
@@ -258,7 +311,7 @@ export default function TransactionsPage() {
     }
   }
 
-  const editTransaction = (transaction: TransactionWithCategory) => {
+  const editTransaction = (transaction: Transaction) => {
     setSelectedTransaction(transaction)
     setEditFormData({
       categoryId: transaction.categoryId || '',
@@ -278,7 +331,9 @@ export default function TransactionsPage() {
       return
     }
 
-    console.log('거래 수정 시도 - editFormData:', editFormData)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('거래 수정 시도 - editFormData:', editFormData)
+    }
     
     // 상세한 폼 검증
     const validationErrors = []
@@ -295,12 +350,14 @@ export default function TransactionsPage() {
     }
     
     if (validationErrors.length > 0) {
-      console.log('폼 검증 실패:', {
-        amount: editFormData.amount,
-        description: editFormData.description,
-        categoryId: editFormData.categoryId,
-        errors: validationErrors
-      })
+      if (process.env.NODE_ENV === 'development') {
+        console.log('폼 검증 실패:', {
+          amount: editFormData.amount,
+          description: editFormData.description,
+          categoryId: editFormData.categoryId,
+          errors: validationErrors
+        })
+      }
       toast.error(validationErrors.join(' '))
       return
     }
@@ -331,18 +388,24 @@ export default function TransactionsPage() {
         }),
       })
 
-      console.log('응답 상태:', response.status, response.statusText)
+      if (process.env.NODE_ENV === 'development') {
+        console.log('응답 상태:', response.status, response.statusText)
+      }
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.log('오류 응답:', errorText)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('오류 응답:', errorText)
+        }
         let errorMessage = 'Failed to update transaction'
         
         try {
           const errorData = JSON.parse(errorText)
           errorMessage = errorData.message || errorData.error || errorMessage
         } catch (e) {
-          console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
+          if (process.env.NODE_ENV === 'development') {
+            console.log('JSON 파싱 실패, 원본 텍스트 사용:', errorText)
+          }
           errorMessage = errorText || errorMessage
         }
         
@@ -441,6 +504,12 @@ export default function TransactionsPage() {
     }
   }
 
+  const retryLoadData = () => {
+    if (orgId) {
+      loadTransactionsAndCategories(orgId)
+    }
+  }
+
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
       case 'income':
@@ -460,6 +529,26 @@ export default function TransactionsPage() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p>거래 내역을 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            데이터 로드 오류
+          </h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button
+            color="primary"
+            onPress={retryLoadData}
+          >
+            다시 시도
+          </Button>
         </div>
       </div>
     )

@@ -63,7 +63,17 @@ export async function GET(request: NextRequest) {
     const transactions = await prisma.transaction.findMany({
       where,
       include: {
-        category: true,
+        category: {
+          select: {
+            name: true,
+            transactionType: true,
+          },
+        },
+        paymentMethod: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         transactionDate: 'desc',
@@ -72,7 +82,36 @@ export async function GET(request: NextRequest) {
       ...(offset && { skip: parseInt(offset) }),
     })
 
-    return NextResponse.json(transactions)
+    // 카멜 케이스 형식으로 응답 (프론트엔드와 일관성 유지)
+    const formattedTransactions = transactions.map((transaction) => ({
+      id: transaction.id,
+      organizationId: transaction.organizationId,
+      userId: transaction.userId,
+      amount: transaction.amount,
+      description: transaction.description,
+      transactionDate: transaction.transactionDate,
+      transactionType: transaction.transactionType,
+      categoryId: transaction.categoryId,
+      paymentMethodId: transaction.paymentMethodId,
+      tags: transaction.tags,
+      memo: transaction.memo,
+      receiptUrl: transaction.receiptUrl,
+      createdAt: transaction.createdAt,
+      updatedAt: transaction.updatedAt,
+      category: transaction.category
+        ? {
+            name: transaction.category.name,
+            transactionType: transaction.category.transactionType,
+          }
+        : null,
+      paymentMethod: transaction.paymentMethod
+        ? {
+            name: transaction.paymentMethod.name,
+          }
+        : null,
+    }))
+
+    return NextResponse.json({ transactions: formattedTransactions })
   } catch (error) {
     console.error('Transactions fetch error:', error || 'Unknown error')
     return NextResponse.json(
