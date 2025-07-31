@@ -185,18 +185,19 @@ export default function AssetsPage() {
 
   const createDefaultCategories = async (orgId: string) => {
     try {
-      const response = await fetch('/api/seed', {
+      const response = await fetch(`/api/organizations/${orgId}/initial-data`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ organizationId: orgId }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create default categories')
+        throw new Error('Failed to create initial data')
       }
 
+      const result = await response.json()
+      console.log('초기 데이터 생성 완료:', result)
       toast.success('기본 카테고리가 생성되었습니다!')
     } catch (error) {
       console.error('기본 카테고리 생성 실패:', error)

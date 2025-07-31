@@ -168,7 +168,13 @@ export async function POST(
     // getUserByEmail을 사용하되 에러 처리를 개선
     let isAlreadyMember = false
     try {
-      const { data: inviteeUser, error: userError } = await supabaseClient.auth.admin.getUserByEmail(email)
+      const { data: inviteeUser, error: userError } = await supabaseClient.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000
+      }).then(({ data: { users } }) => {
+        const user = users.find(u => u.email === email)
+        return { data: { user }, error: null }
+      }).catch(error => ({ data: null, error }))
       
       if (!userError && inviteeUser?.user) {
         const existingMember = await prisma.organizationMember.findUnique({
@@ -230,9 +236,9 @@ export async function POST(
 
     const invitation = await prisma.organizationInvitation.create({
       data: {
-        organizationId,
-        email,
-        role,
+        organizationId: organizationId,
+        email: email,
+        role: role,
         token,
         expiresAt,
       },
@@ -266,9 +272,6 @@ export async function POST(
     console.error('Error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : 'No stack trace',
-      organizationId,
-      email,
-      role,
     })
     return NextResponse.json(
       { 

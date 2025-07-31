@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isValidUUID } from '@/lib/utils/validation'
 import { Prisma } from '@prisma/client'
+import { createInitialData } from '@/lib/initial-data'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,6 +39,29 @@ export async function GET(request: NextRequest) {
         name: 'asc',
       },
     })
+
+    // 카테고리가 없으면 기본 카테고리를 자동으로 생성
+    if (!categories || categories.length === 0) {
+      console.log(`조직 ${organizationId}에 거래 카테고리가 없어서 초기 데이터를 생성합니다.`)
+      
+      try {
+        await createInitialData(organizationId)
+        
+        // 다시 카테고리 조회
+        const newCategories = await prisma.category.findMany({
+          where,
+          orderBy: {
+            name: 'asc',
+          },
+        })
+        
+        return NextResponse.json(newCategories)
+      } catch (initError) {
+        console.error('초기 데이터 생성 실패:', initError)
+        // 초기 데이터 생성에 실패해도 빈 배열 반환
+        return NextResponse.json([])
+      }
+    }
 
     return NextResponse.json(categories)
   } catch (error) {

@@ -227,7 +227,14 @@ async function getMonthlyAnalytics(organizationId: string, year: number, targetM
 // 연간 분석 데이터 계산
 async function getYearlyAnalytics(organizationId: string, targetYear: number) {
   try {
-    const yearlyData = []
+    const yearlyData: Array<{
+      year: number;
+      income: number;
+      expense: number;
+      netWorth: number;
+      savings?: number;
+      transactionCount?: number;
+    }> = []
     
     // 최근 5년간 데이터 계산
     for (let year = targetYear - 4; year <= targetYear; year++) {
@@ -271,7 +278,7 @@ async function getYearlyAnalytics(organizationId: string, targetYear: number) {
       const netWorth = totalAssets - totalDebts
 
       yearlyData.push({
-        year: year.toString(),
+        year: year,
         income,
         expense,
         savings: income - expense,

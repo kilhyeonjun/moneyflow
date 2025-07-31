@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     const formattedGoals = await Promise.all(goals.map(async (goal) => {
       // 실시간 달성률 계산 (이미 동기화되었지만 최신 상태 확인)
       const currentAmount = await GoalSyncManager.calculateCurrentAmount(goal.id)
-      const achievementRate = goal.targetAmount > 0 
+      const achievementRate = Number(goal.targetAmount) > 0 
         ? (currentAmount / Number(goal.targetAmount)) * 100 
         : 0
 
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
 
     // 실시간 달성률 계산
     const currentAmount = await GoalSyncManager.calculateCurrentAmount(goal.id)
-    const achievementRate = goal.targetAmount > 0 
+    const achievementRate = Number(goal.targetAmount) > 0 
       ? (currentAmount / Number(goal.targetAmount)) * 100 
       : 0
 
@@ -316,7 +316,7 @@ export async function PUT(request: NextRequest) {
 
     // 실시간 달성률 계산
     const currentAmount = await GoalSyncManager.calculateCurrentAmount(updatedGoal.id)
-    const achievementRate = updatedGoal.targetAmount > 0 
+    const achievementRate = Number(updatedGoal.targetAmount) > 0 
       ? (currentAmount / Number(updatedGoal.targetAmount)) * 100 
       : 0
 

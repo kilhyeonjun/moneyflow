@@ -81,7 +81,7 @@ export async function PUT(
     })
 
     // 달성률 계산 및 상태 자동 업데이트
-    const achievementRate = updatedGoal.targetAmount > 0 
+    const achievementRate = Number(updatedGoal.targetAmount) > 0 
       ? (Number(updatedGoal.currentAmount) / Number(updatedGoal.targetAmount)) * 100 
       : 0
 

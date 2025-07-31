@@ -201,7 +201,7 @@ export default function TransactionsPage() {
     setSelectedTransaction(transaction)
     setEditFormData({
       categoryId: transaction.categoryId || '',
-      amount: Math.abs(transaction.amount).toString(),
+      amount: Math.abs(Number(transaction.amount)).toString(),
       description: transaction.description || '',
       transactionDate: transaction.transactionDate
         ? new Date(transaction.transactionDate).toISOString().split('T')[0]
@@ -436,7 +436,7 @@ export default function TransactionsPage() {
                         )}`}
                       >
                         {transaction.transactionType === 'income' ? '+' : '-'}
-                        {formatCurrency(Math.abs(transaction.amount))}
+                        {formatCurrency(Math.abs(Number(transaction.amount)))}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -501,13 +501,13 @@ export default function TransactionsPage() {
                   }))
                 }
               >
-                <SelectItem key="income" value="income">
+                <SelectItem key="income">
                   수입
                 </SelectItem>
-                <SelectItem key="expense" value="expense">
+                <SelectItem key="expense">
                   지출
                 </SelectItem>
-                <SelectItem key="transfer" value="transfer">
+                <SelectItem key="transfer">
                   이체
                 </SelectItem>
               </Select>
@@ -526,7 +526,7 @@ export default function TransactionsPage() {
                 {transactionCategories
                   .filter(category => category.transactionType === formData.transactionType)
                   .map(category => (
-                    <SelectItem key={category.id} value={category.id}>
+                    <SelectItem key={category.id}>
                       {category.name}
                     </SelectItem>
                   ))}
@@ -598,13 +598,13 @@ export default function TransactionsPage() {
                   }))
                 }
               >
-                <SelectItem key="income" value="income">
+                <SelectItem key="income">
                   수입
                 </SelectItem>
-                <SelectItem key="expense" value="expense">
+                <SelectItem key="expense">
                   지출
                 </SelectItem>
-                <SelectItem key="transfer" value="transfer">
+                <SelectItem key="transfer">
                   이체
                 </SelectItem>
               </Select>
@@ -623,7 +623,7 @@ export default function TransactionsPage() {
                 {transactionCategories
                   .filter(category => category.transactionType === editFormData.transactionType)
                   .map(category => (
-                    <SelectItem key={category.id} value={category.id}>
+                    <SelectItem key={category.id}>
                       {category.name}
                     </SelectItem>
                   ))}

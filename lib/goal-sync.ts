@@ -54,8 +54,8 @@ export class GoalSyncManager {
         
         // 3. 각 목표별 달성률 업데이트
         for (const goal of activeGoals) {
-          const currentAmount = this.calculateGoalAmount(goal, totalAssets)
-          const achievementRate = goal.targetAmount > 0 
+          const currentAmount = this.calculateGoalAmount(goal as any, totalAssets)
+          const achievementRate = Number(goal.targetAmount) > 0 
             ? (currentAmount / Number(goal.targetAmount)) * 100 
             : 0
           
@@ -178,7 +178,7 @@ export class GoalSyncManager {
     })
     
     const totalAssets = Number(result._sum.currentValue || 0)
-    return this.calculateGoalAmount(goal as FinancialGoal, totalAssets)
+    return this.calculateGoalAmount(goal as any, totalAssets)
   }
 
   /**
@@ -193,7 +193,7 @@ export class GoalSyncManager {
     const completedGoals = goals.filter(g => g.status === 'completed')
     const averageAchievement = goals.length > 0 
       ? goals.reduce((sum, goal) => {
-          const rate = goal.targetAmount > 0 
+          const rate = Number(goal.targetAmount) > 0 
             ? (Number(goal.currentAmount) / Number(goal.targetAmount)) * 100 
             : 0
           return sum + Math.max(0, rate)

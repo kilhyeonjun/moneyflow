@@ -43,7 +43,7 @@ next-env.d.ts
 .amazonq/temp
 
 # serena
-.serena
+/.serena
 
 # development temp files
 *-temp.js

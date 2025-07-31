@@ -441,7 +441,7 @@ export default function OrganizationsPage() {
                         {org.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {formatCreationDate(org.createdAt)}
+                        {formatCreationDate(org.created_at)}
                       </p>
                     </div>
                   </div>
