@@ -531,45 +531,20 @@ export default function TransactionsPage() {
                     console.log('카테고리 필터링:', category.name, category.transactionType, '현재 타입:', formData.transactionType)
                     return category.transactionType === formData.transactionType
                   })
-                  .map(category => (
-                    <SelectItem key={category.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center">
-                          {/* 레벨별 들여쓰기 */}
-                          <span style={{ marginLeft: `${(category.level - 1) * 20}px` }}>
-                            {/* 계층 표시 아이콘 */}
-                            {category.level > 1 && (
-                              <span className="text-gray-400 mr-2 text-sm font-mono">
-                                {category.level === 2 ? '├─' : '└─'}
-                              </span>
-                            )}
-                            {/* 카테고리 아이콘과 이름 */}
-                            <span className={`${
-                              category.level === 1 
-                                ? 'font-semibold text-gray-900' 
-                                : category.level === 2 
-                                ? 'font-medium text-gray-700' 
-                                : 'font-normal text-gray-600'
-                            }`}>
-                              {category.icon && `${category.icon} `}{category.name}
-                            </span>
-                          </span>
-                        </div>
-                        <Chip
-                          size="sm"
-                          variant="flat"
-                          color={category.isDefault ? "default" : "primary"}
-                          startContent={
-                            category.isDefault ? 
-                              <Shield className="w-3 h-3" /> : 
-                              <Building className="w-3 h-3" />
-                          }
-                        >
-                          {category.isDefault ? "시스템" : "조직"}
-                        </Chip>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  .map(category => {
+                    // 계층형 텍스트 생성 (자산 카테고리 방식 참고)
+                    const levelIndent = '　'.repeat(category.level - 1) // 전각 공백으로 들여쓰기
+                    const hierarchySymbol = category.level > 1 ? (category.level === 2 ? '├─ ' : '└─ ') : ''
+                    const categoryIcon = category.icon ? `${category.icon} ` : ''
+                    const systemLabel = category.isDefault ? ' [시스템]' : ' [조직]'
+                    const displayText = `${levelIndent}${hierarchySymbol}${categoryIcon}${category.name}${systemLabel}`
+                    
+                    return (
+                      <SelectItem key={category.id}>
+                        {displayText}
+                      </SelectItem>
+                    )
+                  })}
               </Select>
 
               <Input
@@ -662,45 +637,20 @@ export default function TransactionsPage() {
               >
                 {transactionCategories
                   .filter(category => category.transactionType === editFormData.transactionType)
-                  .map(category => (
-                    <SelectItem key={category.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center">
-                          {/* 레벨별 들여쓰기 */}
-                          <span style={{ marginLeft: `${(category.level - 1) * 20}px` }}>
-                            {/* 계층 표시 아이콘 */}
-                            {category.level > 1 && (
-                              <span className="text-gray-400 mr-2 text-sm font-mono">
-                                {category.level === 2 ? '├─' : '└─'}
-                              </span>
-                            )}
-                            {/* 카테고리 아이콘과 이름 */}
-                            <span className={`${
-                              category.level === 1 
-                                ? 'font-semibold text-gray-900' 
-                                : category.level === 2 
-                                ? 'font-medium text-gray-700' 
-                                : 'font-normal text-gray-600'
-                            }`}>
-                              {category.icon && `${category.icon} `}{category.name}
-                            </span>
-                          </span>
-                        </div>
-                        <Chip
-                          size="sm"
-                          variant="flat"
-                          color={category.isDefault ? "default" : "primary"}
-                          startContent={
-                            category.isDefault ? 
-                              <Shield className="w-3 h-3" /> : 
-                              <Building className="w-3 h-3" />
-                          }
-                        >
-                          {category.isDefault ? "시스템" : "조직"}
-                        </Chip>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  .map(category => {
+                    // 계층형 텍스트 생성 (자산 카테고리 방식 참고)
+                    const levelIndent = '　'.repeat(category.level - 1) // 전각 공백으로 들여쓰기
+                    const hierarchySymbol = category.level > 1 ? (category.level === 2 ? '├─ ' : '└─ ') : ''
+                    const categoryIcon = category.icon ? `${category.icon} ` : ''
+                    const systemLabel = category.isDefault ? ' [시스템]' : ' [조직]'
+                    const displayText = `${levelIndent}${hierarchySymbol}${categoryIcon}${category.name}${systemLabel}`
+                    
+                    return (
+                      <SelectItem key={category.id}>
+                        {displayText}
+                      </SelectItem>
+                    )
+                  })}
               </Select>
 
               <Input
