@@ -144,8 +144,8 @@ class OrganizationActions extends BaseServerAction {
         _count: {
           select: {
             transactions: true,
-            assets: true,
-            debts: true,
+            paymentMethods: true,
+            invitations: true,
           },
         },
       },
@@ -157,12 +157,11 @@ class OrganizationActions extends BaseServerAction {
 
     const hasData =
       counts._count.transactions > 0 ||
-      counts._count.assets > 0 ||
-      counts._count.debts > 0
+      counts._count.paymentMethods > 0
 
     if (hasData) {
       throw new Error(
-        `${ServerActionError.VALIDATION_ERROR}: Cannot delete organization with existing data. Delete all transactions, assets, and debts first.`
+        `${ServerActionError.VALIDATION_ERROR}: Cannot delete organization with existing data. Delete all transactions and payment methods first.`
       )
     }
 

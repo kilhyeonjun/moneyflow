@@ -8,7 +8,6 @@ import {
   TrendingDown,
   Wallet,
   Target,
-  Plus,
   Calendar,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -158,18 +157,11 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-6 max-w-7xl">
       {/* 헤더 */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6">
         <div>
           <h1 className="text-2xl font-bold">대시보드</h1>
           <p className="text-gray-600">재정 현황을 한눈에 확인하세요</p>
         </div>
-        <Button
-          color="primary"
-          startContent={<Plus className="w-4 h-4" />}
-          onPress={() => router.push(`/org/${orgId}/transactions`)}
-        >
-          거래 추가
-        </Button>
       </div>
 
       {/* 통계 카드 */}
