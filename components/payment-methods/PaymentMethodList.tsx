@@ -17,6 +17,7 @@ import {
 import { LoadingSpinner } from '@/components/ui/LoadingStates'
 import { showToast } from '@/lib/utils/toast'
 import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
+import { useDialog } from '@/components/ui/dialogs'
 import {
   getPaymentMethods,
   createPaymentMethod,
@@ -42,6 +43,7 @@ export default function PaymentMethodList({
   
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { handleError } = useErrorHandler()
+  const dialog = useDialog()
 
   useEffect(() => {
     loadPaymentMethods()
@@ -95,7 +97,21 @@ export default function PaymentMethodList({
   }
 
   const handleDelete = async (paymentMethodId: string) => {
-    if (!confirm('이 결제수단을 삭제하시겠습니까?\n거래 기록이 있는 결제수단은 삭제할 수 없습니다.')) {
+    const paymentMethod = paymentMethods.find(pm => pm.id === paymentMethodId)
+    if (!paymentMethod) return
+
+    const confirmed = await dialog.confirmDanger(
+      paymentMethod.transactionCount > 0
+        ? `"${paymentMethod.name}" 결제수단을 삭제하시겠습니까?\n\n⚠️ 이 결제수단은 ${paymentMethod.transactionCount}개의 거래 기록을 가지고 있어 삭제할 수 없습니다.`
+        : `"${paymentMethod.name}" 결제수단을 삭제하시겠습니까?\n\n삭제된 결제수단은 복구할 수 없습니다.`,
+      {
+        title: '결제수단 삭제',
+        confirmText: paymentMethod.transactionCount > 0 ? '확인' : '삭제',
+        cancelText: '취소',
+      }
+    )
+
+    if (!confirmed || paymentMethod.transactionCount > 0) {
       return
     }
 
@@ -272,6 +288,11 @@ export default function PaymentMethodList({
         initialData={editingPaymentMethod}
         organizationId={organizationId}
       />
+      
+      {/* Dialog Components */}
+      {dialog.AlertDialogComponent}
+      {dialog.ConfirmDialogComponent}
+      {dialog.PromptDialogComponent}
     </>
   )
 }
