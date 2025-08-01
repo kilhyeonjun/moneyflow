@@ -39,7 +39,6 @@ import {
   getUserOrganizations,
   createOrganization as createOrganizationAction,
 } from '@/lib/server-actions/organizations'
-import { createDefaultCategories } from '@/lib/server-actions/categories'
 import {
   handleServerActionResult,
   useErrorHandler,
@@ -110,16 +109,7 @@ export default function OrganizationsPage() {
 
       const org = handleServerActionResult(orgResult)
 
-      // 기본 카테고리 생성
-      try {
-        const categoriesResult = await createDefaultCategories(org.id)
-        handleServerActionResult(categoriesResult)
-        toast.success('조직이 성공적으로 생성되었습니다!')
-      } catch (dataError) {
-        console.error('기본 데이터 생성 실패:', dataError)
-        toast.error('조직은 생성되었지만 기본 데이터 생성에 실패했습니다.')
-        // 기본 데이터 생성 실패해도 조직은 생성되었으므로 계속 진행
-      }
+      toast.success('조직이 성공적으로 생성되었습니다!')
 
       // 목록 새로고침
       await fetchOrganizations()

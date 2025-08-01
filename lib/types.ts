@@ -6,30 +6,14 @@ export type {
   OrganizationMember,
   OrganizationInvitation,
   Transaction,
-  Category,
   PaymentMethod,
-  Asset,
-  AssetCategory,
-  Debt,
-  Liability,
-  DefaultCategory,
-  DefaultAssetCategory,
 } from '@prisma/client'
 
 // Extended types with relations for common use cases
 
-// Transaction with category and payment method details
+// Transaction with payment method details
 export type TransactionWithDetails = Prisma.TransactionGetPayload<{
   include: {
-    category: {
-      select: {
-        id: true
-        name: true
-        transactionType: true
-        icon: true
-        color: true
-      }
-    }
     paymentMethod: {
       select: {
         id: true
@@ -41,29 +25,6 @@ export type TransactionWithDetails = Prisma.TransactionGetPayload<{
       select: {
         id: true
         name: true
-      }
-    }
-  }
-}>
-
-// Category with parent and children relationships
-export type CategoryWithHierarchy = Prisma.CategoryGetPayload<{
-  include: {
-    parent: {
-      select: {
-        id: true
-        name: true
-        level: true
-      }
-    }
-    children: {
-      select: {
-        id: true
-        name: true
-        level: true
-        transactionType: true
-        icon: true
-        color: true
       }
     }
   }
@@ -83,9 +44,6 @@ export type OrganizationWithStats = Prisma.OrganizationGetPayload<{
     _count: {
       select: {
         transactions: true
-        categories: true
-        assets: true
-        debts: true
       }
     }
   }
@@ -103,27 +61,9 @@ export type UserOrganization = {
   joinedAt: Date | null
   stats: {
     transactions: number
-    categories: number
-    assets: number
-    debts: number
     members: number
   }
 }
-
-// Asset with category details
-export type AssetWithCategory = Prisma.AssetGetPayload<{
-  include: {
-    category: {
-      select: {
-        id: true
-        name: true
-        type: true
-        icon: true
-        color: true
-      }
-    }
-  }
-}>
 
 // Payment method with transaction count
 export type PaymentMethodWithUsage = Prisma.PaymentMethodGetPayload<{
@@ -139,19 +79,11 @@ export type PaymentMethodWithUsage = Prisma.PaymentMethodGetPayload<{
 // Common filter types for queries
 export type TransactionFilters = {
   organizationId: string
-  categoryId?: string
   transactionType?: string
   startDate?: Date
   endDate?: Date
   limit?: number
   offset?: number
-}
-
-export type CategoryFilters = {
-  organizationId: string
-  transactionType?: string
-  level?: number
-  parentId?: string
 }
 
 // Input types for forms (excluding auto-generated fields)
@@ -160,13 +92,11 @@ export type TransactionCreateInput = Omit<
   | 'id'
   | 'userId'
   | 'organization'
-  | 'category'
   | 'paymentMethod'
   | 'createdAt'
   | 'updatedAt'
 > & {
   organizationId: string
-  categoryId?: string
   paymentMethodId?: string
 }
 
@@ -174,35 +104,6 @@ export type TransactionUpdateInput = Partial<TransactionCreateInput> & {
   id: string
 }
 
-export type CategoryCreateInput = Omit<
-  Prisma.CategoryCreateInput,
-  | 'id'
-  | 'organization'
-  | 'parent'
-  | 'children'
-  | 'transactions'
-  | 'createdAt'
-  | 'updatedAt'
-> & {
-  organizationId: string
-  parentId?: string
-}
-
-export type CategoryUpdateInput = Partial<CategoryCreateInput> & {
-  id: string
-}
-
-export type AssetCreateInput = Omit<
-  Prisma.AssetCreateInput,
-  'id' | 'organization' | 'category' | 'createdAt' | 'updatedAt'
-> & {
-  organizationId: string
-  categoryId?: string
-}
-
-export type AssetUpdateInput = Partial<AssetCreateInput> & {
-  id: string
-}
 
 // Response types for server actions
 export type ServerActionResult<T = any> = {
@@ -237,16 +138,6 @@ export function isTransactionWithDetails(
   )
 }
 
-export function isCategoryWithHierarchy(
-  category: any
-): category is CategoryWithHierarchy {
-  return (
-    category &&
-    typeof category.id === 'string' &&
-    typeof category.name === 'string' &&
-    typeof category.level === 'number'
-  )
-}
 
 // Type-safe field transformers for frontend compatibility
 export function transformTransactionForFrontend(
@@ -260,22 +151,12 @@ export function transformTransactionForFrontend(
     description: transaction.description,
     transactionDate: transaction.transactionDate.toISOString(),
     transactionType: transaction.transactionType,
-    categoryId: transaction.categoryId,
     paymentMethodId: transaction.paymentMethodId,
     tags: transaction.tags,
     memo: transaction.memo,
     receiptUrl: transaction.receiptUrl,
     createdAt: transaction.createdAt?.toISOString(),
     updatedAt: transaction.updatedAt?.toISOString(),
-    category: transaction.category
-      ? {
-          id: transaction.category.id,
-          name: transaction.category.name,
-          transactionType: transaction.category.transactionType,
-          icon: transaction.category.icon,
-          color: transaction.category.color,
-        }
-      : null,
     paymentMethod: transaction.paymentMethod
       ? {
           id: transaction.paymentMethod.id,

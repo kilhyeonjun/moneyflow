@@ -13,7 +13,6 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import MonthlyTrendChart from '@/components/dashboard/MonthlyTrendChart'
-import CategoryPieChart from '@/components/dashboard/CategoryPieChart'
 
 // Import server actions and types
 import { getDashboardData } from '@/lib/server-actions/dashboard'
@@ -308,9 +307,8 @@ export default function DashboardPage() {
       </div>
 
       {/* 차트 섹션 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-6 mb-8">
         <MonthlyTrendChart transactions={allTransactions} />
-        <CategoryPieChart transactions={allTransactions} type="expense" />
       </div>
 
       {/* 최근 거래 내역 */}
@@ -362,9 +360,6 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-medium">{transaction.description}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Chip size="sm" variant="flat">
-                          {transaction.category?.name || '기타'}
-                        </Chip>
                         <span className="text-xs text-gray-500">
                           {transaction.transactionDate
                             ? new Date(

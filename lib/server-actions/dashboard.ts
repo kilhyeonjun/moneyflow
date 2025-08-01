@@ -41,15 +41,6 @@ class DashboardActions extends BaseServerAction {
     const transactions = await prisma.transaction.findMany({
       where: { organizationId },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,
@@ -178,15 +169,6 @@ class DashboardActions extends BaseServerAction {
     const transactions = await prisma.transaction.findMany({
       where: { organizationId },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,
@@ -219,15 +201,6 @@ class DashboardActions extends BaseServerAction {
     const transactions = await prisma.transaction.findMany({
       where: { organizationId },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,

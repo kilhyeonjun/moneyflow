@@ -12,7 +12,6 @@ import {
   ServerActionResult,
   ServerActionError,
   TransactionFilters,
-  CategoryFilters,
 } from '@/lib/types'
 import { Prisma } from '@prisma/client'
 
@@ -109,9 +108,6 @@ export function buildTransactionWhereClause(
     organizationId: filters.organizationId,
   }
 
-  if (filters.categoryId) {
-    where.categoryId = filters.categoryId
-  }
 
   if (filters.transactionType) {
     where.transactionType = filters.transactionType
@@ -130,27 +126,6 @@ export function buildTransactionWhereClause(
   return where
 }
 
-export function buildCategoryWhereClause(
-  filters: CategoryFilters
-): Prisma.CategoryWhereInput {
-  const where: Prisma.CategoryWhereInput = {
-    organizationId: filters.organizationId,
-  }
-
-  if (filters.transactionType) {
-    where.transactionType = filters.transactionType
-  }
-
-  if (filters.level !== undefined) {
-    where.level = filters.level
-  }
-
-  if (filters.parentId !== undefined) {
-    where.parentId = filters.parentId
-  }
-
-  return where
-}
 
 /**
  * Common date utilities for server actions

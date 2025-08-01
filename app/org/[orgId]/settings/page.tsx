@@ -31,14 +31,9 @@ import {
   Users,
   Mail,
   Clock,
-  Tag,
-  FolderTree,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { createClient } from '@/lib/supabase'
-import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
-import { formatCategoryDisplay } from '@/lib/category-utils'
-
 // Import server actions
 import {
   getSettingsData,
@@ -47,19 +42,12 @@ import {
   resendInvitation,
 } from '@/lib/server-actions/settings'
 import {
-  getCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  createDefaultCategories,
-} from '@/lib/server-actions/categories'
-import {
   updateOrganization,
   createInvitation,
   cancelInvitation,
 } from '@/lib/server-actions/organizations'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
-import type { Category, Organization, OrganizationMember } from '@/lib/types'
+import type { Organization, OrganizationMember } from '@/lib/types'
 
 interface UserProfile {
   id: string
@@ -110,28 +98,12 @@ export default function SettingsPage() {
     onOpen: onInviteModalOpen,
     onClose: onInviteModalClose,
   } = useDisclosure()
-  const {
-    isOpen: isCategoryModalOpen,
-    onOpen: onCategoryModalOpen,
-    onClose: onCategoryModalClose,
-  } = useDisclosure()
-  const {
-    isOpen: isEditCategoryModalOpen,
-    onOpen: onEditCategoryModalOpen,
-    onClose: onEditCategoryModalClose,
-  } = useDisclosure()
-  const {
-    isOpen: isDeleteCategoryModalOpen,
-    onOpen: onDeleteCategoryModalOpen,
-    onClose: onDeleteCategoryModalClose,
-  } = useDisclosure()
 
   const [loading, setLoading] = useState(true)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [currentUserRole, setCurrentUserRole] = useState<
     'owner' | 'admin' | 'member' | null
   >(null)
@@ -143,21 +115,6 @@ export default function SettingsPage() {
   })
   const [inviting, setInviting] = useState(false)
 
-  // 카테고리 모달 상태
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
-  )
-  const [categoryFormData, setCategoryFormData] = useState({
-    name: '',
-    transactionType: 'expense' as 'income' | 'expense' | 'transfer',
-    icon: '',
-    color: '#3B82F6',
-    parentId: '',
-  })
-  const [categoryLoading, setCategoryLoading] = useState(false)
-  const [selectedTransactionType, setSelectedTransactionType] = useState<
-    'income' | 'expense' | 'transfer'
-  >('expense')
 
   // Settings state - 추후 구현 예정
   // const [settings, setSettings] = useState({
@@ -238,13 +195,10 @@ export default function SettingsPage() {
           description: organization?.description || '',
         })
 
-        // 카테고리와 초대 목록을 병렬로 로드
-        await Promise.all([
-          loadCategories(orgId),
-          currentUserRole === 'admin' || currentUserRole === 'owner'
-            ? loadInvitations(orgId)
-            : Promise.resolve(),
-        ])
+        // 초대 목록 로드
+        if (currentUserRole === 'admin' || currentUserRole === 'owner') {
+          await loadInvitations(orgId)
+        }
       } catch (error) {
         if (error instanceof Error && error.message === 'FORBIDDEN') {
           router.push('/login')
@@ -270,15 +224,6 @@ export default function SettingsPage() {
     }
   }
 
-  const loadCategories = async (organizationId: string) => {
-    try {
-      const data = handleServerActionResult(await getCategories(organizationId))
-      setCategories(data)
-    } catch (error) {
-      console.error('카테고리 로드 실패:', error)
-      toast.error('카테고리를 불러오는데 실패했습니다.')
-    }
-  }
 
   const handleInviteMember = async () => {
     // 권한 검증
@@ -501,135 +446,6 @@ export default function SettingsPage() {
     }
   }
 
-  // 카테고리 관련 함수들
-  const handleCreateCategory = async () => {
-    // 권한 검증
-    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
-      toast.error('카테고리 생성 권한이 없습니다.')
-      return
-    }
-
-    if (!categoryFormData.name.trim()) {
-      toast.error('카테고리명을 입력하세요.')
-      return
-    }
-
-    setCategoryLoading(true)
-    try {
-      const data = handleServerActionResult(
-        await createCategory({
-          name: categoryFormData.name,
-          transactionType: categoryFormData.transactionType,
-          icon: categoryFormData.icon,
-          color: categoryFormData.color,
-          parentId: categoryFormData.parentId || undefined,
-          organizationId: orgId,
-          level: 0, // Will be calculated by server action
-        })
-      )
-
-      toast.success('카테고리가 성공적으로 생성되었습니다!')
-      onCategoryModalClose()
-      setCategoryFormData({
-        name: '',
-        transactionType: 'expense',
-        icon: '',
-        color: '#3B82F6',
-        parentId: '',
-      })
-
-      // 카테고리 목록 새로고침
-      await loadCategories(orgId)
-    } catch (error: any) {
-      console.error('카테고리 생성 실패:', error)
-      toast.error(error.message || '카테고리 생성에 실패했습니다.')
-    } finally {
-      setCategoryLoading(false)
-    }
-  }
-
-  const handleEditCategory = (category: Category) => {
-    setSelectedCategory(category)
-    setCategoryFormData({
-      name: category.name,
-      transactionType: category.transactionType as
-        | 'income'
-        | 'expense'
-        | 'transfer',
-      icon: category.icon || '',
-      color: category.color || '#3B82F6',
-      parentId: category.parentId || '',
-    })
-    onEditCategoryModalOpen()
-  }
-
-  const handleUpdateCategory = async () => {
-    // 권한 검증
-    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
-      toast.error('카테고리 수정 권한이 없습니다.')
-      return
-    }
-
-    if (!selectedCategory || !categoryFormData.name.trim()) {
-      toast.error('카테고리명을 입력하세요.')
-      return
-    }
-
-    setCategoryLoading(true)
-    try {
-      const data = handleServerActionResult(
-        await updateCategory({
-          id: selectedCategory.id,
-          name: categoryFormData.name,
-          icon: categoryFormData.icon,
-          color: categoryFormData.color,
-          parentId: categoryFormData.parentId || undefined,
-          organizationId: orgId,
-        })
-      )
-
-      toast.success('카테고리가 성공적으로 수정되었습니다!')
-      onEditCategoryModalClose()
-      setSelectedCategory(null)
-
-      // 카테고리 목록 새로고침
-      await loadCategories(orgId)
-    } catch (error: any) {
-      console.error('카테고리 수정 실패:', error)
-      toast.error(error.message || '카테고리 수정에 실패했습니다.')
-    } finally {
-      setCategoryLoading(false)
-    }
-  }
-
-  const handleDeleteCategory = async () => {
-    // 권한 검증
-    if (!currentUserRole || !['owner', 'admin'].includes(currentUserRole)) {
-      toast.error('카테고리 삭제 권한이 없습니다.')
-      return
-    }
-
-    if (!selectedCategory) return
-
-    setCategoryLoading(true)
-    try {
-      const data = handleServerActionResult(
-        await deleteCategory(selectedCategory.id, orgId)
-      )
-
-      toast.success('카테고리가 성공적으로 삭제되었습니다!')
-      onDeleteCategoryModalClose()
-      setSelectedCategory(null)
-
-      // 카테고리 목록 새로고침
-      await loadCategories(orgId)
-    } catch (error: any) {
-      console.error('카테고리 삭제 실패:', error)
-      toast.error(error.message || '카테고리 삭제에 실패했습니다.')
-    } finally {
-      setCategoryLoading(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -953,152 +769,6 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* 카테고리 관리 - owner/admin만 접근 가능 */}
-        {currentUserRole && ['owner', 'admin'].includes(currentUserRole) && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <Tag className="w-5 h-5 text-purple-600" />
-                <h2 className="text-lg font-semibold">카테고리 관리</h2>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">거래 카테고리</p>
-                    <p className="text-sm text-gray-600">
-                      수입, 지출, 이체 카테고리를 관리합니다
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    color="primary"
-                    startContent={<Plus className="w-4 h-4" />}
-                    onPress={onCategoryModalOpen}
-                  >
-                    카테고리 추가
-                  </Button>
-                </div>
-
-                <Divider />
-
-                {/* 카테고리 타입별 필터 */}
-                <div className="flex gap-2">
-                  {['expense', 'income', 'transfer'].map(type => (
-                    <Button
-                      key={type}
-                      size="sm"
-                      variant={
-                        selectedTransactionType === type ? 'solid' : 'bordered'
-                      }
-                      color={
-                        selectedTransactionType === type ? 'primary' : 'default'
-                      }
-                      onPress={() =>
-                        setSelectedTransactionType(
-                          type as 'income' | 'expense' | 'transfer'
-                        )
-                      }
-                    >
-                      {type === 'expense'
-                        ? '지출'
-                        : type === 'income'
-                          ? '수입'
-                          : '이체'}
-                    </Button>
-                  ))}
-                </div>
-
-                {/* 카테고리 목록 */}
-                <div className="space-y-2">
-                  {categories
-                    .filter(
-                      category =>
-                        category.transactionType === selectedTransactionType
-                    )
-                    .sort(
-                      (a, b) =>
-                        a.level - b.level || a.name.localeCompare(b.name)
-                    )
-                    .map(category => (
-                      <div
-                        key={category.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                        style={{ paddingLeft: `${category.level * 16 + 12}px` }}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-4 h-4 rounded-full"
-                            style={{
-                              backgroundColor: category.color || '#3B82F6',
-                            }}
-                          />
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{category.name}</p>
-                              {category.isDefault && (
-                                <Chip color="default" size="sm" variant="flat">
-                                  기본
-                                </Chip>
-                              )}
-                              {category.level > 1 && (
-                                <FolderTree className="w-3 h-3 text-gray-400" />
-                              )}
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              레벨 {category.level}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="light"
-                            startContent={<Edit className="w-3 h-3" />}
-                            onPress={() => handleEditCategory(category)}
-                            isDisabled={category.isDefault ?? false}
-                          >
-                            수정
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="light"
-                            color="danger"
-                            startContent={<Trash2 className="w-3 h-3" />}
-                            onPress={() => {
-                              setSelectedCategory(category)
-                              onDeleteCategoryModalOpen()
-                            }}
-                            isDisabled={category.isDefault ?? false}
-                          >
-                            삭제
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-
-                  {categories.filter(
-                    c => c.transactionType === selectedTransactionType
-                  ).length === 0 && (
-                    <div className="text-center py-8">
-                      <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                        카테고리가 없습니다
-                      </h3>
-                      <p className="text-gray-500 mb-4">
-                        첫 번째 카테고리를 추가해보세요!
-                      </p>
-                      <Button color="primary" onPress={onCategoryModalOpen}>
-                        카테고리 추가하기
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        )}
 
         {/* 알림 설정 - 추후 구현 예정 */}
         {/*
@@ -1333,279 +1003,6 @@ export default function SettingsPage() {
         </ModalContent>
       </Modal>
 
-      {/* 카테고리 생성 모달 */}
-      <Modal isOpen={isCategoryModalOpen} onClose={onCategoryModalClose}>
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-2">
-            <Tag className="w-5 h-5 text-purple-600" />새 카테고리 추가
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <Select
-                label="거래 유형"
-                selectedKeys={[categoryFormData.transactionType]}
-                onSelectionChange={keys => {
-                  const selectedType = Array.from(keys)[0] as
-                    | 'income'
-                    | 'expense'
-                    | 'transfer'
-                  setCategoryFormData(prev => ({
-                    ...prev,
-                    transactionType: selectedType,
-                    parentId: '',
-                  }))
-                }}
-                isRequired
-              >
-                <SelectItem key="expense">지출</SelectItem>
-                <SelectItem key="income">수입</SelectItem>
-                <SelectItem key="transfer">이체</SelectItem>
-              </Select>
-
-              <Input
-                label="카테고리명"
-                placeholder="카테고리명을 입력하세요"
-                value={categoryFormData.name}
-                onChange={e =>
-                  setCategoryFormData(prev => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                isRequired
-              />
-
-              <Select
-                label="상위 카테고리"
-                placeholder="상위 카테고리 선택 (선택사항)"
-                selectedKeys={
-                  categoryFormData.parentId ? [categoryFormData.parentId] : []
-                }
-                onSelectionChange={keys => {
-                  const selectedParent = Array.from(keys)[0] as string
-                  setCategoryFormData(prev => ({
-                    ...prev,
-                    parentId: selectedParent,
-                  }))
-                }}
-              >
-                {categories
-                  .filter(
-                    cat =>
-                      cat.transactionType ===
-                        categoryFormData.transactionType && cat.level < 3 // 3레벨까지만 허용
-                  )
-                  .map(category => (
-                    <SelectItem key={category.id}>
-                      {formatCategoryDisplay(category, {
-                        showIcons: false,
-                        showHierarchySymbols: true,
-                        indentSize: 2,
-                      })}
-                    </SelectItem>
-                  ))}
-              </Select>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="아이콘"
-                  placeholder="🏠 (선택사항)"
-                  value={categoryFormData.icon}
-                  onChange={e =>
-                    setCategoryFormData(prev => ({
-                      ...prev,
-                      icon: e.target.value,
-                    }))
-                  }
-                />
-                <Input
-                  label="색상"
-                  type="color"
-                  value={categoryFormData.color}
-                  onChange={e =>
-                    setCategoryFormData(prev => ({
-                      ...prev,
-                      color: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="light"
-              onPress={() => {
-                setCategoryFormData({
-                  name: '',
-                  transactionType: 'expense',
-                  icon: '',
-                  color: '#3B82F6',
-                  parentId: '',
-                })
-                onCategoryModalClose()
-              }}
-            >
-              취소
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleCreateCategory}
-              isLoading={categoryLoading}
-              isDisabled={categoryLoading || !categoryFormData.name.trim()}
-            >
-              추가하기
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* 카테고리 수정 모달 */}
-      <Modal
-        isOpen={isEditCategoryModalOpen}
-        onClose={onEditCategoryModalClose}
-      >
-        <ModalContent>
-          <ModalHeader className="flex items-center gap-2">
-            <Edit className="w-5 h-5 text-blue-600" />
-            카테고리 수정
-          </ModalHeader>
-          <ModalBody>
-            <div className="space-y-4">
-              <Input
-                label="카테고리명"
-                placeholder="카테고리명을 입력하세요"
-                value={categoryFormData.name}
-                onChange={e =>
-                  setCategoryFormData(prev => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                isRequired
-              />
-
-              <Select
-                label="상위 카테고리"
-                placeholder="상위 카테고리 선택 (선택사항)"
-                selectedKeys={
-                  categoryFormData.parentId ? [categoryFormData.parentId] : []
-                }
-                onSelectionChange={keys => {
-                  const selectedParent = Array.from(keys)[0] as string
-                  setCategoryFormData(prev => ({
-                    ...prev,
-                    parentId: selectedParent,
-                  }))
-                }}
-              >
-                {categories
-                  .filter(
-                    cat =>
-                      cat.transactionType ===
-                        categoryFormData.transactionType &&
-                      cat.level < 3 && // 3레벨까지만 허용
-                      cat.id !== selectedCategory?.id // 자기 자신은 제외
-                  )
-                  .map(category => (
-                    <SelectItem key={category.id}>
-                      {formatCategoryDisplay(category, {
-                        showIcons: false,
-                        showHierarchySymbols: true,
-                        indentSize: 2,
-                      })}
-                    </SelectItem>
-                  ))}
-              </Select>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  label="아이콘"
-                  placeholder="🏠 (선택사항)"
-                  value={categoryFormData.icon}
-                  onChange={e =>
-                    setCategoryFormData(prev => ({
-                      ...prev,
-                      icon: e.target.value,
-                    }))
-                  }
-                />
-                <Input
-                  label="색상"
-                  type="color"
-                  value={categoryFormData.color}
-                  onChange={e =>
-                    setCategoryFormData(prev => ({
-                      ...prev,
-                      color: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="light"
-              onPress={() => {
-                setSelectedCategory(null)
-                onEditCategoryModalClose()
-              }}
-            >
-              취소
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleUpdateCategory}
-              isLoading={categoryLoading}
-              isDisabled={categoryLoading || !categoryFormData.name.trim()}
-            >
-              수정하기
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      {/* 카테고리 삭제 확인 모달 */}
-      <Modal
-        isOpen={isDeleteCategoryModalOpen}
-        onClose={onDeleteCategoryModalClose}
-        size="sm"
-      >
-        <ModalContent>
-          <ModalHeader>카테고리 삭제</ModalHeader>
-          <ModalBody>
-            <p>
-              정말로 &ldquo;<strong>{selectedCategory?.name}</strong>&rdquo;
-              카테고리를 삭제하시겠습니까?
-            </p>
-            <div className="mt-4 p-4 bg-red-50 rounded-lg">
-              <p className="text-red-800 font-medium">⚠️ 주의사항</p>
-              <ul className="text-red-700 text-sm mt-2 space-y-1">
-                <li>• 삭제된 카테고리는 복구할 수 없습니다</li>
-                <li>• 하위 카테고리가 있는 경우 삭제할 수 없습니다</li>
-                <li>• 거래에서 사용 중인 카테고리는 삭제할 수 없습니다</li>
-              </ul>
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="light"
-              onPress={onDeleteCategoryModalClose}
-              disabled={categoryLoading}
-            >
-              취소
-            </Button>
-            <Button
-              color="danger"
-              onPress={handleDeleteCategory}
-              isLoading={categoryLoading}
-            >
-              삭제하기
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
 
       {/* Toast 알림 */}
       <Toaster

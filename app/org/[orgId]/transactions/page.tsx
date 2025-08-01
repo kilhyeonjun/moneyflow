@@ -43,8 +43,6 @@ import {
   Building,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySelect'
-
 // Import server actions and types
 import {
   getTransactions,
@@ -52,10 +50,8 @@ import {
   updateTransaction,
   deleteTransaction,
 } from '@/lib/server-actions/transactions'
-import { getCategories } from '@/lib/server-actions/categories'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import type {
-  CategoryWithHierarchy,
   TransactionCreateInput,
   TransactionUpdateInput,
   transformTransactionForFrontend,
@@ -63,7 +59,6 @@ import type {
 
 // Use the actual transformation type from server actions
 type TransactionForFrontend = ReturnType<typeof transformTransactionForFrontend>
-type CategoryForFrontend = CategoryWithHierarchy
 
 export default function TransactionsPage() {
   const router = useRouter()
@@ -90,13 +85,9 @@ export default function TransactionsPage() {
     useState<TransactionForFrontend | null>(null)
 
   const [transactions, setTransactions] = useState<TransactionForFrontend[]>([])
-  const [transactionCategories, setTransactionCategories] = useState<
-    CategoryForFrontend[]
-  >([])
   const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    categoryId: '',
     amount: '',
     description: '',
     transactionDate: new Date().toISOString().split('T')[0],
@@ -104,7 +95,6 @@ export default function TransactionsPage() {
   })
 
   const [editFormData, setEditFormData] = useState({
-    categoryId: '',
     amount: '',
     description: '',
     transactionDate: '',
@@ -113,32 +103,26 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     if (orgId) {
-      loadTransactionsAndCategories(orgId)
+      loadTransactions(orgId)
     }
   }, [orgId])
 
-  const loadTransactionsAndCategories = async (organizationId: string) => {
+  const loadTransactions = async (organizationId: string) => {
     try {
       setLoading(true)
       setError(null)
 
-      // Load transactions and categories using server actions
-      const [transactionsResult, categoriesResult] = await Promise.all([
-        getTransactions(organizationId),
-        getCategories(organizationId),
-      ])
+      // Load transactions using server actions
+      const transactionsResult = await getTransactions(organizationId)
 
       try {
         const transactionsData = handleServerActionResult(transactionsResult)
-        const categoriesData = handleServerActionResult(categoriesResult)
 
         if (process.env.NODE_ENV === 'development') {
           console.log('로드된 거래 데이터:', transactionsData)
-          console.log('로드된 카테고리 데이터:', categoriesData)
         }
 
         setTransactions(transactionsData ? transactionsData.data : [])
-        setTransactionCategories(categoriesData || [])
       } catch (error) {
         if (error instanceof Error && error.message === 'FORBIDDEN') {
           setError('이 조직에 접근할 권한이 없습니다.')
@@ -166,9 +150,6 @@ export default function TransactionsPage() {
 
     // 기본 클라이언트 검증
     const validationErrors = []
-    if (!formData.categoryId || formData.categoryId.trim() === '') {
-      validationErrors.push('카테고리를 선택해주세요.')
-    }
     if (!formData.amount || formData.amount.trim() === '') {
       validationErrors.push('금액을 입력해주세요.')
     } else if (
@@ -190,7 +171,6 @@ export default function TransactionsPage() {
     try {
       const requestData: TransactionCreateInput = {
         organizationId: orgId,
-        categoryId: formData.categoryId,
         amount: parseFloat(formData.amount),
         description: formData.description,
         transactionDate: formData.transactionDate,
@@ -209,7 +189,6 @@ export default function TransactionsPage() {
         toast.success('거래가 성공적으로 추가되었습니다!')
         onClose()
         setFormData({
-          categoryId: '',
           amount: '',
           description: '',
           transactionDate: new Date().toISOString().split('T')[0],
@@ -217,7 +196,7 @@ export default function TransactionsPage() {
         })
 
         // 거래 목록 새로고침
-        await loadTransactionsAndCategories(orgId)
+        await loadTransactions(orgId)
       } catch (error) {
         if (error instanceof Error && error.message === 'FORBIDDEN') {
           toast.error('이 조직에서 거래를 추가할 권한이 없습니다.')
@@ -239,7 +218,6 @@ export default function TransactionsPage() {
   const editTransaction = (transaction: TransactionForFrontend) => {
     setSelectedTransaction(transaction)
     setEditFormData({
-      categoryId: transaction.categoryId || '',
       amount: Math.abs(Number(transaction.amount)).toString(),
       description: transaction.description || '',
       transactionDate: transaction.transactionDate
@@ -262,9 +240,6 @@ export default function TransactionsPage() {
 
     // 기본 클라이언트 검증
     const validationErrors = []
-    if (!editFormData.categoryId || editFormData.categoryId.trim() === '') {
-      validationErrors.push('카테고리를 선택해주세요.')
-    }
     if (!editFormData.amount || editFormData.amount.trim() === '') {
       validationErrors.push('금액을 입력해주세요.')
     } else if (
@@ -287,7 +262,6 @@ export default function TransactionsPage() {
       const requestData: TransactionUpdateInput = {
         id: selectedTransaction.id,
         organizationId: orgId,
-        categoryId: editFormData.categoryId,
         amount: parseFloat(editFormData.amount),
         description: editFormData.description,
         transactionDate: editFormData.transactionDate,
@@ -308,7 +282,7 @@ export default function TransactionsPage() {
         setSelectedTransaction(null)
 
         // 거래 목록 새로고침
-        await loadTransactionsAndCategories(orgId)
+        await loadTransactions(orgId)
       } catch (error) {
         if (error instanceof Error && error.message === 'FORBIDDEN') {
           toast.error('이 조직에서 거래를 수정할 권한이 없습니다.')
@@ -346,7 +320,7 @@ export default function TransactionsPage() {
         setSelectedTransaction(null)
 
         // 거래 목록 새로고침
-        await loadTransactionsAndCategories(orgId)
+        await loadTransactions(orgId)
       } catch (error) {
         if (
           error instanceof Error &&
@@ -394,7 +368,7 @@ export default function TransactionsPage() {
 
   const retryLoadData = () => {
     if (orgId) {
-      loadTransactionsAndCategories(orgId)
+      loadTransactions(orgId)
     }
   }
 
@@ -488,7 +462,6 @@ export default function TransactionsPage() {
             <Table aria-label="거래 내역 테이블">
               <TableHeader>
                 <TableColumn>구분</TableColumn>
-                <TableColumn>카테고리</TableColumn>
                 <TableColumn>설명</TableColumn>
                 <TableColumn>금액</TableColumn>
                 <TableColumn>날짜</TableColumn>
@@ -520,11 +493,6 @@ export default function TransactionsPage() {
                               : '이체'}
                         </Chip>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium">
-                        {transaction.category?.name || '기타'}
-                      </span>
                     </TableCell>
                     <TableCell>
                       <span>{transaction.description}</span>
@@ -608,21 +576,6 @@ export default function TransactionsPage() {
                 <SelectItem key="transfer">이체</SelectItem>
               </Select>
 
-              <HierarchicalCategorySelect
-                categories={transactionCategories}
-                selectedCategoryId={formData.categoryId}
-                onSelectionChange={categoryId =>
-                  setFormData(prev => ({
-                    ...prev,
-                    categoryId,
-                  }))
-                }
-                transactionType={formData.transactionType}
-                label="카테고리"
-                placeholder="카테고리를 선택하세요"
-                isRequired={true}
-              />
-
               <Input
                 label="금액"
                 placeholder="금액을 입력하세요"
@@ -693,21 +646,6 @@ export default function TransactionsPage() {
                 <SelectItem key="expense">지출</SelectItem>
                 <SelectItem key="transfer">이체</SelectItem>
               </Select>
-
-              <HierarchicalCategorySelect
-                categories={transactionCategories}
-                selectedCategoryId={editFormData.categoryId}
-                onSelectionChange={categoryId =>
-                  setEditFormData(prev => ({
-                    ...prev,
-                    categoryId,
-                  }))
-                }
-                transactionType={editFormData.transactionType}
-                label="카테고리"
-                placeholder="카테고리를 선택하세요"
-                isRequired={true}
-              />
 
               <Input
                 label="금액"

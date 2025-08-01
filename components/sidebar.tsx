@@ -12,14 +12,12 @@ import {
 import {
   Home,
   CreditCard,
-  BarChart3,
   Settings,
   LogOut,
   Menu,
   X,
   Building2,
   ChevronDown,
-  Wallet,
   Check,
 } from 'lucide-react'
 import { getUserOrganizations } from '@/lib/server-actions/organizations'
@@ -51,8 +49,6 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
   const navigation = [
     { name: '대시보드', href: `/org/${orgId}/dashboard`, icon: Home },
     { name: '거래 관리', href: `/org/${orgId}/transactions`, icon: CreditCard },
-    { name: '자산 관리', href: `/org/${orgId}/assets`, icon: Wallet },
-    { name: '통계 분석', href: `/org/${orgId}/analytics`, icon: BarChart3 },
     { name: '설정', href: `/org/${orgId}/settings`, icon: Settings },
   ]
 

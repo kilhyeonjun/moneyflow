@@ -58,15 +58,6 @@ class TransactionActions extends BaseServerAction {
       prisma.transaction.findMany({
         where,
         include: {
-          category: {
-            select: {
-              id: true,
-              name: true,
-              transactionType: true,
-              icon: true,
-              color: true,
-            },
-          },
           paymentMethod: {
             select: {
               id: true,
@@ -117,15 +108,6 @@ class TransactionActions extends BaseServerAction {
         organizationId,
       },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,
@@ -176,30 +158,6 @@ class TransactionActions extends BaseServerAction {
       userId: user.id,
     }
 
-    // Validate category belongs to the organization if provided
-    if (validatedInput.categoryId) {
-      this.validateUUID(validatedInput.categoryId, 'Category ID')
-
-      const category = await prisma.category.findFirst({
-        where: {
-          id: validatedInput.categoryId,
-          organizationId: input.organizationId,
-        },
-      })
-
-      if (!category) {
-        throw new Error(
-          `${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`
-        )
-      }
-
-      // Validate transaction type matches category
-      if (category.transactionType !== validatedInput.transactionType) {
-        throw new Error(
-          `${ServerActionError.VALIDATION_ERROR}: Transaction type does not match category type`
-        )
-      }
-    }
 
     // Validate payment method belongs to the organization if provided
     if (validatedInput.paymentMethodId) {
@@ -229,11 +187,6 @@ class TransactionActions extends BaseServerAction {
       organization: {
         connect: { id: input.organizationId },
       },
-      ...(validatedInput.categoryId && {
-        category: {
-          connect: { id: validatedInput.categoryId },
-        },
-      }),
       ...(validatedInput.paymentMethodId && {
         paymentMethod: {
           connect: { id: validatedInput.paymentMethodId },
@@ -249,15 +202,6 @@ class TransactionActions extends BaseServerAction {
     const transaction = await prisma.transaction.create({
       data: transactionData,
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,
@@ -277,7 +221,6 @@ class TransactionActions extends BaseServerAction {
     // Revalidate relevant pages
     revalidatePath(`/org/${input.organizationId}/transactions`)
     revalidatePath(`/org/${input.organizationId}/dashboard`)
-    revalidatePath(`/org/${input.organizationId}/analytics`)
 
     return transformTransactionForFrontend(
       transaction as TransactionWithDetails
@@ -313,7 +256,7 @@ class TransactionActions extends BaseServerAction {
     }
 
     // Prepare update data
-    const updateData = this.sanitizeInput(input)
+    const updateData: any = this.sanitizeInput(input)
     delete updateData.id
     delete updateData.organizationId // Can't update organization
 
@@ -332,34 +275,6 @@ class TransactionActions extends BaseServerAction {
       updateData.transactionDate = parseDate(updateData.transactionDate)
     }
 
-    // Validate category if being updated
-    if (updateData.categoryId !== undefined) {
-      if (updateData.categoryId) {
-        this.validateUUID(updateData.categoryId, 'Category ID')
-
-        const category = await prisma.category.findFirst({
-          where: {
-            id: updateData.categoryId,
-            organizationId: input.organizationId,
-          },
-        })
-
-        if (!category) {
-          throw new Error(
-            `${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`
-          )
-        }
-
-        // Validate transaction type matches category if both are being updated
-        const finalTransactionType =
-          updateData.transactionType || existingTransaction.transactionType
-        if (category.transactionType !== finalTransactionType) {
-          throw new Error(
-            `${ServerActionError.VALIDATION_ERROR}: Transaction type does not match category type`
-          )
-        }
-      }
-    }
 
     // Validate payment method if being updated
     if (updateData.paymentMethodId !== undefined) {
@@ -386,15 +301,6 @@ class TransactionActions extends BaseServerAction {
       where: { id: input.id },
       data: updateData,
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,
@@ -414,7 +320,6 @@ class TransactionActions extends BaseServerAction {
     // Revalidate relevant pages
     revalidatePath(`/org/${input.organizationId}/transactions`)
     revalidatePath(`/org/${input.organizationId}/dashboard`)
-    revalidatePath(`/org/${input.organizationId}/analytics`)
 
     return transformTransactionForFrontend(
       updatedTransaction as TransactionWithDetails
@@ -451,7 +356,6 @@ class TransactionActions extends BaseServerAction {
     // Revalidate relevant pages
     revalidatePath(`/org/${organizationId}/transactions`)
     revalidatePath(`/org/${organizationId}/dashboard`)
-    revalidatePath(`/org/${organizationId}/analytics`)
 
     return { success: true }
   }
@@ -485,15 +389,6 @@ class TransactionActions extends BaseServerAction {
     const transactions = await prisma.transaction.findMany({
       where: { organizationId },
       include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-            transactionType: true,
-            icon: true,
-            color: true,
-          },
-        },
         paymentMethod: {
           select: {
             id: true,
