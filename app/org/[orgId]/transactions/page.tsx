@@ -41,6 +41,10 @@ import {
   Filter,
   Shield,
   Building,
+  Banknote,
+  CreditCard,
+  Building2,
+  Wallet,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 // Import server actions and types
@@ -51,6 +55,7 @@ import {
   deleteTransaction,
 } from '@/lib/server-actions/transactions'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import PaymentMethodSelect from '@/components/payment-methods/PaymentMethodSelect'
 import type {
   TransactionCreateInput,
   TransactionUpdateInput,
@@ -92,6 +97,7 @@ export default function TransactionsPage() {
     description: '',
     transactionDate: new Date().toISOString().split('T')[0],
     transactionType: 'expense',
+    paymentMethodId: '',
   })
 
   const [editFormData, setEditFormData] = useState({
@@ -99,6 +105,7 @@ export default function TransactionsPage() {
     description: '',
     transactionDate: '',
     transactionType: 'expense',
+    paymentMethodId: '',
   })
 
   useEffect(() => {
@@ -175,6 +182,7 @@ export default function TransactionsPage() {
         description: formData.description,
         transactionDate: formData.transactionDate,
         transactionType: formData.transactionType,
+        paymentMethodId: formData.paymentMethodId || undefined,
       }
 
       if (process.env.NODE_ENV === 'development') {
@@ -193,6 +201,7 @@ export default function TransactionsPage() {
           description: '',
           transactionDate: new Date().toISOString().split('T')[0],
           transactionType: 'expense',
+          paymentMethodId: '',
         })
 
         // 거래 목록 새로고침
@@ -224,6 +233,7 @@ export default function TransactionsPage() {
         ? new Date(transaction.transactionDate).toISOString().split('T')[0]
         : '',
       transactionType: transaction.transactionType || 'expense',
+      paymentMethodId: transaction.paymentMethodId || '',
     })
     onEditOpen()
   }
@@ -266,6 +276,7 @@ export default function TransactionsPage() {
         description: editFormData.description,
         transactionDate: editFormData.transactionDate,
         transactionType: editFormData.transactionType,
+        paymentMethodId: editFormData.paymentMethodId || undefined,
       }
 
       if (process.env.NODE_ENV === 'development') {
@@ -385,6 +396,36 @@ export default function TransactionsPage() {
     }
   }
 
+  const getPaymentMethodIcon = (type?: string) => {
+    switch (type) {
+      case 'cash':
+        return <Banknote className="w-4 h-4 text-green-600" />
+      case 'card':
+        return <CreditCard className="w-4 h-4 text-blue-600" />
+      case 'account':
+        return <Building2 className="w-4 h-4 text-purple-600" />
+      case 'other':
+        return <Wallet className="w-4 h-4 text-gray-600" />
+      default:
+        return null
+    }
+  }
+
+  const getPaymentMethodTypeName = (type?: string) => {
+    switch (type) {
+      case 'cash':
+        return '현금'
+      case 'card':
+        return '카드'
+      case 'account':
+        return '계좌'
+      case 'other':
+        return '기타'
+      default:
+        return null
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -463,6 +504,7 @@ export default function TransactionsPage() {
               <TableHeader>
                 <TableColumn>구분</TableColumn>
                 <TableColumn>설명</TableColumn>
+                <TableColumn>결제수단</TableColumn>
                 <TableColumn>금액</TableColumn>
                 <TableColumn>날짜</TableColumn>
                 <TableColumn>작업</TableColumn>
@@ -496,6 +538,23 @@ export default function TransactionsPage() {
                     </TableCell>
                     <TableCell>
                       <span>{transaction.description}</span>
+                    </TableCell>
+                    <TableCell>
+                      {transaction.paymentMethod ? (
+                        <div className="flex items-center gap-2">
+                          {getPaymentMethodIcon(transaction.paymentMethod.type)}
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {transaction.paymentMethod.name}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {getPaymentMethodTypeName(transaction.paymentMethod.type)}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span
@@ -608,6 +667,20 @@ export default function TransactionsPage() {
                   setFormData(prev => ({ ...prev, transactionDate: value }))
                 }
               />
+
+              <PaymentMethodSelect
+                organizationId={orgId}
+                value={formData.paymentMethodId}
+                onSelectionChange={paymentMethodId =>
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    paymentMethodId: paymentMethodId || '' 
+                  }))
+                }
+                placeholder="결제수단을 선택하세요 (선택사항)"
+                includeNoneOption={true}
+                noneOptionLabel="결제수단 없음"
+              />
             </div>
           </ModalBody>
           <ModalFooter>
@@ -678,6 +751,20 @@ export default function TransactionsPage() {
                 onValueChange={value =>
                   setEditFormData(prev => ({ ...prev, transactionDate: value }))
                 }
+              />
+
+              <PaymentMethodSelect
+                organizationId={orgId}
+                value={editFormData.paymentMethodId}
+                onSelectionChange={paymentMethodId =>
+                  setEditFormData(prev => ({ 
+                    ...prev, 
+                    paymentMethodId: paymentMethodId || '' 
+                  }))
+                }
+                placeholder="결제수단을 선택하세요 (선택사항)"
+                includeNoneOption={true}
+                noneOptionLabel="결제수단 없음"
               />
             </div>
           </ModalBody>

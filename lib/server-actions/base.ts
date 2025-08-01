@@ -238,6 +238,16 @@ export function validateStatus(status: string): string {
   return status
 }
 
+export function validatePaymentMethodType(type: string): string {
+  const validTypes = ['cash', 'card', 'account', 'other']
+  if (!validTypes.includes(type)) {
+    throw new Error(
+      `${ServerActionError.VALIDATION_ERROR}: Invalid payment method type`
+    )
+  }
+  return type
+}
+
 /**
  * Database transaction wrapper for complex operations
  */

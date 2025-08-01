@@ -31,6 +31,8 @@ import {
   Users,
   Mail,
   Clock,
+  Wallet,
+  CreditCard,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { createClient } from '@/lib/supabase'
@@ -47,6 +49,7 @@ import {
   cancelInvitation,
 } from '@/lib/server-actions/organizations'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
+import { PaymentMethodList } from '@/components/payment-methods'
 import type { Organization, OrganizationMember } from '@/lib/types'
 
 interface UserProfile {
@@ -769,6 +772,13 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {/* 결제수단 관리 - owner/admin만 접근 가능 */}
+        {currentUserRole && ['owner', 'admin'].includes(currentUserRole) && (
+          <PaymentMethodList
+            organizationId={orgId}
+            organizationName={organization?.name || '조직'}
+          />
+        )}
 
         {/* 알림 설정 - 추후 구현 예정 */}
         {/*

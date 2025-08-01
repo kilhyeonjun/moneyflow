@@ -104,6 +104,21 @@ export type TransactionUpdateInput = Partial<TransactionCreateInput> & {
   id: string
 }
 
+// Payment method input types
+export type PaymentMethodCreateInput = {
+  organizationId: string
+  name: string
+  type: 'cash' | 'card' | 'account' | 'other'
+  bankName?: string
+  accountNumber?: string
+  cardCompany?: string
+  lastFourDigits?: string
+}
+
+export type PaymentMethodUpdateInput = PaymentMethodCreateInput & {
+  id: string
+}
+
 
 // Response types for server actions
 export type ServerActionResult<T = any> = {
@@ -164,5 +179,25 @@ export function transformTransactionForFrontend(
           type: transaction.paymentMethod.type,
         }
       : null,
+  }
+}
+
+// Transform payment method for frontend compatibility
+export function transformPaymentMethodForFrontend(
+  paymentMethod: PaymentMethodWithUsage
+) {
+  return {
+    id: paymentMethod.id,
+    organizationId: paymentMethod.organizationId,
+    name: paymentMethod.name,
+    type: paymentMethod.type,
+    bankName: paymentMethod.bankName,
+    accountNumber: paymentMethod.accountNumber,
+    cardCompany: paymentMethod.cardCompany,
+    lastFourDigits: paymentMethod.lastFourDigits,
+    isActive: paymentMethod.isActive,
+    createdAt: paymentMethod.createdAt?.toISOString(),
+    updatedAt: paymentMethod.updatedAt?.toISOString(),
+    transactionCount: paymentMethod._count.transactions,
   }
 }
