@@ -85,6 +85,37 @@ class OrganizationActions extends BaseServerAction {
         },
       })
 
+      // Create default payment methods
+      const defaultPaymentMethods = [
+        {
+          name: '현금',
+          type: 'cash' as const,
+          isActive: true,
+        },
+        {
+          name: '체크카드',
+          type: 'card' as const,
+          isActive: true,
+        },
+        {
+          name: '신용카드',
+          type: 'card' as const,
+          isActive: true,
+        },
+      ]
+
+      // Create default payment methods for the organization
+      for (const paymentMethod of defaultPaymentMethods) {
+        await tx.paymentMethod.create({
+          data: {
+            organizationId: org.id,
+            name: paymentMethod.name,
+            type: paymentMethod.type,
+            isActive: paymentMethod.isActive,
+          },
+        })
+      }
+
       return org
     })
 
