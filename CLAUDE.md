@@ -258,6 +258,51 @@ try {
 }
 ```
 
+## Form Validation & UI Convention
+
+### Core Principles
+- **Client-side Validation**: 실시간 사용자 피드백을 위한 클라이언트 사이드 validation
+- **Server-side Security**: 보안을 위한 서버 사이드 validation은 필수
+- **UI Consistency**: 모든 form에서 일관된 에러 표시 및 필수값 표시
+
+### Required Field Standards
+- 모든 필수 필드는 `isRequired` prop 사용
+- 필수 필드 라벨에 빨간색 `*` 표시
+- HeroUI의 `isInvalid` 및 `errorMessage` props 활용
+
+### TanStack Form Integration
+- 복잡한 form은 TanStack Form 사용 권장
+- 실시간 validation 및 에러 핸들링
+- Server Actions과의 seamless integration
+
+### Component Standards
+```typescript
+// 기본 ValidatedInput 사용 패턴
+<ValidatedInput
+  label="필드명"
+  value={value}
+  onValueChange={setValue}
+  isRequired={true}
+  validation={(value) => !value ? '필수 입력 항목입니다' : null}
+  error={errors.fieldName}
+/>
+```
+
+### Error Display Patterns
+- Field-level: `isInvalid` + `errorMessage` props
+- Form-level: validation summary toast 또는 alert
+- Server errors: Error Boundary를 통한 글로벌 핸들링
+
+### Validation Schema Structure
+- `lib/validation/schemas.ts`에서 재사용 가능한 validation 규칙 정의
+- TypeScript 타입 안전성 보장
+- 서버와 클라이언트 공통 validation 로직
+
+### Accessibility Requirements
+- `aria-invalid` 속성 자동 적용
+- `aria-describedby`로 에러 메시지 연결
+- Screen reader 친화적 에러 메시지
+
 ### Testing & Development Notes
 - Test account: `admin@moneyflow.com` / `admin123`
 - UUID v7 provides chronological ordering and improved database performance

@@ -8,9 +8,6 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  Select,
-  SelectItem,
 } from '@heroui/react'
 import {
   Wallet,
@@ -19,6 +16,10 @@ import {
   Building2,
 } from 'lucide-react'
 import { showToast } from '@/lib/utils/toast'
+import { useFormValidation, commonValidationRules } from '@/hooks/useFormValidation'
+import ValidatedInput from '@/components/form/ValidatedInput'
+import ValidatedSelect, { type SelectOption } from '@/components/form/ValidatedSelect'
+import { paymentMethodFormSchema, type PaymentMethodFormInput } from '@/lib/validation/schemas'
 import type { PaymentMethodData } from './PaymentMethodCard'
 
 interface PaymentMethodFormProps {
@@ -29,22 +30,15 @@ interface PaymentMethodFormProps {
   organizationId: string
 }
 
-export type PaymentMethodFormData = {
+export type PaymentMethodFormData = PaymentMethodFormInput & {
   id?: string
-  organizationId: string
-  name: string
-  type: 'cash' | 'card' | 'account' | 'other'
-  bankName?: string
-  accountNumber?: string
-  cardCompany?: string
-  lastFourDigits?: string
 }
 
-const paymentMethodTypes = [
-  { key: 'cash', label: '현금', icon: <Banknote className="w-4 h-4" /> },
-  { key: 'card', label: '카드', icon: <CreditCard className="w-4 h-4" /> },
-  { key: 'account', label: '계좌', icon: <Building2 className="w-4 h-4" /> },
-  { key: 'other', label: '기타', icon: <Wallet className="w-4 h-4" /> },
+const paymentMethodTypes: SelectOption[] = [
+  { key: 'cash', label: '현금', startContent: <Banknote className="w-4 h-4" />, description: '현금 결제수단' },
+  { key: 'card', label: '카드', startContent: <CreditCard className="w-4 h-4" />, description: '신용카드, 체크카드 등' },
+  { key: 'account', label: '계좌', startContent: <Building2 className="w-4 h-4" />, description: '은행 계좌, 입출금통장 등' },
+  { key: 'other', label: '기타', startContent: <Wallet className="w-4 h-4" />, description: '기타 결제수단' },
 ]
 
 export default function PaymentMethodForm({
@@ -54,24 +48,75 @@ export default function PaymentMethodForm({
   initialData,
   organizationId,
 }: PaymentMethodFormProps) {
-  const [formData, setFormData] = useState<PaymentMethodFormData>({
-    organizationId,
-    name: '',
-    type: 'cash',
-    bankName: '',
-    accountNumber: '',
-    cardCompany: '',
-    lastFourDigits: '',
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-
   const isEditing = !!initialData
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Form validation 설정
+  const validationRules = {
+    name: commonValidationRules.combine(
+      commonValidationRules.required('결제수단 이름'),
+      commonValidationRules.stringLength(2, 50, '결제수단 이름')
+    ),
+    type: commonValidationRules.required('결제수단 유형'),
+    cardCompany: (value: string) => {
+      if (value && value.length > 100) {
+        return '카드사명은 100자 이하여야 합니다'
+      }
+      return null
+    },
+    lastFourDigits: (value: string) => {
+      if (value && !/^\d{4}$/.test(value)) {
+        return '카드 뒷 4자리는 숫자 4개여야 합니다'
+      }
+      return null
+    },
+    bankName: (value: string) => {
+      if (value && value.length > 100) {
+        return '은행명은 100자 이하여야 합니다'
+      }
+      return null
+    },
+    accountNumber: (value: string) => {
+      if (value) {
+        if (value.length < 4) {
+          return '계좌번호는 최소 4자리 이상이어야 합니다'
+        }
+        if (value.length > 25) {
+          return '계좌번호는 25자 이하여야 합니다'
+        }
+        if (!/^[0-9\-]+$/.test(value)) {
+          return '계좌번호는 숫자와 하이픈만 입력 가능합니다'
+        }
+      }
+      return null
+    },
+  }
+
+  const {
+    data: formData,
+    updateField,
+    validateAll,
+    reset,
+    errors,
+    isValid,
+  } = useFormValidation<PaymentMethodFormData>(validationRules, {
+    initialData: {
+      organizationId,
+      name: '',
+      type: 'cash',
+      bankName: '',
+      accountNumber: '',
+      cardCompany: '',
+      lastFourDigits: '',
+    },
+    mode: 'onChange',
+    realTimeValidation: true,
+  })
 
   // 초기 데이터 설정
   useEffect(() => {
     if (initialData) {
-      setFormData({
+      reset({
         id: initialData.id,
         organizationId: initialData.organizationId,
         name: initialData.name,
@@ -82,7 +127,7 @@ export default function PaymentMethodForm({
         lastFourDigits: initialData.lastFourDigits || '',
       })
     } else {
-      setFormData({
+      reset({
         organizationId,
         name: '',
         type: 'cash',
@@ -92,36 +137,47 @@ export default function PaymentMethodForm({
         lastFourDigits: '',
       })
     }
-    setErrors({})
-  }, [initialData, organizationId, isOpen])
+  }, [initialData, organizationId, isOpen, reset])
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {}
 
-    if (!formData.name.trim()) {
-      newErrors.name = '결제수단 이름을 입력해주세요'
+  // 커스텀 validation 함수 (타입별 조건부 검증)
+  const validateFormData = (): boolean => {
+    const { isValid: basicIsValid } = validateAll()
+    
+    // 기본 validation 실패 시 조기 반환
+    if (!basicIsValid) {
+      return false
     }
 
+    // 타입별 조건부 validation
     if (formData.type === 'card') {
       if (formData.lastFourDigits && !/^\d{4}$/.test(formData.lastFourDigits)) {
-        newErrors.lastFourDigits = '뒷 4자리는 숫자 4개를 입력해주세요'
+        showToast.error('카드 뒷 4자리는 숫자 4개여야 합니다')
+        return false
       }
     }
-
+    
     if (formData.type === 'account') {
-      if (formData.accountNumber && formData.accountNumber.length < 4) {
-        newErrors.accountNumber = '계좌번호는 최소 4자리 이상 입력해주세요'
+      if (formData.accountNumber) {
+        if (formData.accountNumber.length < 4) {
+          showToast.error('계좌번호는 최소 4자리 이상이어야 합니다')
+          return false
+        }
+        if (!/^[0-9\-]+$/.test(formData.accountNumber)) {
+          showToast.error('계좌번호는 숫자와 하이픈만 입력 가능합니다')
+          return false
+        }
       }
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) {
+    if (!validateFormData()) {
+      showToast.error('입력 정보를 확인해주세요')
       return
     }
 
@@ -168,25 +224,30 @@ export default function PaymentMethodForm({
       case 'card':
         return (
           <>
-            <Input
+            <ValidatedInput
               label="카드사"
               placeholder="예: 신한카드, KB국민카드"
-              value={formData.cardCompany}
-              onValueChange={(value) =>
-                setFormData(prev => ({ ...prev, cardCompany: value }))
-              }
+              description="카드사명을 입력하세요 (선택사항)"
+              value={formData.cardCompany || ''}
+              onValueChange={(value) => updateField('cardCompany', value)}
+              error={errors.cardCompany}
+              maxLength={100}
             />
             
-            <Input
-              label="뒷 4자리"
+            <ValidatedInput
+              label="카드 뒷 4자리"
               placeholder="1234"
+              description="카드번호 뒷 4자리를 입력하세요 (선택사항)"
               maxLength={4}
-              value={formData.lastFourDigits}
-              onValueChange={(value) =>
-                setFormData(prev => ({ ...prev, lastFourDigits: value }))
-              }
-              errorMessage={errors.lastFourDigits}
-              isInvalid={!!errors.lastFourDigits}
+              value={formData.lastFourDigits || ''}
+              onValueChange={(value) => updateField('lastFourDigits', value)}
+              error={errors.lastFourDigits}
+              validation={(value) => {
+                if (formData.type === 'card' && value && !/^\d{4}$/.test(value)) {
+                  return '카드 뒷 4자리는 숫자 4개여야 합니다'
+                }
+                return null
+              }}
             />
           </>
         )
@@ -194,24 +255,35 @@ export default function PaymentMethodForm({
       case 'account':
         return (
           <>
-            <Input
+            <ValidatedInput
               label="은행명"
               placeholder="예: 신한은행, KB국민은행"
-              value={formData.bankName}
-              onValueChange={(value) =>
-                setFormData(prev => ({ ...prev, bankName: value }))
-              }
+              description="은행명을 입력하세요 (선택사항)"
+              value={formData.bankName || ''}
+              onValueChange={(value) => updateField('bankName', value)}
+              error={errors.bankName}
+              maxLength={100}
             />
             
-            <Input
+            <ValidatedInput
               label="계좌번호"
-              placeholder="계좌번호를 입력하세요"
-              value={formData.accountNumber}
-              onValueChange={(value) =>
-                setFormData(prev => ({ ...prev, accountNumber: value }))
-              }
-              errorMessage={errors.accountNumber}
-              isInvalid={!!errors.accountNumber}
+              placeholder="123-456-789012"
+              description="계좌번호를 입력하세요 (선택사항)"
+              value={formData.accountNumber || ''}
+              onValueChange={(value) => updateField('accountNumber', value)}
+              error={errors.accountNumber}
+              maxLength={25}
+              validation={(value) => {
+                if (formData.type === 'account' && value) {
+                  if (value.length < 4) {
+                    return '계좌번호는 최소 4자리 이상이어야 합니다'
+                  }
+                  if (!/^[0-9\-]+$/.test(value)) {
+                    return '계좌번호는 숫자와 하이픈만 입력 가능합니다'
+                  }
+                }
+                return null
+              }}
             />
           </>
         )
@@ -240,54 +312,33 @@ export default function PaymentMethodForm({
           
           <ModalBody>
             <div className="space-y-4">
-              <Input
+              <ValidatedInput
                 label="결제수단 이름"
                 placeholder="예: 주거래 통장, 법인카드"
+                description="결제수단을 구분할 수 있는 이름을 입력하세요"
                 value={formData.name}
-                onValueChange={(value) =>
-                  setFormData(prev => ({ ...prev, name: value }))
-                }
-                errorMessage={errors.name}
-                isInvalid={!!errors.name}
+                onValueChange={(value) => updateField('name', value)}
+                error={errors.name}
                 isRequired
+                maxLength={50}
               />
 
-              <Select
+              <ValidatedSelect
                 label="결제수단 유형"
-                selectedKeys={[formData.type]}
+                options={paymentMethodTypes}
+                selectedKeys={new Set([formData.type])}
                 onSelectionChange={(keys) => {
                   const selectedType = Array.from(keys)[0] as typeof formData.type
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    type: selectedType,
-                    // 타입 변경 시 관련 필드 초기화
-                    bankName: '',
-                    accountNumber: '',
-                    cardCompany: '',
-                    lastFourDigits: '',
-                  }))
+                  updateField('type', selectedType)
+                  // 타입 변경 시 관련 필드 초기화
+                  updateField('bankName', '')
+                  updateField('accountNumber', '')
+                  updateField('cardCompany', '')
+                  updateField('lastFourDigits', '')
                 }}
-                renderValue={(items) => {
-                  return items.map((item) => {
-                    const type = paymentMethodTypes.find(t => t.key === item.key)
-                    return (
-                      <div key={item.key} className="flex items-center gap-2">
-                        {type?.icon}
-                        <span>{type?.label}</span>
-                      </div>
-                    )
-                  })
-                }}
-              >
-                {paymentMethodTypes.map((type) => (
-                  <SelectItem 
-                    key={type.key} 
-                    startContent={type.icon}
-                  >
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </Select>
+                error={errors.type}
+                isRequired
+              />
 
               {renderTypeSpecificFields()}
 

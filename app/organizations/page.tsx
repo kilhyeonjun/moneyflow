@@ -7,7 +7,6 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Input,
   Modal,
   ModalContent,
   ModalHeader,
@@ -44,6 +43,9 @@ import {
   useErrorHandler,
 } from '@/components/error/ErrorBoundary'
 import type { UserOrganization } from '@/lib/types'
+import { ValidatedInput, validationRules } from '@/components/form'
+import { useFormValidation, commonValidationRules } from '@/hooks/useFormValidation'
+import { organizationCreateSchema } from '@/lib/validation/schemas'
 
 interface ReceivedInvitation {
   id: string
@@ -60,12 +62,16 @@ interface ReceivedInvitation {
   token: string
 }
 
+// Organization form data type
+interface OrganizationFormData {
+  name: string
+  description?: string
+}
+
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<UserOrganization[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [newOrgName, setNewOrgName] = useState('')
-  const [newOrgDescription, setNewOrgDescription] = useState('')
   const [receivedInvitations, setReceivedInvitations] = useState<
     ReceivedInvitation[]
   >([])
@@ -76,6 +82,41 @@ export default function OrganizationsPage() {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const router = useRouter()
   const { handleError } = useErrorHandler()
+
+  // Form validation setup
+  const {
+    data: formData,
+    errors,
+    isValid,
+    updateField,
+    validateAll,
+    reset: resetForm,
+    getFieldProps
+  } = useFormValidation<OrganizationFormData>(
+    {
+      name: commonValidationRules.combine(
+        commonValidationRules.required('조직명'),
+        commonValidationRules.stringLength(2, 100, '조직명'),
+        (value: string) => {
+          const nameRegex = /^[가-힣a-zA-Z0-9\s\.\-_\(\)]+$/
+          return !nameRegex.test(value)
+            ? '조직명에는 한글, 영문, 숫자, 공백, 괄호, 하이픈, 언더스코어, 마침표만 사용할 수 있습니다'
+            : null
+        }
+      ),
+      description: (value: string) => {
+        if (value && value.length > 500) {
+          return '조직 설명은 500자 이하여야 합니다'
+        }
+        return null
+      }
+    },
+    {
+      initialData: { name: '', description: '' },
+      realTimeValidation: true,
+      mode: 'onChange'
+    }
+  )
 
   useEffect(() => {
     fetchOrganizations()
@@ -97,16 +138,22 @@ export default function OrganizationsPage() {
   }
 
   const createOrganization = async () => {
-    if (!newOrgName.trim()) return
+    // Form validation
+    const { isValid: validationPassed } = validateAll()
+    if (!validationPassed) {
+      return
+    }
 
     setCreating(true)
     try {
-      // 서버 액션으로 조직 생성
-      const orgResult = await createOrganizationAction({
-        name: newOrgName.trim(),
-        description: newOrgDescription.trim() || undefined,
+      // Zod schema validation
+      const validatedData = organizationCreateSchema.parse({
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
       })
 
+      // 서버 액션으로 조직 생성
+      const orgResult = await createOrganizationAction(validatedData)
       const org = handleServerActionResult(orgResult)
 
       toast.success('조직이 성공적으로 생성되었습니다!')
@@ -115,9 +162,7 @@ export default function OrganizationsPage() {
       await fetchOrganizations()
 
       // 모달 닫기 및 폼 초기화
-      onClose()
-      setNewOrgName('')
-      setNewOrgDescription('')
+      handleModalClose()
     } catch (error) {
       const errorMessage = handleError(error, 'createOrganization')
       if (errorMessage) {
@@ -126,6 +171,11 @@ export default function OrganizationsPage() {
     } finally {
       setCreating(false)
     }
+  }
+
+  const handleModalClose = () => {
+    onClose()
+    resetForm({ name: '', description: '' })
   }
 
   // TODO: Implement invitation server actions
@@ -383,30 +433,37 @@ export default function OrganizationsPage() {
             <ModalHeader>새 조직 만들기</ModalHeader>
             <ModalBody>
               <div className="space-y-4">
-                <Input
+                <ValidatedInput
                   label="조직 이름"
                   placeholder="예: 김씨 가족, ABC 팀"
-                  value={newOrgName}
-                  onValueChange={setNewOrgName}
+                  value={formData.name}
+                  onValueChange={(value) => updateField('name', value)}
+                  validation={getFieldProps('name').validation}
+                  error={errors.name}
                   isRequired
+                  realTimeValidation
+                  autoFocus
                 />
-                <Input
+                <ValidatedInput
                   label="설명 (선택사항)"
                   placeholder="조직에 대한 간단한 설명"
-                  value={newOrgDescription}
-                  onValueChange={setNewOrgDescription}
+                  value={formData.description || ''}
+                  onValueChange={(value) => updateField('description', value)}
+                  validation={getFieldProps('description').validation}
+                  error={errors.description}
+                  realTimeValidation
                 />
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant="light" onPress={onClose} disabled={creating}>
+              <Button variant="light" onPress={handleModalClose} disabled={creating}>
                 취소
               </Button>
               <Button
                 color="primary"
                 onPress={createOrganization}
                 isLoading={creating}
-                disabled={!newOrgName.trim()}
+                disabled={!isValid || creating}
               >
                 생성하기
               </Button>
