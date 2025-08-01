@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 
 /**
  * 필드별 validation 규칙 정의
@@ -75,6 +75,14 @@ export function useFormValidation<T extends Record<string, any>>(
     mode = 'onChange',
     focusOnError = false
   } = options
+
+  // Store initial data in a ref to avoid recreating callbacks
+  const initialDataRef = useRef(initialData)
+  
+  // Update ref when initial data changes
+  useEffect(() => {
+    initialDataRef.current = initialData
+  }, [initialData])
 
   // 상태 관리
   const [data, setData] = useState<T>(initialData as T)
@@ -195,13 +203,14 @@ export function useFormValidation<T extends Record<string, any>>(
     setErrors({})
   }, [])
 
-  // form 리셋
+  // form 리셋 - Remove initialData from dependencies
   const reset = useCallback((newData?: Partial<T>) => {
-    setData(newData as T || initialData as T)
+    const resetData = newData || initialDataRef.current
+    setData(resetData as T)
     setErrors({})
     setTouchedFields(new Set())
     setIsSubmitting(false)
-  }, [initialData])
+  }, []) // Remove initialData dependency
 
   // form 제출 처리
   const handleSubmit = useCallback(async (
