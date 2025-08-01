@@ -9,14 +9,14 @@
  * @returns Formatted date string or fallback text
  */
 export function formatDateSafe(
-  dateValue: string | Date | null | undefined, 
+  dateValue: string | Date | null | undefined,
   fallback: string = '날짜 오류'
 ): string {
   if (!dateValue) return fallback
-  
+
   const date = new Date(dateValue)
   if (isNaN(date.getTime())) return fallback
-  
+
   return date.toLocaleDateString('ko-KR')
 }
 
@@ -35,16 +35,18 @@ export function calculateExpirationDays(
   if (!expirationDate) {
     return { isValid: false, daysUntil: 0, isExpired: true }
   }
-  
+
   const expDate = new Date(expirationDate)
   if (isNaN(expDate.getTime())) {
     return { isValid: false, daysUntil: 0, isExpired: true }
   }
-  
+
   const now = new Date()
-  const daysUntil = Math.ceil((expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  const daysUntil = Math.ceil(
+    (expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  )
   const isExpired = expDate < now
-  
+
   return { isValid: true, daysUntil, isExpired }
 }
 
@@ -56,8 +58,9 @@ export function calculateExpirationDays(
 export function formatExpirationStatus(
   expirationDate: string | Date | null | undefined
 ): string {
-  const { isValid, daysUntil, isExpired } = calculateExpirationDays(expirationDate)
-  
+  const { isValid, daysUntil, isExpired } =
+    calculateExpirationDays(expirationDate)
+
   if (!isValid) return '날짜 오류'
   if (isExpired) return '만료됨'
   if (daysUntil === 0) return '오늘 만료'
@@ -73,9 +76,9 @@ export function formatCreationDate(
   dateValue: string | Date | null | undefined
 ): string {
   if (!dateValue) return '생성일 알 수 없음'
-  
+
   const date = new Date(dateValue)
   if (isNaN(date.getTime())) return '생성일 알 수 없음'
-  
+
   return `${date.toLocaleDateString('ko-KR')} 생성`
 }

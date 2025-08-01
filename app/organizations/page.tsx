@@ -27,7 +27,12 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { Chip } from '@heroui/react'
-import { formatDateSafe, calculateExpirationDays, formatExpirationStatus, formatCreationDate } from '@/lib/utils/date'
+import {
+  formatDateSafe,
+  calculateExpirationDays,
+  formatExpirationStatus,
+  formatCreationDate,
+} from '@/lib/utils/date'
 
 // Import server actions
 import {
@@ -35,7 +40,10 @@ import {
   createOrganization as createOrganizationAction,
 } from '@/lib/server-actions/organizations'
 import { createDefaultCategories } from '@/lib/server-actions/categories'
-import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
+import {
+  handleServerActionResult,
+  useErrorHandler,
+} from '@/components/error/ErrorBoundary'
 import type { UserOrganization } from '@/lib/types'
 
 interface ReceivedInvitation {
@@ -59,9 +67,13 @@ export default function OrganizationsPage() {
   const [creating, setCreating] = useState(false)
   const [newOrgName, setNewOrgName] = useState('')
   const [newOrgDescription, setNewOrgDescription] = useState('')
-  const [receivedInvitations, setReceivedInvitations] = useState<ReceivedInvitation[]>([])
+  const [receivedInvitations, setReceivedInvitations] = useState<
+    ReceivedInvitation[]
+  >([])
   const [invitationsLoading, setInvitationsLoading] = useState(false)
-  const [processingInvitation, setProcessingInvitation] = useState<string | null>(null)
+  const [processingInvitation, setProcessingInvitation] = useState<
+    string | null
+  >(null)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const router = useRouter()
   const { handleError } = useErrorHandler()
@@ -95,7 +107,7 @@ export default function OrganizationsPage() {
         name: newOrgName.trim(),
         description: newOrgDescription.trim() || undefined,
       })
-      
+
       const org = handleServerActionResult(orgResult)
 
       // 기본 카테고리 생성
@@ -229,12 +241,16 @@ export default function OrganizationsPage() {
               {invitationsLoading ? (
                 <div className="text-center py-4">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                  <p className="text-sm text-gray-600">초대 목록을 불러오는 중...</p>
+                  <p className="text-sm text-gray-600">
+                    초대 목록을 불러오는 중...
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {receivedInvitations.map(invitation => {
-                    const expiration = calculateExpirationDays(invitation.expiresAt)
+                    const expiration = calculateExpirationDays(
+                      invitation.expiresAt
+                    )
                     const isProcessing = processingInvitation === invitation.id
 
                     return (
@@ -248,7 +264,9 @@ export default function OrganizationsPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold">{invitation.organization.name}</h4>
+                              <h4 className="font-semibold">
+                                {invitation.organization.name}
+                              </h4>
                               <Chip
                                 color={getRoleColor(invitation.role) as any}
                                 variant="flat"
@@ -280,9 +298,13 @@ export default function OrganizationsPage() {
                             color="success"
                             size="sm"
                             startContent={<CheckCircle className="w-4 h-4" />}
-                            onPress={() => {/* TODO: Implement invitation actions */}}
+                            onPress={() => {
+                              /* TODO: Implement invitation actions */
+                            }}
                             isLoading={isProcessing}
-                            isDisabled={true /* TODO: Enable after implementing invitation server actions */}
+                            isDisabled={
+                              true /* TODO: Enable after implementing invitation server actions */
+                            }
                           >
                             수락
                           </Button>
@@ -291,9 +313,13 @@ export default function OrganizationsPage() {
                             variant="bordered"
                             size="sm"
                             startContent={<XCircle className="w-4 h-4" />}
-                            onPress={() => {/* TODO: Implement invitation actions */}}
+                            onPress={() => {
+                              /* TODO: Implement invitation actions */
+                            }}
                             isLoading={isProcessing}
-                            isDisabled={true /* TODO: Enable after implementing invitation server actions */}
+                            isDisabled={
+                              true /* TODO: Enable after implementing invitation server actions */
+                            }
                           >
                             거절
                           </Button>
@@ -344,7 +370,9 @@ export default function OrganizationsPage() {
                         {org.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        {org.createdAt ? formatCreationDate(org.createdAt.toISOString()) : '날짜 없음'}
+                        {org.createdAt
+                          ? formatCreationDate(org.createdAt.toISOString())
+                          : '날짜 없음'}
                       </p>
                     </div>
                   </div>

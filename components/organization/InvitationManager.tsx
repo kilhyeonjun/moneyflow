@@ -32,7 +32,11 @@ import {
 import { createClient } from '@/lib/supabase'
 import { showToast } from '@/lib/utils/toast'
 import { LoadingSpinner } from '@/components/ui/LoadingStates'
-import { getOrganizationData, createInvitation, cancelInvitation } from '@/lib/server-actions/invitations'
+import {
+  getOrganizationData,
+  createInvitation,
+  cancelInvitation,
+} from '@/lib/server-actions/invitations'
 
 // Import Prisma types directly
 import type { OrganizationMember, OrganizationInvitation } from '@prisma/client'
@@ -98,7 +102,10 @@ export default function InvitationManager({
       }
     } catch (error) {
       console.error('데이터 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '알 수 없는 오류가 발생했습니다.'
       showToast.error(`데이터 로드 실패: ${errorMessage}`)
     } finally {
       setLoading(false)
@@ -147,7 +154,10 @@ export default function InvitationManager({
       loadData() // Reload data to show new invitation
     } catch (error: any) {
       console.error('초대 발송 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '초대 발송 중 오류가 발생했습니다.'
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '초대 발송 중 오류가 발생했습니다.'
       showToast.error(errorMessage)
     } finally {
       setInviting(false)
@@ -176,7 +186,10 @@ export default function InvitationManager({
       loadData() // Reload data to update invitation list
     } catch (error: any) {
       console.error('초대 취소 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '초대 취소 중 오류가 발생했습니다.'
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '초대 취소 중 오류가 발생했습니다.'
       showToast.error(errorMessage)
     }
   }
@@ -276,9 +289,11 @@ export default function InvitationManager({
                       <div>
                         <p className="font-medium">{member.userId}</p>
                         <p className="text-sm text-gray-600">
-                          {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString(
-                            'ko-KR'
-                          ) : '-'}{' '}
+                          {member.joinedAt
+                            ? new Date(member.joinedAt).toLocaleDateString(
+                                'ko-KR'
+                              )
+                            : '-'}{' '}
                           가입
                         </p>
                       </div>

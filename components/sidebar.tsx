@@ -20,7 +20,6 @@ import {
   Building2,
   ChevronDown,
   Wallet,
-  Target,
   Check,
 } from 'lucide-react'
 import { getUserOrganizations } from '@/lib/server-actions/organizations'
@@ -53,7 +52,6 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
     { name: '대시보드', href: `/org/${orgId}/dashboard`, icon: Home },
     { name: '거래 관리', href: `/org/${orgId}/transactions`, icon: CreditCard },
     { name: '자산 관리', href: `/org/${orgId}/assets`, icon: Wallet },
-    { name: '재정 목표', href: `/org/${orgId}/goals`, icon: Target },
     { name: '통계 분석', href: `/org/${orgId}/analytics`, icon: BarChart3 },
     { name: '설정', href: `/org/${orgId}/settings`, icon: Settings },
   ]
@@ -72,7 +70,7 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
     try {
       // 서버 액션으로 사용자 조직 목록 조회
       const result = await getUserOrganizations()
-      
+
       if (!result.success || !result.data) {
         console.error('사용자 조직 목록 조회 실패:', result.error)
         setUserOrgs([])
@@ -80,13 +78,15 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
       }
 
       // UserOrganization을 Organization 타입으로 변환
-      const organizationList = result.data.map((org) => ({
+      const organizationList = result.data.map(org => ({
         id: org.id,
         name: org.name,
         description: org.description || undefined,
-        created_at: org.createdAt ? org.createdAt.toISOString() : new Date().toISOString(),
+        created_at: org.createdAt
+          ? org.createdAt.toISOString()
+          : new Date().toISOString(),
       }))
-      
+
       setUserOrgs(organizationList)
     } catch (error) {
       console.error('사용자 조직 목록 로드 중 예상치 못한 오류:', error)
@@ -99,7 +99,7 @@ export function Sidebar({ currentOrg, orgId }: SidebarProps) {
     if (orgId === newOrgId) {
       return
     }
-    
+
     // URL 기반 조직 전환 - 대시보드로 이동
     router.push(`/org/${newOrgId}/dashboard`)
   }

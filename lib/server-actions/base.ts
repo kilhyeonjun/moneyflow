@@ -26,7 +26,9 @@ export abstract class BaseServerAction {
 
   protected validateUUID(id: string, fieldName: string = 'ID'): void {
     if (!isValidUUID(id)) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invalid ${fieldName} format`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Invalid ${fieldName} format`
+      )
     }
   }
 
@@ -83,7 +85,7 @@ export async function createPaginatedResult<T>(
   pagination: ReturnType<typeof normalizePagination>
 ): Promise<PaginatedResult<T>> {
   const totalPages = Math.ceil(totalCount / pagination.pageSize)
-  
+
   return {
     data,
     pagination: {
@@ -157,26 +159,32 @@ export function parseDate(dateString: string | Date): Date {
   if (dateString instanceof Date) {
     return dateString
   }
-  
+
   const date = new Date(dateString)
   if (isNaN(date.getTime())) {
-    throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invalid date format`)
+    throw new Error(
+      `${ServerActionError.VALIDATION_ERROR}: Invalid date format`
+    )
   }
-  
+
   return date
 }
 
-export function getDateRange(period: 'today' | 'week' | 'month' | 'year' | 'custom', customStart?: Date, customEnd?: Date) {
+export function getDateRange(
+  period: 'today' | 'week' | 'month' | 'year' | 'custom',
+  customStart?: Date,
+  customEnd?: Date
+) {
   const now = new Date()
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  
+
   switch (period) {
     case 'today':
       return {
         startDate: startOfDay,
         endDate: new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1),
       }
-    
+
     case 'week':
       const startOfWeek = new Date(startOfDay)
       startOfWeek.setDate(startOfDay.getDate() - startOfDay.getDay())
@@ -184,30 +192,34 @@ export function getDateRange(period: 'today' | 'week' | 'month' | 'year' | 'cust
         startDate: startOfWeek,
         endDate: new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000 - 1),
       }
-    
+
     case 'month':
       return {
         startDate: new Date(now.getFullYear(), now.getMonth(), 1),
         endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0),
       }
-    
+
     case 'year':
       return {
         startDate: new Date(now.getFullYear(), 0, 1),
         endDate: new Date(now.getFullYear(), 11, 31),
       }
-    
+
     case 'custom':
       if (!customStart || !customEnd) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Custom date range requires start and end dates`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Custom date range requires start and end dates`
+        )
       }
       return {
         startDate: customStart,
         endDate: customEnd,
       }
-    
+
     default:
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invalid date period`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Invalid date period`
+      )
   }
 }
 
@@ -216,11 +228,11 @@ export function getDateRange(period: 'today' | 'week' | 'month' | 'year' | 'cust
  */
 export function validateAmount(amount: number | string): number {
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
-  
+
   if (isNaN(numAmount) || numAmount < 0) {
     throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invalid amount`)
   }
-  
+
   // Round to 2 decimal places for currency
   return Math.round(numAmount * 100) / 100
 }
@@ -228,7 +240,9 @@ export function validateAmount(amount: number | string): number {
 export function validateTransactionType(type: string): string {
   const validTypes = ['income', 'expense', 'transfer']
   if (!validTypes.includes(type)) {
-    throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invalid transaction type`)
+    throw new Error(
+      `${ServerActionError.VALIDATION_ERROR}: Invalid transaction type`
+    )
   }
   return type
 }
@@ -291,7 +305,8 @@ export async function aggregateTransactions(
   const totalIncome = incomeAgg._sum.amount?.toNumber() || 0
   const totalExpense = expenseAgg._sum.amount?.toNumber() || 0
   const netAmount = totalIncome - totalExpense
-  const averageAmount = totalCount > 0 ? (totalIncome + totalExpense) / totalCount : 0
+  const averageAmount =
+    totalCount > 0 ? (totalIncome + totalExpense) / totalCount : 0
 
   return {
     totalIncome,
@@ -309,19 +324,27 @@ export function handlePrismaError(error: any): never {
   console.error('Prisma error:', error)
 
   if (error.code === 'P2002') {
-    throw new Error(`${ServerActionError.VALIDATION_ERROR}: 중복된 데이터가 있습니다.`)
+    throw new Error(
+      `${ServerActionError.VALIDATION_ERROR}: 중복된 데이터가 있습니다.`
+    )
   }
 
   if (error.code === 'P2003') {
-    throw new Error(`${ServerActionError.VALIDATION_ERROR}: 참조된 데이터가 존재하지 않습니다.`)
+    throw new Error(
+      `${ServerActionError.VALIDATION_ERROR}: 참조된 데이터가 존재하지 않습니다.`
+    )
   }
 
   if (error.code === 'P2025') {
-    throw new Error(`${ServerActionError.NOT_FOUND}: 요청한 데이터를 찾을 수 없습니다.`)
+    throw new Error(
+      `${ServerActionError.NOT_FOUND}: 요청한 데이터를 찾을 수 없습니다.`
+    )
   }
 
   if (error.code === 'P2016') {
-    throw new Error(`${ServerActionError.VALIDATION_ERROR}: 쿼리 해석 오류가 발생했습니다.`)
+    throw new Error(
+      `${ServerActionError.VALIDATION_ERROR}: 쿼리 해석 오류가 발생했습니다.`
+    )
   }
 
   throw new Error(ServerActionError.DATABASE_ERROR)

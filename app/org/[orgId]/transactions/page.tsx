@@ -52,9 +52,7 @@ import {
   updateTransaction,
   deleteTransaction,
 } from '@/lib/server-actions/transactions'
-import {
-  getCategories,
-} from '@/lib/server-actions/categories'
+import { getCategories } from '@/lib/server-actions/categories'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import type {
   CategoryWithHierarchy,
@@ -92,7 +90,9 @@ export default function TransactionsPage() {
     useState<TransactionForFrontend | null>(null)
 
   const [transactions, setTransactions] = useState<TransactionForFrontend[]>([])
-  const [transactionCategories, setTransactionCategories] = useState<CategoryForFrontend[]>([])
+  const [transactionCategories, setTransactionCategories] = useState<
+    CategoryForFrontend[]
+  >([])
   const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
@@ -136,7 +136,7 @@ export default function TransactionsPage() {
           console.log('로드된 거래 데이터:', transactionsData)
           console.log('로드된 카테고리 데이터:', categoriesData)
         }
-        
+
         setTransactions(transactionsData ? transactionsData.data : [])
         setTransactionCategories(categoriesData || [])
       } catch (error) {
@@ -148,7 +148,10 @@ export default function TransactionsPage() {
       }
     } catch (error) {
       console.error('데이터 로드 실패:', error)
-      const errorMessage = error instanceof Error ? error.message : '데이터를 불러오는데 실패했습니다.'
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : '데이터를 불러오는데 실패했습니다.'
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
@@ -160,7 +163,7 @@ export default function TransactionsPage() {
     if (process.env.NODE_ENV === 'development') {
       console.log('거래 생성 시도 - formData:', formData)
     }
-    
+
     // 기본 클라이언트 검증
     const validationErrors = []
     if (!formData.categoryId || formData.categoryId.trim() === '') {
@@ -168,13 +171,16 @@ export default function TransactionsPage() {
     }
     if (!formData.amount || formData.amount.trim() === '') {
       validationErrors.push('금액을 입력해주세요.')
-    } else if (isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
+    } else if (
+      isNaN(parseFloat(formData.amount)) ||
+      parseFloat(formData.amount) <= 0
+    ) {
       validationErrors.push('올바른 금액을 입력해주세요.')
     }
     if (!formData.description || formData.description.trim() === '') {
       validationErrors.push('설명을 입력해주세요.')
     }
-    
+
     if (validationErrors.length > 0) {
       toast.error(validationErrors.join(' '))
       return
@@ -196,8 +202,10 @@ export default function TransactionsPage() {
       }
 
       try {
-        const data = handleServerActionResult(await createTransaction(requestData))
-        
+        const data = handleServerActionResult(
+          await createTransaction(requestData)
+        )
+
         toast.success('거래가 성공적으로 추가되었습니다!')
         onClose()
         setFormData({
@@ -207,7 +215,7 @@ export default function TransactionsPage() {
           transactionDate: new Date().toISOString().split('T')[0],
           transactionType: 'expense',
         })
-        
+
         // 거래 목록 새로고침
         await loadTransactionsAndCategories(orgId)
       } catch (error) {
@@ -219,8 +227,9 @@ export default function TransactionsPage() {
       }
     } catch (error) {
       console.error('거래 생성 실패:', error)
-      
-      const userMessage = error instanceof Error ? error.message : '거래 추가에 실패했습니다.'
+
+      const userMessage =
+        error instanceof Error ? error.message : '거래 추가에 실패했습니다.'
       toast.error(userMessage)
     } finally {
       setCreating(false)
@@ -250,7 +259,7 @@ export default function TransactionsPage() {
     if (process.env.NODE_ENV === 'development') {
       console.log('거래 수정 시도 - editFormData:', editFormData)
     }
-    
+
     // 기본 클라이언트 검증
     const validationErrors = []
     if (!editFormData.categoryId || editFormData.categoryId.trim() === '') {
@@ -258,13 +267,16 @@ export default function TransactionsPage() {
     }
     if (!editFormData.amount || editFormData.amount.trim() === '') {
       validationErrors.push('금액을 입력해주세요.')
-    } else if (isNaN(parseFloat(editFormData.amount)) || parseFloat(editFormData.amount) <= 0) {
+    } else if (
+      isNaN(parseFloat(editFormData.amount)) ||
+      parseFloat(editFormData.amount) <= 0
+    ) {
       validationErrors.push('올바른 금액을 입력해주세요.')
     }
     if (!editFormData.description || editFormData.description.trim() === '') {
       validationErrors.push('설명을 입력해주세요.')
     }
-    
+
     if (validationErrors.length > 0) {
       toast.error(validationErrors.join(' '))
       return
@@ -287,12 +299,14 @@ export default function TransactionsPage() {
       }
 
       try {
-        const data = handleServerActionResult(await updateTransaction(requestData))
-        
+        const data = handleServerActionResult(
+          await updateTransaction(requestData)
+        )
+
         toast.success('거래가 성공적으로 수정되었습니다!')
         onEditClose()
         setSelectedTransaction(null)
-        
+
         // 거래 목록 새로고침
         await loadTransactionsAndCategories(orgId)
       } catch (error) {
@@ -304,8 +318,9 @@ export default function TransactionsPage() {
       }
     } catch (error) {
       console.error('거래 수정 실패:', error)
-      
-      const userMessage = error instanceof Error ? error.message : '거래 수정에 실패했습니다.'
+
+      const userMessage =
+        error instanceof Error ? error.message : '거래 수정에 실패했습니다.'
       toast.error(userMessage)
     } finally {
       setUpdating(false)
@@ -322,16 +337,21 @@ export default function TransactionsPage() {
       }
 
       try {
-        const data = handleServerActionResult(await deleteTransaction(selectedTransaction.id, orgId))
-        
+        const data = handleServerActionResult(
+          await deleteTransaction(selectedTransaction.id, orgId)
+        )
+
         toast.success('거래가 성공적으로 삭제되었습니다!')
         onDeleteClose()
         setSelectedTransaction(null)
-        
+
         // 거래 목록 새로고침
         await loadTransactionsAndCategories(orgId)
       } catch (error) {
-        if (error instanceof Error && (error.message === 'FORBIDDEN' || error.message === 'NOT_FOUND')) {
+        if (
+          error instanceof Error &&
+          (error.message === 'FORBIDDEN' || error.message === 'NOT_FOUND')
+        ) {
           if (error.message === 'FORBIDDEN') {
             toast.error('이 거래를 삭제할 권한이 없습니다.')
           } else {
@@ -343,8 +363,9 @@ export default function TransactionsPage() {
       }
     } catch (error) {
       console.error('거래 삭제 실패:', error)
-      
-      const userMessage = error instanceof Error ? error.message : '거래 삭제에 실패했습니다.'
+
+      const userMessage =
+        error instanceof Error ? error.message : '거래 삭제에 실패했습니다.'
       toast.error(userMessage)
     } finally {
       setDeleting(false)
@@ -410,10 +431,7 @@ export default function TransactionsPage() {
             데이터 로드 오류
           </h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          <Button
-            color="primary"
-            onPress={retryLoadData}
-          >
+          <Button color="primary" onPress={retryLoadData}>
             다시 시도
           </Button>
         </div>
@@ -444,7 +462,11 @@ export default function TransactionsPage() {
           <div className="flex justify-between items-center w-full">
             <h3 className="text-lg font-semibold">거래 내역</h3>
             <div className="flex gap-2">
-              <Button size="sm" variant="bordered" startContent={<Filter className="w-4 h-4" />}>
+              <Button
+                size="sm"
+                variant="bordered"
+                startContent={<Filter className="w-4 h-4" />}
+              >
                 필터
               </Button>
             </div>
@@ -473,11 +495,13 @@ export default function TransactionsPage() {
                 <TableColumn>작업</TableColumn>
               </TableHeader>
               <TableBody>
-                {transactions.map((transaction) => (
+                {transactions.map(transaction => (
                   <TableRow key={transaction.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getTransactionTypeIcon(transaction.transactionType || 'expense')}
+                        {getTransactionTypeIcon(
+                          transaction.transactionType || 'expense'
+                        )}
                         <Chip
                           size="sm"
                           variant="flat"
@@ -485,15 +509,15 @@ export default function TransactionsPage() {
                             transaction.transactionType === 'income'
                               ? 'success'
                               : transaction.transactionType === 'expense'
-                              ? 'danger'
-                              : 'primary'
+                                ? 'danger'
+                                : 'primary'
                           }
                         >
                           {transaction.transactionType === 'income'
                             ? '수입'
                             : transaction.transactionType === 'expense'
-                            ? '지출'
-                            : '이체'}
+                              ? '지출'
+                              : '이체'}
                         </Chip>
                       </div>
                     </TableCell>
@@ -518,7 +542,9 @@ export default function TransactionsPage() {
                     <TableCell>
                       <span className="text-sm text-gray-600">
                         {transaction.transactionDate
-                          ? new Date(transaction.transactionDate).toLocaleDateString('ko-KR')
+                          ? new Date(
+                              transaction.transactionDate
+                            ).toLocaleDateString('ko-KR')
                           : '-'}
                       </span>
                     </TableCell>
@@ -570,31 +596,25 @@ export default function TransactionsPage() {
                 label="거래 유형"
                 placeholder="거래 유형을 선택하세요"
                 selectedKeys={[formData.transactionType]}
-                onSelectionChange={(keys) =>
+                onSelectionChange={keys =>
                   setFormData(prev => ({
                     ...prev,
-                    transactionType: Array.from(keys)[0] as string
+                    transactionType: Array.from(keys)[0] as string,
                   }))
                 }
               >
-                <SelectItem key="income">
-                  수입
-                </SelectItem>
-                <SelectItem key="expense">
-                  지출
-                </SelectItem>
-                <SelectItem key="transfer">
-                  이체
-                </SelectItem>
+                <SelectItem key="income">수입</SelectItem>
+                <SelectItem key="expense">지출</SelectItem>
+                <SelectItem key="transfer">이체</SelectItem>
               </Select>
 
               <HierarchicalCategorySelect
                 categories={transactionCategories}
                 selectedCategoryId={formData.categoryId}
-                onSelectionChange={(categoryId) =>
+                onSelectionChange={categoryId =>
                   setFormData(prev => ({
                     ...prev,
-                    categoryId
+                    categoryId,
                   }))
                 }
                 transactionType={formData.transactionType}
@@ -608,7 +628,7 @@ export default function TransactionsPage() {
                 placeholder="금액을 입력하세요"
                 type="number"
                 value={formData.amount}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setFormData(prev => ({ ...prev, amount: value }))
                 }
                 startContent={
@@ -622,7 +642,7 @@ export default function TransactionsPage() {
                 label="설명"
                 placeholder="거래 설명을 입력하세요"
                 value={formData.description}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setFormData(prev => ({ ...prev, description: value }))
                 }
               />
@@ -631,7 +651,7 @@ export default function TransactionsPage() {
                 label="거래 날짜"
                 type="date"
                 value={formData.transactionDate}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setFormData(prev => ({ ...prev, transactionDate: value }))
                 }
               />
@@ -662,31 +682,25 @@ export default function TransactionsPage() {
                 label="거래 유형"
                 placeholder="거래 유형을 선택하세요"
                 selectedKeys={[editFormData.transactionType]}
-                onSelectionChange={(keys) =>
+                onSelectionChange={keys =>
                   setEditFormData(prev => ({
                     ...prev,
-                    transactionType: Array.from(keys)[0] as string
+                    transactionType: Array.from(keys)[0] as string,
                   }))
                 }
               >
-                <SelectItem key="income">
-                  수입
-                </SelectItem>
-                <SelectItem key="expense">
-                  지출
-                </SelectItem>
-                <SelectItem key="transfer">
-                  이체
-                </SelectItem>
+                <SelectItem key="income">수입</SelectItem>
+                <SelectItem key="expense">지출</SelectItem>
+                <SelectItem key="transfer">이체</SelectItem>
               </Select>
 
               <HierarchicalCategorySelect
                 categories={transactionCategories}
                 selectedCategoryId={editFormData.categoryId}
-                onSelectionChange={(categoryId) =>
+                onSelectionChange={categoryId =>
                   setEditFormData(prev => ({
                     ...prev,
-                    categoryId
+                    categoryId,
                   }))
                 }
                 transactionType={editFormData.transactionType}
@@ -700,7 +714,7 @@ export default function TransactionsPage() {
                 placeholder="금액을 입력하세요"
                 type="number"
                 value={editFormData.amount}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setEditFormData(prev => ({ ...prev, amount: value }))
                 }
                 startContent={
@@ -714,7 +728,7 @@ export default function TransactionsPage() {
                 label="설명"
                 placeholder="거래 설명을 입력하세요"
                 value={editFormData.description}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setEditFormData(prev => ({ ...prev, description: value }))
                 }
               />
@@ -723,7 +737,7 @@ export default function TransactionsPage() {
                 label="거래 날짜"
                 type="date"
                 value={editFormData.transactionDate}
-                onValueChange={(value) =>
+                onValueChange={value =>
                   setEditFormData(prev => ({ ...prev, transactionDate: value }))
                 }
               />

@@ -55,7 +55,10 @@ export async function middleware(request: NextRequest) {
   )
 
   // Refresh session if expired - required for Server Components
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
@@ -63,18 +66,20 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/org', '/organizations', '/dashboard']
   const authRoutes = ['/login', '/signup']
 
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
+  const isProtectedRoute = protectedRoutes.some(route =>
+    pathname.startsWith(route)
+  )
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route))
 
   // If user is not authenticated and trying to access protected route
   if (!user && isProtectedRoute) {
     const loginUrl = new URL('/login', request.url)
-    
+
     // Preserve the intended destination for redirect after login
     if (pathname !== '/organizations' && pathname !== '/dashboard') {
       loginUrl.searchParams.set('redirect', pathname)
     }
-    
+
     return NextResponse.redirect(loginUrl)
   }
 
@@ -82,11 +87,11 @@ export async function middleware(request: NextRequest) {
   if (user && isAuthRoute) {
     // Check if there's a redirect parameter
     const redirectTo = request.nextUrl.searchParams.get('redirect')
-    
+
     if (redirectTo) {
       return NextResponse.redirect(new URL(redirectTo, request.url))
     }
-    
+
     // Default redirect to organizations page
     return NextResponse.redirect(new URL('/organizations', request.url))
   }

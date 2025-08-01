@@ -36,10 +36,10 @@ export default function MonthlyTrendChart({
     (acc, transaction) => {
       // Handle transaction date safely
       if (!transaction.transactionDate) return acc
-      
+
       const date = new Date(transaction.transactionDate)
       if (isNaN(date.getTime())) return acc // Skip invalid dates
-      
+
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
 
       if (!acc[monthKey]) {
@@ -70,7 +70,9 @@ export default function MonthlyTrendChart({
 
   // 데이터를 배열로 변환하고 정렬
   const chartData = Object.values(monthlyData)
-    .sort((a: MonthlyDataItem, b: MonthlyDataItem) => a.month.localeCompare(b.month))
+    .sort((a: MonthlyDataItem, b: MonthlyDataItem) =>
+      a.month.localeCompare(b.month)
+    )
     .map((item: MonthlyDataItem) => ({
       ...item,
       month: new Date(item.month + '-01').toLocaleDateString('ko-KR', {

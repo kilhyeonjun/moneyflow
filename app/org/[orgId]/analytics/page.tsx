@@ -35,10 +35,19 @@ import {
   Area,
   AreaChart,
 } from 'recharts'
-import { Calendar, TrendingUp, TrendingDown, DollarSign, RefreshCw } from 'lucide-react'
+import {
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  RefreshCw,
+} from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { getAnalyticsData } from '@/lib/server-actions/analytics'
-import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
+import {
+  handleServerActionResult,
+  useErrorHandler,
+} from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 
 interface MonthlyData {
@@ -97,15 +106,23 @@ export default function AnalyticsPage() {
 
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString())
-  const [selectedMonth, setSelectedMonth] = useState((new Date().getMonth() + 1).toString())
-  
+  const [selectedYear, setSelectedYear] = useState(
+    new Date().getFullYear().toString()
+  )
+  const [selectedMonth, setSelectedMonth] = useState(
+    (new Date().getMonth() + 1).toString()
+  )
+
   // 실제 데이터 상태
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({})
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([])
-  const [categoryAnalysis, setCategoryAnalysis] = useState<CategoryAnalysis[]>([])
+  const [categoryAnalysis, setCategoryAnalysis] = useState<CategoryAnalysis[]>(
+    []
+  )
   const [yearlyTrend, setYearlyTrend] = useState<YearlyData[]>([])
-  const [currentMonthData, setCurrentMonthData] = useState<MonthlyData | null>(null)
+  const [currentMonthData, setCurrentMonthData] = useState<MonthlyData | null>(
+    null
+  )
 
   useEffect(() => {
     if (orgId) {
@@ -121,7 +138,7 @@ export default function AnalyticsPage() {
 
   const loadAnalyticsData = async (period: 'monthly' | 'yearly') => {
     if (!orgId) return
-    
+
     try {
       setRefreshing(true)
 
@@ -144,12 +161,14 @@ export default function AnalyticsPage() {
       }
 
       // 서버 액션으로 분석 데이터 로드
-      const data = handleServerActionResult(await getAnalyticsData({
-        organizationId: orgId,
-        period,
-        year: selectedYear,
-        month: period === 'monthly' ? selectedMonth : undefined,
-      }))
+      const data = handleServerActionResult(
+        await getAnalyticsData({
+          organizationId: orgId,
+          period,
+          year: selectedYear,
+          month: period === 'monthly' ? selectedMonth : undefined,
+        })
+      )
       setAnalyticsData(data)
 
       if (period === 'monthly') {
@@ -185,7 +204,10 @@ export default function AnalyticsPage() {
   }
 
   const getCurrentMonthData = () => {
-    return currentMonthData || monthlyData.find(m => m.monthNumber === parseInt(selectedMonth))
+    return (
+      currentMonthData ||
+      monthlyData.find(m => m.monthNumber === parseInt(selectedMonth))
+    )
   }
 
   if (loading) {
@@ -226,12 +248,12 @@ export default function AnalyticsPage() {
             }
             className="w-32"
             classNames={{
-              trigger: "text-gray-900 bg-white",
-              value: "text-gray-900",
-              label: "text-gray-600"
+              trigger: 'text-gray-900 bg-white',
+              value: 'text-gray-900',
+              label: 'text-gray-600',
             }}
-            renderValue={(items) => {
-              return items.map((item) => (
+            renderValue={items => {
+              return items.map(item => (
                 <span key={item.key} className="text-gray-900">
                   {item.key}년
                 </span>
@@ -255,12 +277,12 @@ export default function AnalyticsPage() {
             className="w-32"
             placeholder="월 선택"
             classNames={{
-              trigger: "text-gray-900 bg-white",
-              value: "text-gray-900",
-              label: "text-gray-600"
+              trigger: 'text-gray-900 bg-white',
+              value: 'text-gray-900',
+              label: 'text-gray-600',
             }}
-            renderValue={(items) => {
-              return items.map((item) => (
+            renderValue={items => {
+              return items.map(item => (
                 <span key={item.key} className="text-gray-900">
                   {item.key}월
                 </span>
@@ -274,10 +296,10 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <Tabs 
-        aria-label="분석 탭" 
+      <Tabs
+        aria-label="분석 탭"
         className="w-full"
-        onSelectionChange={(key) => {
+        onSelectionChange={key => {
           if (key === 'yearly') {
             loadAnalyticsData('yearly')
           }
@@ -333,8 +355,15 @@ export default function AnalyticsPage() {
                     {formatCurrency(getCurrentMonthData()?.savings || 0)}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    저축률 {getCurrentMonthData()?.income ? 
-                      ((getCurrentMonthData()!.savings / getCurrentMonthData()!.income) * 100).toFixed(1) : 0}%
+                    저축률{' '}
+                    {getCurrentMonthData()?.income
+                      ? (
+                          (getCurrentMonthData()!.savings /
+                            getCurrentMonthData()!.income) *
+                          100
+                        ).toFixed(1)
+                      : 0}
+                    %
                   </p>
                 </CardBody>
               </Card>
@@ -346,11 +375,11 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardBody className="pt-0">
                   <div className="text-2xl font-bold text-purple-600">
-                    {formatCurrency(analyticsData.summary?.currentNetWorth || 0)}
+                    {formatCurrency(
+                      analyticsData.summary?.currentNetWorth || 0
+                    )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    현재 총 자산
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">현재 총 자산</p>
                 </CardBody>
               </Card>
             </div>
@@ -362,8 +391,15 @@ export default function AnalyticsPage() {
                   {selectedYear}년 월별 수입/지출/저축 추이
                 </h3>
                 <p className="text-sm text-gray-600">
-                  전체 거래: {analyticsData.summary?.totalIncome ? formatCurrency(analyticsData.summary.totalIncome) : '₩0'} 수입,
-                  {analyticsData.summary?.totalExpense ? formatCurrency(analyticsData.summary.totalExpense) : '₩0'} 지출
+                  전체 거래:{' '}
+                  {analyticsData.summary?.totalIncome
+                    ? formatCurrency(analyticsData.summary.totalIncome)
+                    : '₩0'}{' '}
+                  수입,
+                  {analyticsData.summary?.totalExpense
+                    ? formatCurrency(analyticsData.summary.totalExpense)
+                    : '₩0'}{' '}
+                  지출
                 </p>
               </CardHeader>
               <CardBody>
@@ -487,36 +523,48 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="p-4">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <h3 className="text-sm font-medium text-gray-600">평균 연간 수입</h3>
+                    <h3 className="text-sm font-medium text-gray-600">
+                      평균 연간 수입
+                    </h3>
                     <TrendingUp className="h-4 w-4 text-green-600" />
                   </CardHeader>
                   <CardBody className="pt-0">
                     <div className="text-lg font-bold text-green-600">
-                      {formatCurrency(analyticsData.summary.averageAnnualIncome || 0)}
+                      {formatCurrency(
+                        analyticsData.summary.averageAnnualIncome || 0
+                      )}
                     </div>
                   </CardBody>
                 </Card>
 
                 <Card className="p-4">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <h3 className="text-sm font-medium text-gray-600">순자산 증가</h3>
+                    <h3 className="text-sm font-medium text-gray-600">
+                      순자산 증가
+                    </h3>
                     <DollarSign className="h-4 w-4 text-blue-600" />
                   </CardHeader>
                   <CardBody className="pt-0">
                     <div className="text-lg font-bold text-blue-600">
-                      {formatCurrency(analyticsData.summary.totalNetWorthGrowth || 0)}
+                      {formatCurrency(
+                        analyticsData.summary.totalNetWorthGrowth || 0
+                      )}
                     </div>
                   </CardBody>
                 </Card>
 
                 <Card className="p-4">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <h3 className="text-sm font-medium text-gray-600">평균 성장률</h3>
+                    <h3 className="text-sm font-medium text-gray-600">
+                      평균 성장률
+                    </h3>
                     <Calendar className="h-4 w-4 text-purple-600" />
                   </CardHeader>
                   <CardBody className="pt-0">
                     <div className="text-lg font-bold text-purple-600">
-                      {analyticsData.summary.averageIncomeGrowth?.toFixed(1) || 0}%
+                      {analyticsData.summary.averageIncomeGrowth?.toFixed(1) ||
+                        0}
+                      %
                     </div>
                   </CardBody>
                 </Card>
@@ -539,7 +587,7 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="year" />
                       <YAxis
                         tickFormatter={value =>
-                          value >= 10000000 
+                          value >= 10000000
                             ? `${(value / 10000000).toFixed(0)}천만`
                             : `${(value / 10000).toFixed(0)}만`
                         }
@@ -580,7 +628,7 @@ export default function AnalyticsPage() {
                       <XAxis dataKey="year" />
                       <YAxis
                         tickFormatter={value =>
-                          value >= 10000000 
+                          value >= 10000000
                             ? `${(value / 10000000).toFixed(0)}천만`
                             : `${(value / 10000).toFixed(0)}만`
                         }

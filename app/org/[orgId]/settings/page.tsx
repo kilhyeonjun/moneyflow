@@ -40,9 +40,24 @@ import HierarchicalCategorySelect from '@/components/ui/HierarchicalCategorySele
 import { formatCategoryDisplay } from '@/lib/category-utils'
 
 // Import server actions
-import { getSettingsData, getOrganizationInvitations, updateUserProfile, resendInvitation } from '@/lib/server-actions/settings'
-import { getCategories, createCategory, updateCategory, deleteCategory, createDefaultCategories } from '@/lib/server-actions/categories'
-import { updateOrganization, createInvitation, cancelInvitation } from '@/lib/server-actions/organizations'
+import {
+  getSettingsData,
+  getOrganizationInvitations,
+  updateUserProfile,
+  resendInvitation,
+} from '@/lib/server-actions/settings'
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  createDefaultCategories,
+} from '@/lib/server-actions/categories'
+import {
+  updateOrganization,
+  createInvitation,
+  cancelInvitation,
+} from '@/lib/server-actions/organizations'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import type { Category, Organization, OrganizationMember } from '@/lib/types'
 
@@ -69,7 +84,6 @@ interface Invitation {
 //     email: boolean
 //     push: boolean
 //     transactions: boolean
-//     goals: boolean
 //     reports: boolean
 //   }
 //   privacy: {
@@ -91,10 +105,10 @@ export default function SettingsPage() {
   const orgId = params?.orgId as string
 
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const { 
-    isOpen: isInviteModalOpen, 
-    onOpen: onInviteModalOpen, 
-    onClose: onInviteModalClose 
+  const {
+    isOpen: isInviteModalOpen,
+    onOpen: onInviteModalOpen,
+    onClose: onInviteModalClose,
   } = useDisclosure()
   const {
     isOpen: isCategoryModalOpen,
@@ -111,24 +125,28 @@ export default function SettingsPage() {
     onOpen: onDeleteCategoryModalOpen,
     onClose: onDeleteCategoryModalClose,
   } = useDisclosure()
-  
+
   const [loading, setLoading] = useState(true)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [organization, setOrganization] = useState<Organization | null>(null)
   const [members, setMembers] = useState<OrganizationMember[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [categories, setCategories] = useState<Category[]>([])
-  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | null>(null)
-  
+  const [currentUserRole, setCurrentUserRole] = useState<
+    'owner' | 'admin' | 'member' | null
+  >(null)
+
   // 초대 모달 상태
   const [inviteData, setInviteData] = useState({
     email: '',
-    role: 'member'
+    role: 'member',
   })
   const [inviting, setInviting] = useState(false)
 
   // 카테고리 모달 상태
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    null
+  )
   const [categoryFormData, setCategoryFormData] = useState({
     name: '',
     transactionType: 'expense' as 'income' | 'expense' | 'transfer',
@@ -137,7 +155,9 @@ export default function SettingsPage() {
     parentId: '',
   })
   const [categoryLoading, setCategoryLoading] = useState(false)
-  const [selectedTransactionType, setSelectedTransactionType] = useState<'income' | 'expense' | 'transfer'>('expense')
+  const [selectedTransactionType, setSelectedTransactionType] = useState<
+    'income' | 'expense' | 'transfer'
+  >('expense')
 
   // Settings state - 추후 구현 예정
   // const [settings, setSettings] = useState({
@@ -145,7 +165,6 @@ export default function SettingsPage() {
   //     email: true,
   //     push: false,
   //     transactions: true,
-  //     goals: true,
   //     reports: false,
   //   },
   //   privacy: {
@@ -194,33 +213,37 @@ export default function SettingsPage() {
   const loadSettingsData = async () => {
     try {
       setLoading(true)
-      
+
       // 서버 액션으로 설정 데이터 로드
       try {
         const data = handleServerActionResult(await getSettingsData(orgId))
         const { organization, members, userProfile, currentUserRole } = data
-      
-      // 상태 업데이트
-      setOrganization(organization)
-      setMembers(members || [])
-      setUserProfile(userProfile)
-      setCurrentUserRole(currentUserRole as 'owner' | 'admin' | 'member' | null)
-      
-      // 편집 폼 데이터 초기화
-      setEditProfileData({
-        full_name: userProfile?.full_name || '',
-        avatar_url: userProfile?.avatar_url || '',
-      })
-      
-      setEditOrgData({
-        name: organization?.name || '',
-        description: organization?.description || '',
-      })
-      
+
+        // 상태 업데이트
+        setOrganization(organization)
+        setMembers(members || [])
+        setUserProfile(userProfile)
+        setCurrentUserRole(
+          currentUserRole as 'owner' | 'admin' | 'member' | null
+        )
+
+        // 편집 폼 데이터 초기화
+        setEditProfileData({
+          full_name: userProfile?.full_name || '',
+          avatar_url: userProfile?.avatar_url || '',
+        })
+
+        setEditOrgData({
+          name: organization?.name || '',
+          description: organization?.description || '',
+        })
+
         // 카테고리와 초대 목록을 병렬로 로드
         await Promise.all([
           loadCategories(orgId),
-          (currentUserRole === 'admin' || currentUserRole === 'owner') ? loadInvitations(orgId) : Promise.resolve(),
+          currentUserRole === 'admin' || currentUserRole === 'owner'
+            ? loadInvitations(orgId)
+            : Promise.resolve(),
         ])
       } catch (error) {
         if (error instanceof Error && error.message === 'FORBIDDEN') {
@@ -236,10 +259,11 @@ export default function SettingsPage() {
     }
   }
 
-
   const loadInvitations = async (organizationId: string) => {
     try {
-      const data = handleServerActionResult(await getOrganizationInvitations(organizationId))
+      const data = handleServerActionResult(
+        await getOrganizationInvitations(organizationId)
+      )
       setInvitations(data as Invitation[])
     } catch (error) {
       console.error('초대 목록 로드 실패:', error)
@@ -277,23 +301,24 @@ export default function SettingsPage() {
 
     try {
       setInviting(true)
-      
+
       // 서버 액션으로 초대 생성
-      const data = handleServerActionResult(await createInvitation({
-        organizationId: orgId,
-        email: inviteData.email,
-        role: inviteData.role,
-      }))
-      
+      const data = handleServerActionResult(
+        await createInvitation({
+          organizationId: orgId,
+          email: inviteData.email,
+          role: inviteData.role,
+        })
+      )
+
       toast.success('초대가 성공적으로 발송되었습니다!')
-      
+
       // 초대 목록 새로고침
       await loadInvitations(orgId)
-      
+
       // 모달 닫기 및 폼 초기화
       setInviteData({ email: '', role: 'member' })
       onInviteModalClose()
-      
     } catch (error: any) {
       console.error('초대 발송 실패:', error)
       toast.error(error.message || '초대 발송에 실패했습니다.')
@@ -307,13 +332,14 @@ export default function SettingsPage() {
 
     try {
       // 서버 액션으로 초대 취소
-      const data = handleServerActionResult(await cancelInvitation(invitationId, orgId))
+      const data = handleServerActionResult(
+        await cancelInvitation(invitationId, orgId)
+      )
 
       toast.success('초대가 취소되었습니다.')
-      
+
       // 초대 목록 새로고침
       await loadInvitations(orgId)
-      
     } catch (error: any) {
       console.error('초대 취소 실패:', error)
       toast.error(error.message || '초대 취소에 실패했습니다.')
@@ -344,18 +370,23 @@ export default function SettingsPage() {
   const handleUpdateProfile = async () => {
     try {
       // 서버 액션으로 프로필 업데이트
-      const data = handleServerActionResult(await updateUserProfile(editProfileData))
+      const data = handleServerActionResult(
+        await updateUserProfile(editProfileData)
+      )
 
       // UI 업데이트
-      setUserProfile(prev => prev ? {
-        ...prev,
-        full_name: editProfileData.full_name,
-        avatar_url: editProfileData.avatar_url,
-      } : null)
+      setUserProfile(prev =>
+        prev
+          ? {
+              ...prev,
+              full_name: editProfileData.full_name,
+              avatar_url: editProfileData.avatar_url,
+            }
+          : null
+      )
 
       setIsEditingProfile(false)
       toast.success('프로필이 업데이트되었습니다.')
-
     } catch (error: any) {
       console.error('프로필 업데이트 실패:', error)
       toast.error(error.message || '프로필 업데이트에 실패했습니다.')
@@ -376,18 +407,24 @@ export default function SettingsPage() {
 
     try {
       // 서버 액션으로 조직 업데이트
-      const data = handleServerActionResult(await updateOrganization({
-        id: orgId,
-        name: editOrgData.name,
-        description: editOrgData.description,
-      }))
+      const data = handleServerActionResult(
+        await updateOrganization({
+          id: orgId,
+          name: editOrgData.name,
+          description: editOrgData.description,
+        })
+      )
 
       // UI 업데이트
-      setOrganization(prev => prev ? {
-        ...prev,
-        name: editOrgData.name,
-        description: editOrgData.description,
-      } : null)
+      setOrganization(prev =>
+        prev
+          ? {
+              ...prev,
+              name: editOrgData.name,
+              description: editOrgData.description,
+            }
+          : null
+      )
 
       setIsEditingOrganization(false)
       toast.success('조직 정보가 업데이트되었습니다.')
@@ -411,8 +448,10 @@ export default function SettingsPage() {
       }
 
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
       if (!session) {
         toast.error('로그인이 필요합니다.')
         return
@@ -427,8 +466,8 @@ export default function SettingsPage() {
       }
 
       // JSON 파일로 다운로드
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-        type: 'application/json' 
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json',
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -477,15 +516,17 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const data = handleServerActionResult(await createCategory({
-        name: categoryFormData.name,
-        transactionType: categoryFormData.transactionType,
-        icon: categoryFormData.icon,
-        color: categoryFormData.color,
-        parentId: categoryFormData.parentId || undefined,
-        organizationId: orgId,
-        level: 0, // Will be calculated by server action
-      }))
+      const data = handleServerActionResult(
+        await createCategory({
+          name: categoryFormData.name,
+          transactionType: categoryFormData.transactionType,
+          icon: categoryFormData.icon,
+          color: categoryFormData.color,
+          parentId: categoryFormData.parentId || undefined,
+          organizationId: orgId,
+          level: 0, // Will be calculated by server action
+        })
+      )
 
       toast.success('카테고리가 성공적으로 생성되었습니다!')
       onCategoryModalClose()
@@ -496,7 +537,7 @@ export default function SettingsPage() {
         color: '#3B82F6',
         parentId: '',
       })
-      
+
       // 카테고리 목록 새로고침
       await loadCategories(orgId)
     } catch (error: any) {
@@ -511,7 +552,10 @@ export default function SettingsPage() {
     setSelectedCategory(category)
     setCategoryFormData({
       name: category.name,
-      transactionType: category.transactionType as 'income' | 'expense' | 'transfer',
+      transactionType: category.transactionType as
+        | 'income'
+        | 'expense'
+        | 'transfer',
       icon: category.icon || '',
       color: category.color || '#3B82F6',
       parentId: category.parentId || '',
@@ -533,19 +577,21 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const data = handleServerActionResult(await updateCategory({
-        id: selectedCategory.id,
-        name: categoryFormData.name,
-        icon: categoryFormData.icon,
-        color: categoryFormData.color,
-        parentId: categoryFormData.parentId || undefined,
-        organizationId: orgId,
-      }))
+      const data = handleServerActionResult(
+        await updateCategory({
+          id: selectedCategory.id,
+          name: categoryFormData.name,
+          icon: categoryFormData.icon,
+          color: categoryFormData.color,
+          parentId: categoryFormData.parentId || undefined,
+          organizationId: orgId,
+        })
+      )
 
       toast.success('카테고리가 성공적으로 수정되었습니다!')
       onEditCategoryModalClose()
       setSelectedCategory(null)
-      
+
       // 카테고리 목록 새로고침
       await loadCategories(orgId)
     } catch (error: any) {
@@ -567,12 +613,14 @@ export default function SettingsPage() {
 
     setCategoryLoading(true)
     try {
-      const data = handleServerActionResult(await deleteCategory(selectedCategory.id, orgId))
+      const data = handleServerActionResult(
+        await deleteCategory(selectedCategory.id, orgId)
+      )
 
       toast.success('카테고리가 성공적으로 삭제되었습니다!')
       onDeleteCategoryModalClose()
       setSelectedCategory(null)
-      
+
       // 카테고리 목록 새로고침
       await loadCategories(orgId)
     } catch (error: any) {
@@ -637,10 +685,20 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
                 label="이름"
-                value={isEditingProfile ? editProfileData.full_name : (userProfile?.full_name || '')}
+                value={
+                  isEditingProfile
+                    ? editProfileData.full_name
+                    : userProfile?.full_name || ''
+                }
                 placeholder="이름을 입력하세요"
                 isReadOnly={!isEditingProfile}
-                onChange={(e) => isEditingProfile && setEditProfileData(prev => ({ ...prev, full_name: e.target.value }))}
+                onChange={e =>
+                  isEditingProfile &&
+                  setEditProfileData(prev => ({
+                    ...prev,
+                    full_name: e.target.value,
+                  }))
+                }
               />
               <Input
                 label="이메일"
@@ -664,11 +722,7 @@ export default function SettingsPage() {
                 >
                   취소
                 </Button>
-                <Button
-                  size="sm"
-                  color="primary"
-                  onPress={handleUpdateProfile}
-                >
+                <Button size="sm" color="primary" onPress={handleUpdateProfile}>
                   저장
                 </Button>
               </div>
@@ -685,315 +739,365 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold">조직 설정</h2>
               </div>
             </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
+            <CardBody>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    {isEditingOrganization ? (
-                      <div className="space-y-2">
-                        <Input
-                          label="조직명"
-                          value={editOrgData.name}
-                          placeholder="조직명을 입력하세요"
-                          onChange={(e) => setEditOrgData(prev => ({ ...prev, name: e.target.value }))}
-                        />
-                        <Input
-                          label="설명"
-                          value={editOrgData.description}
-                          placeholder="조직 설명을 입력하세요"
-                          onChange={(e) => setEditOrgData(prev => ({ ...prev, description: e.target.value }))}
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <h3 className="font-semibold">{organization?.name}</h3>
-                        <p className="text-gray-600">{organization?.description}</p>
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="light"
-                    startContent={<Edit className="w-4 h-4" />}
-                    onPress={() => setIsEditingOrganization(!isEditingOrganization)}
-                  >
-                    {isEditingOrganization ? '취소' : '편집'}
-                  </Button>
-                </div>
-
-                {isEditingOrganization && (
-                  <div className="flex justify-end gap-2">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      {isEditingOrganization ? (
+                        <div className="space-y-2">
+                          <Input
+                            label="조직명"
+                            value={editOrgData.name}
+                            placeholder="조직명을 입력하세요"
+                            onChange={e =>
+                              setEditOrgData(prev => ({
+                                ...prev,
+                                name: e.target.value,
+                              }))
+                            }
+                          />
+                          <Input
+                            label="설명"
+                            value={editOrgData.description}
+                            placeholder="조직 설명을 입력하세요"
+                            onChange={e =>
+                              setEditOrgData(prev => ({
+                                ...prev,
+                                description: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <h3 className="font-semibold">
+                            {organization?.name}
+                          </h3>
+                          <p className="text-gray-600">
+                            {organization?.description}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                     <Button
                       size="sm"
                       variant="light"
-                      onPress={() => {
-                        setIsEditingOrganization(false)
-                        setEditOrgData({
-                          name: organization?.name || '',
-                          description: organization?.description || '',
-                        })
-                      }}
+                      startContent={<Edit className="w-4 h-4" />}
+                      onPress={() =>
+                        setIsEditingOrganization(!isEditingOrganization)
+                      }
                     >
-                      취소
+                      {isEditingOrganization ? '취소' : '편집'}
                     </Button>
+                  </div>
+
+                  {isEditingOrganization && (
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="light"
+                        onPress={() => {
+                          setIsEditingOrganization(false)
+                          setEditOrgData({
+                            name: organization?.name || '',
+                            description: organization?.description || '',
+                          })
+                        }}
+                      >
+                        취소
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        onPress={handleUpdateOrganization}
+                      >
+                        저장
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <Divider />
+
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium">조직 멤버</h4>
                     <Button
                       size="sm"
                       color="primary"
-                      onPress={handleUpdateOrganization}
+                      startContent={<Plus className="w-4 h-4" />}
+                      onPress={onInviteModalOpen}
                     >
-                      저장
+                      멤버 초대
                     </Button>
                   </div>
-                )}
-              </div>
+                  <div className="space-y-2">
+                    {members.map(member => {
+                      // OrganizationMember now has userId instead of user_id
+                      const displayName = `사용자 ${member.userId.slice(0, 8)}`
+                      const displayEmail = '이메일 정보 없음'
 
-              <Divider />
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium">조직 멤버</h4>
-                  <Button
-                    size="sm"
-                    color="primary"
-                    startContent={<Plus className="w-4 h-4" />}
-                    onPress={onInviteModalOpen}
-                  >
-                    멤버 초대
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {members.map(member => {
-                    // OrganizationMember now has userId instead of user_id
-                    const displayName = `사용자 ${member.userId.slice(0, 8)}`
-                    const displayEmail = '이메일 정보 없음'
-                    
-                    return (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar 
-                            size="sm" 
-                            name={displayName}
-                          />
-                          <div>
-                            <p className="font-medium">
-                              {displayName}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {displayEmail}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {member.joinedAt 
-                                ? new Date(member.joinedAt).toLocaleDateString('ko-KR') + ' 가입'
-                                : '가입일 불명'
-                              }
-                            </p>
-                          </div>
-                        </div>
-                        <Chip
-                          color={
-                            member.role === 'owner'
-                              ? 'primary'
-                              : member.role === 'admin'
-                                ? 'secondary'
-                                : 'default'
-                          }
-                          size="sm"
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                         >
-                          {member.role === 'owner'
-                            ? '소유자'
-                            : member.role === 'admin'
-                              ? '관리자'
-                              : '멤버'}
-                        </Chip>
-                      </div>
-                    )
-                  })}
-                </div>
+                          <div className="flex items-center gap-3">
+                            <Avatar size="sm" name={displayName} />
+                            <div>
+                              <p className="font-medium">{displayName}</p>
+                              <p className="text-sm text-gray-600">
+                                {displayEmail}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {member.joinedAt
+                                  ? new Date(
+                                      member.joinedAt
+                                    ).toLocaleDateString('ko-KR') + ' 가입'
+                                  : '가입일 불명'}
+                              </p>
+                            </div>
+                          </div>
+                          <Chip
+                            color={
+                              member.role === 'owner'
+                                ? 'primary'
+                                : member.role === 'admin'
+                                  ? 'secondary'
+                                  : 'default'
+                            }
+                            size="sm"
+                          >
+                            {member.role === 'owner'
+                              ? '소유자'
+                              : member.role === 'admin'
+                                ? '관리자'
+                                : '멤버'}
+                          </Chip>
+                        </div>
+                      )
+                    })}
+                  </div>
 
-                {/* 초대 목록 */}
-                {invitations.length > 0 && (
-                  <>
-                    <Divider />
-                    <div>
-                      <h4 className="font-medium mb-3">대기 중인 초대</h4>
-                      <div className="space-y-2">
-                        {invitations
-                          .filter(invitation => invitation.status === 'pending')
-                          .map(invitation => (
-                            <div
-                              key={invitation.id}
-                              className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200"
-                            >
-                              <div className="flex items-center gap-3">
-                                <Avatar size="sm" name={invitation.email} />
-                                <div>
-                                  <p className="font-medium">{invitation.email}</p>
-                                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                                    <Chip
-                                      color={
-                                        invitation.role === 'admin' ? 'secondary' : 'default'
-                                      }
-                                      size="sm"
-                                    >
-                                      {invitation.role === 'admin' ? '관리자' : '멤버'}
-                                    </Chip>
-                                    <span>•</span>
-                                    <span>
-                                      {(() => {
-                                        const expiresAt = new Date(invitation.expiresAt)
-                                        return !isNaN(expiresAt.getTime()) 
-                                          ? expiresAt.toLocaleDateString('ko-KR') + ' 만료'
-                                          : '날짜 오류'
-                                      })()}
-                                    </span>
+                  {/* 초대 목록 */}
+                  {invitations.length > 0 && (
+                    <>
+                      <Divider />
+                      <div>
+                        <h4 className="font-medium mb-3">대기 중인 초대</h4>
+                        <div className="space-y-2">
+                          {invitations
+                            .filter(
+                              invitation => invitation.status === 'pending'
+                            )
+                            .map(invitation => (
+                              <div
+                                key={invitation.id}
+                                className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Avatar size="sm" name={invitation.email} />
+                                  <div>
+                                    <p className="font-medium">
+                                      {invitation.email}
+                                    </p>
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                      <Chip
+                                        color={
+                                          invitation.role === 'admin'
+                                            ? 'secondary'
+                                            : 'default'
+                                        }
+                                        size="sm"
+                                      >
+                                        {invitation.role === 'admin'
+                                          ? '관리자'
+                                          : '멤버'}
+                                      </Chip>
+                                      <span>•</span>
+                                      <span>
+                                        {(() => {
+                                          const expiresAt = new Date(
+                                            invitation.expiresAt
+                                          )
+                                          return !isNaN(expiresAt.getTime())
+                                            ? expiresAt.toLocaleDateString(
+                                                'ko-KR'
+                                              ) + ' 만료'
+                                            : '날짜 오류'
+                                        })()}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
+                                <Button
+                                  size="sm"
+                                  color="danger"
+                                  variant="light"
+                                  onPress={() =>
+                                    handleCancelInvitation(invitation.id)
+                                  }
+                                >
+                                  취소
+                                </Button>
                               </div>
-                              <Button
-                                size="sm"
-                                color="danger"
-                                variant="light"
-                                onPress={() => handleCancelInvitation(invitation.id)}
-                              >
-                                취소
-                              </Button>
-                            </div>
-                          ))}
+                            ))}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
         )}
 
         {/* 카테고리 관리 - owner/admin만 접근 가능 */}
         {currentUserRole && ['owner', 'admin'].includes(currentUserRole) && (
           <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <Tag className="w-5 h-5 text-purple-600" />
-              <h2 className="text-lg font-semibold">카테고리 관리</h2>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">거래 카테고리</p>
-                  <p className="text-sm text-gray-600">
-                    수입, 지출, 이체 카테고리를 관리합니다
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  color="primary"
-                  startContent={<Plus className="w-4 h-4" />}
-                  onPress={onCategoryModalOpen}
-                >
-                  카테고리 추가
-                </Button>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Tag className="w-5 h-5 text-purple-600" />
+                <h2 className="text-lg font-semibold">카테고리 관리</h2>
               </div>
-
-              <Divider />
-
-              {/* 카테고리 타입별 필터 */}
-              <div className="flex gap-2">
-                {['expense', 'income', 'transfer'].map((type) => (
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">거래 카테고리</p>
+                    <p className="text-sm text-gray-600">
+                      수입, 지출, 이체 카테고리를 관리합니다
+                    </p>
+                  </div>
                   <Button
-                    key={type}
                     size="sm"
-                    variant={selectedTransactionType === type ? 'solid' : 'bordered'}
-                    color={selectedTransactionType === type ? 'primary' : 'default'}
-                    onPress={() => setSelectedTransactionType(type as 'income' | 'expense' | 'transfer')}
+                    color="primary"
+                    startContent={<Plus className="w-4 h-4" />}
+                    onPress={onCategoryModalOpen}
                   >
-                    {type === 'expense' ? '지출' : type === 'income' ? '수입' : '이체'}
+                    카테고리 추가
                   </Button>
-                ))}
-              </div>
+                </div>
 
-              {/* 카테고리 목록 */}
-              <div className="space-y-2">
-                {categories
-                  .filter(category => category.transactionType === selectedTransactionType)
-                  .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name))
-                  .map(category => (
-                    <div
-                      key={category.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      style={{ paddingLeft: `${category.level * 16 + 12}px` }}
+                <Divider />
+
+                {/* 카테고리 타입별 필터 */}
+                <div className="flex gap-2">
+                  {['expense', 'income', 'transfer'].map(type => (
+                    <Button
+                      key={type}
+                      size="sm"
+                      variant={
+                        selectedTransactionType === type ? 'solid' : 'bordered'
+                      }
+                      color={
+                        selectedTransactionType === type ? 'primary' : 'default'
+                      }
+                      onPress={() =>
+                        setSelectedTransactionType(
+                          type as 'income' | 'expense' | 'transfer'
+                        )
+                      }
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: category.color || '#3B82F6' }}
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">{category.name}</p>
-                            {category.isDefault && (
-                              <Chip color="default" size="sm" variant="flat">
-                                기본
-                              </Chip>
-                            )}
-                            {category.level > 1 && (
-                              <FolderTree className="w-3 h-3 text-gray-400" />
-                            )}
+                      {type === 'expense'
+                        ? '지출'
+                        : type === 'income'
+                          ? '수입'
+                          : '이체'}
+                    </Button>
+                  ))}
+                </div>
+
+                {/* 카테고리 목록 */}
+                <div className="space-y-2">
+                  {categories
+                    .filter(
+                      category =>
+                        category.transactionType === selectedTransactionType
+                    )
+                    .sort(
+                      (a, b) =>
+                        a.level - b.level || a.name.localeCompare(b.name)
+                    )
+                    .map(category => (
+                      <div
+                        key={category.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        style={{ paddingLeft: `${category.level * 16 + 12}px` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{
+                              backgroundColor: category.color || '#3B82F6',
+                            }}
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{category.name}</p>
+                              {category.isDefault && (
+                                <Chip color="default" size="sm" variant="flat">
+                                  기본
+                                </Chip>
+                              )}
+                              {category.level > 1 && (
+                                <FolderTree className="w-3 h-3 text-gray-400" />
+                              )}
+                            </div>
+                            <p className="text-sm text-gray-600">
+                              레벨 {category.level}
+                            </p>
                           </div>
-                          <p className="text-sm text-gray-600">
-                            레벨 {category.level}
-                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="light"
+                            startContent={<Edit className="w-3 h-3" />}
+                            onPress={() => handleEditCategory(category)}
+                            isDisabled={category.isDefault ?? false}
+                          >
+                            수정
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="danger"
+                            startContent={<Trash2 className="w-3 h-3" />}
+                            onPress={() => {
+                              setSelectedCategory(category)
+                              onDeleteCategoryModalOpen()
+                            }}
+                            isDisabled={category.isDefault ?? false}
+                          >
+                            삭제
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="light"
-                          startContent={<Edit className="w-3 h-3" />}
-                          onPress={() => handleEditCategory(category)}
-                          isDisabled={category.isDefault ?? false}
-                        >
-                          수정
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="light"
-                          color="danger"
-                          startContent={<Trash2 className="w-3 h-3" />}
-                          onPress={() => {
-                            setSelectedCategory(category)
-                            onDeleteCategoryModalOpen()
-                          }}
-                          isDisabled={category.isDefault ?? false}
-                        >
-                          삭제
-                        </Button>
-                      </div>
+                    ))}
+
+                  {categories.filter(
+                    c => c.transactionType === selectedTransactionType
+                  ).length === 0 && (
+                    <div className="text-center py-8">
+                      <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-600 mb-2">
+                        카테고리가 없습니다
+                      </h3>
+                      <p className="text-gray-500 mb-4">
+                        첫 번째 카테고리를 추가해보세요!
+                      </p>
+                      <Button color="primary" onPress={onCategoryModalOpen}>
+                        카테고리 추가하기
+                      </Button>
                     </div>
-                  ))}
-                
-                {categories.filter(c => c.transactionType === selectedTransactionType).length === 0 && (
-                  <div className="text-center py-8">
-                    <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                      카테고리가 없습니다
-                    </h3>
-                    <p className="text-gray-500 mb-4">첫 번째 카테고리를 추가해보세요!</p>
-                    <Button color="primary" onPress={onCategoryModalOpen}>
-                      카테고리 추가하기
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
         )}
 
         {/* 알림 설정 - 추후 구현 예정 */}
@@ -1037,20 +1141,6 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">목표 달성 알림</p>
-                  <p className="text-sm text-gray-600">
-                    재정 목표 달성 시 알림을 받습니다
-                  </p>
-                </div>
-                <Switch
-                  isSelected={settings.notifications.goals}
-                  onValueChange={value =>
-                    handleSettingChange('notifications', 'goals', value)
-                  }
-                />
-              </div>
             </div>
           </CardBody>
         </Card>
@@ -1113,45 +1203,45 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold">데이터 관리</h2>
               </div>
             </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">데이터 내보내기</p>
-                  <p className="text-sm text-gray-600">
-                    모든 데이터를 JSON 형식으로 다운로드합니다
-                  </p>
+            <CardBody>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">데이터 내보내기</p>
+                    <p className="text-sm text-gray-600">
+                      모든 데이터를 JSON 형식으로 다운로드합니다
+                    </p>
+                  </div>
+                  <Button
+                    variant="light"
+                    startContent={<Download className="w-4 h-4" />}
+                    onPress={handleExportData}
+                  >
+                    내보내기
+                  </Button>
                 </div>
-                <Button
-                  variant="light"
-                  startContent={<Download className="w-4 h-4" />}
-                  onPress={handleExportData}
-                >
-                  내보내기
-                </Button>
-              </div>
 
-              <Divider />
+                <Divider />
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-red-600">계정 삭제</p>
-                  <p className="text-sm text-gray-600">
-                    계정과 모든 데이터가 영구적으로 삭제됩니다
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-red-600">계정 삭제</p>
+                    <p className="text-sm text-gray-600">
+                      계정과 모든 데이터가 영구적으로 삭제됩니다
+                    </p>
+                  </div>
+                  <Button
+                    color="danger"
+                    variant="light"
+                    startContent={<Trash2 className="w-4 h-4" />}
+                    onPress={onOpen}
+                  >
+                    계정 삭제
+                  </Button>
                 </div>
-                <Button
-                  color="danger"
-                  variant="light"
-                  startContent={<Trash2 className="w-4 h-4" />}
-                  onPress={onOpen}
-                >
-                  계정 삭제
-                </Button>
               </div>
-            </div>
-          </CardBody>
-        </Card>
+            </CardBody>
+          </Card>
         )}
       </div>
 
@@ -1165,7 +1255,7 @@ export default function SettingsPage() {
               <p className="text-red-800 font-medium">⚠️ 주의사항</p>
               <ul className="text-red-700 text-sm mt-2 space-y-1">
                 <li>• 모든 거래 내역이 삭제됩니다</li>
-                <li>• 재정 목표와 자산 정보가 삭제됩니다</li>
+                <li>• 자산 정보가 삭제됩니다</li>
                 <li>• 조직 데이터가 삭제됩니다</li>
                 <li>• 이 작업은 되돌릴 수 없습니다</li>
               </ul>
@@ -1195,10 +1285,12 @@ export default function SettingsPage() {
                 label="이메일"
                 placeholder="초대할 사용자의 이메일을 입력하세요"
                 value={inviteData.email}
-                onChange={(e) => setInviteData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={e =>
+                  setInviteData(prev => ({ ...prev, email: e.target.value }))
+                }
                 type="email"
               />
-              
+
               <Select
                 label="역할"
                 selectedKeys={[inviteData.role]}
@@ -1213,15 +1305,15 @@ export default function SettingsPage() {
 
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-blue-800 text-sm">
-                  <strong>참고:</strong> 초대된 사용자는 이메일로 초대 링크를 받게 되며, 
-                  7일 이내에 초대를 수락해야 합니다.
+                  <strong>참고:</strong> 초대된 사용자는 이메일로 초대 링크를
+                  받게 되며, 7일 이내에 초대를 수락해야 합니다.
                 </p>
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button 
-              variant="light" 
+            <Button
+              variant="light"
               onPress={() => {
                 setInviteData({ email: '', role: 'member' })
                 onInviteModalClose()
@@ -1229,8 +1321,8 @@ export default function SettingsPage() {
             >
               취소
             </Button>
-            <Button 
-              color="primary" 
+            <Button
+              color="primary"
               onPress={handleInviteMember}
               isLoading={inviting}
               isDisabled={inviting || !inviteData.email.trim()}
@@ -1245,8 +1337,7 @@ export default function SettingsPage() {
       <Modal isOpen={isCategoryModalOpen} onClose={onCategoryModalClose}>
         <ModalContent>
           <ModalHeader className="flex items-center gap-2">
-            <Tag className="w-5 h-5 text-purple-600" />
-            새 카테고리 추가
+            <Tag className="w-5 h-5 text-purple-600" />새 카테고리 추가
           </ModalHeader>
           <ModalBody>
             <div className="space-y-4">
@@ -1254,8 +1345,15 @@ export default function SettingsPage() {
                 label="거래 유형"
                 selectedKeys={[categoryFormData.transactionType]}
                 onSelectionChange={keys => {
-                  const selectedType = Array.from(keys)[0] as 'income' | 'expense' | 'transfer'
-                  setCategoryFormData(prev => ({ ...prev, transactionType: selectedType, parentId: '' }))
+                  const selectedType = Array.from(keys)[0] as
+                    | 'income'
+                    | 'expense'
+                    | 'transfer'
+                  setCategoryFormData(prev => ({
+                    ...prev,
+                    transactionType: selectedType,
+                    parentId: '',
+                  }))
                 }}
                 isRequired
               >
@@ -1268,30 +1366,41 @@ export default function SettingsPage() {
                 label="카테고리명"
                 placeholder="카테고리명을 입력하세요"
                 value={categoryFormData.name}
-                onChange={(e) => setCategoryFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={e =>
+                  setCategoryFormData(prev => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
                 isRequired
               />
 
               <Select
                 label="상위 카테고리"
                 placeholder="상위 카테고리 선택 (선택사항)"
-                selectedKeys={categoryFormData.parentId ? [categoryFormData.parentId] : []}
+                selectedKeys={
+                  categoryFormData.parentId ? [categoryFormData.parentId] : []
+                }
                 onSelectionChange={keys => {
                   const selectedParent = Array.from(keys)[0] as string
-                  setCategoryFormData(prev => ({ ...prev, parentId: selectedParent }))
+                  setCategoryFormData(prev => ({
+                    ...prev,
+                    parentId: selectedParent,
+                  }))
                 }}
               >
                 {categories
-                  .filter(cat => 
-                    cat.transactionType === categoryFormData.transactionType && 
-                    cat.level < 3 // 3레벨까지만 허용
+                  .filter(
+                    cat =>
+                      cat.transactionType ===
+                        categoryFormData.transactionType && cat.level < 3 // 3레벨까지만 허용
                   )
                   .map(category => (
                     <SelectItem key={category.id}>
                       {formatCategoryDisplay(category, {
                         showIcons: false,
                         showHierarchySymbols: true,
-                        indentSize: 2
+                        indentSize: 2,
                       })}
                     </SelectItem>
                   ))}
@@ -1302,20 +1411,30 @@ export default function SettingsPage() {
                   label="아이콘"
                   placeholder="🏠 (선택사항)"
                   value={categoryFormData.icon}
-                  onChange={(e) => setCategoryFormData(prev => ({ ...prev, icon: e.target.value }))}
+                  onChange={e =>
+                    setCategoryFormData(prev => ({
+                      ...prev,
+                      icon: e.target.value,
+                    }))
+                  }
                 />
                 <Input
                   label="색상"
                   type="color"
                   value={categoryFormData.color}
-                  onChange={(e) => setCategoryFormData(prev => ({ ...prev, color: e.target.value }))}
+                  onChange={e =>
+                    setCategoryFormData(prev => ({
+                      ...prev,
+                      color: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button 
-              variant="light" 
+            <Button
+              variant="light"
               onPress={() => {
                 setCategoryFormData({
                   name: '',
@@ -1329,8 +1448,8 @@ export default function SettingsPage() {
             >
               취소
             </Button>
-            <Button 
-              color="primary" 
+            <Button
+              color="primary"
               onPress={handleCreateCategory}
               isLoading={categoryLoading}
               isDisabled={categoryLoading || !categoryFormData.name.trim()}
@@ -1342,7 +1461,10 @@ export default function SettingsPage() {
       </Modal>
 
       {/* 카테고리 수정 모달 */}
-      <Modal isOpen={isEditCategoryModalOpen} onClose={onEditCategoryModalClose}>
+      <Modal
+        isOpen={isEditCategoryModalOpen}
+        onClose={onEditCategoryModalClose}
+      >
         <ModalContent>
           <ModalHeader className="flex items-center gap-2">
             <Edit className="w-5 h-5 text-blue-600" />
@@ -1354,31 +1476,43 @@ export default function SettingsPage() {
                 label="카테고리명"
                 placeholder="카테고리명을 입력하세요"
                 value={categoryFormData.name}
-                onChange={(e) => setCategoryFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={e =>
+                  setCategoryFormData(prev => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
                 isRequired
               />
 
               <Select
                 label="상위 카테고리"
                 placeholder="상위 카테고리 선택 (선택사항)"
-                selectedKeys={categoryFormData.parentId ? [categoryFormData.parentId] : []}
+                selectedKeys={
+                  categoryFormData.parentId ? [categoryFormData.parentId] : []
+                }
                 onSelectionChange={keys => {
                   const selectedParent = Array.from(keys)[0] as string
-                  setCategoryFormData(prev => ({ ...prev, parentId: selectedParent }))
+                  setCategoryFormData(prev => ({
+                    ...prev,
+                    parentId: selectedParent,
+                  }))
                 }}
               >
                 {categories
-                  .filter(cat => 
-                    cat.transactionType === categoryFormData.transactionType && 
-                    cat.level < 3 && // 3레벨까지만 허용
-                    cat.id !== selectedCategory?.id // 자기 자신은 제외
+                  .filter(
+                    cat =>
+                      cat.transactionType ===
+                        categoryFormData.transactionType &&
+                      cat.level < 3 && // 3레벨까지만 허용
+                      cat.id !== selectedCategory?.id // 자기 자신은 제외
                   )
                   .map(category => (
                     <SelectItem key={category.id}>
                       {formatCategoryDisplay(category, {
                         showIcons: false,
                         showHierarchySymbols: true,
-                        indentSize: 2
+                        indentSize: 2,
                       })}
                     </SelectItem>
                   ))}
@@ -1389,20 +1523,30 @@ export default function SettingsPage() {
                   label="아이콘"
                   placeholder="🏠 (선택사항)"
                   value={categoryFormData.icon}
-                  onChange={(e) => setCategoryFormData(prev => ({ ...prev, icon: e.target.value }))}
+                  onChange={e =>
+                    setCategoryFormData(prev => ({
+                      ...prev,
+                      icon: e.target.value,
+                    }))
+                  }
                 />
                 <Input
                   label="색상"
                   type="color"
                   value={categoryFormData.color}
-                  onChange={(e) => setCategoryFormData(prev => ({ ...prev, color: e.target.value }))}
+                  onChange={e =>
+                    setCategoryFormData(prev => ({
+                      ...prev,
+                      color: e.target.value,
+                    }))
+                  }
                 />
               </div>
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button 
-              variant="light" 
+            <Button
+              variant="light"
               onPress={() => {
                 setSelectedCategory(null)
                 onEditCategoryModalClose()
@@ -1410,8 +1554,8 @@ export default function SettingsPage() {
             >
               취소
             </Button>
-            <Button 
-              color="primary" 
+            <Button
+              color="primary"
               onPress={handleUpdateCategory}
               isLoading={categoryLoading}
               isDisabled={categoryLoading || !categoryFormData.name.trim()}
@@ -1423,11 +1567,18 @@ export default function SettingsPage() {
       </Modal>
 
       {/* 카테고리 삭제 확인 모달 */}
-      <Modal isOpen={isDeleteCategoryModalOpen} onClose={onDeleteCategoryModalClose} size="sm">
+      <Modal
+        isOpen={isDeleteCategoryModalOpen}
+        onClose={onDeleteCategoryModalClose}
+        size="sm"
+      >
         <ModalContent>
           <ModalHeader>카테고리 삭제</ModalHeader>
           <ModalBody>
-            <p>정말로 &ldquo;<strong>{selectedCategory?.name}</strong>&rdquo; 카테고리를 삭제하시겠습니까?</p>
+            <p>
+              정말로 &ldquo;<strong>{selectedCategory?.name}</strong>&rdquo;
+              카테고리를 삭제하시겠습니까?
+            </p>
             <div className="mt-4 p-4 bg-red-50 rounded-lg">
               <p className="text-red-800 font-medium">⚠️ 주의사항</p>
               <ul className="text-red-700 text-sm mt-2 space-y-1">
@@ -1438,7 +1589,11 @@ export default function SettingsPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button variant="light" onPress={onDeleteCategoryModalClose} disabled={categoryLoading}>
+            <Button
+              variant="light"
+              onPress={onDeleteCategoryModalClose}
+              disabled={categoryLoading}
+            >
               취소
             </Button>
             <Button

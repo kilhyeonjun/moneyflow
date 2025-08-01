@@ -3,7 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
-import { validateUserAndOrganization, withErrorHandling } from '@/lib/auth-server'
+import {
+  validateUserAndOrganization,
+  withErrorHandling,
+} from '@/lib/auth-server'
 import {
   TransactionWithDetails,
   TransactionCreateInput,
@@ -36,7 +39,9 @@ class TransactionActions extends BaseServerAction {
     organizationId: string,
     filters?: Partial<TransactionFilters>,
     pagination?: PaginationOptions
-  ): Promise<PaginatedResult<ReturnType<typeof transformTransactionForFrontend>>> {
+  ): Promise<
+    PaginatedResult<ReturnType<typeof transformTransactionForFrontend>>
+  > {
     const { user } = await this.validateAuth(organizationId)
 
     const finalFilters: TransactionFilters = {
@@ -85,7 +90,9 @@ class TransactionActions extends BaseServerAction {
     ])
 
     // Transform for frontend compatibility
-    const transformedTransactions = transactions.map(transformTransactionForFrontend)
+    const transformedTransactions = transactions.map(
+      transformTransactionForFrontend
+    )
 
     return await createPaginatedResult(
       transformedTransactions,
@@ -145,25 +152,34 @@ class TransactionActions extends BaseServerAction {
   /**
    * Create a new transaction
    */
-  async createTransaction(input: TransactionCreateInput): Promise<ReturnType<typeof transformTransactionForFrontend>> {
+  async createTransaction(
+    input: TransactionCreateInput
+  ): Promise<ReturnType<typeof transformTransactionForFrontend>> {
     const { user } = await this.validateAuth(input.organizationId)
 
     // Validate required fields
-    this.validateRequiredFields(input, ['organizationId', 'amount', 'description', 'transactionType'])
+    this.validateRequiredFields(input, [
+      'organizationId',
+      'amount',
+      'description',
+      'transactionType',
+    ])
 
     // Validate and sanitize input
     const validatedInput = {
       ...this.sanitizeInput(input),
       amount: validateAmount(input.amount as number),
       transactionType: validateTransactionType(input.transactionType),
-      transactionDate: input.transactionDate ? parseDate(input.transactionDate) : new Date(),
+      transactionDate: input.transactionDate
+        ? parseDate(input.transactionDate)
+        : new Date(),
       userId: user.id,
     }
 
     // Validate category belongs to the organization if provided
     if (validatedInput.categoryId) {
       this.validateUUID(validatedInput.categoryId, 'Category ID')
-      
+
       const category = await prisma.category.findFirst({
         where: {
           id: validatedInput.categoryId,
@@ -172,19 +188,23 @@ class TransactionActions extends BaseServerAction {
       })
 
       if (!category) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`
+        )
       }
 
       // Validate transaction type matches category
       if (category.transactionType !== validatedInput.transactionType) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Transaction type does not match category type`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Transaction type does not match category type`
+        )
       }
     }
 
     // Validate payment method belongs to the organization if provided
     if (validatedInput.paymentMethodId) {
       this.validateUUID(validatedInput.paymentMethodId, 'Payment Method ID')
-      
+
       const paymentMethod = await prisma.paymentMethod.findFirst({
         where: {
           id: validatedInput.paymentMethodId,
@@ -193,7 +213,9 @@ class TransactionActions extends BaseServerAction {
       })
 
       if (!paymentMethod) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Payment method not found or does not belong to this organization`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Payment method not found or does not belong to this organization`
+        )
       }
     }
 
@@ -205,21 +227,23 @@ class TransactionActions extends BaseServerAction {
       transactionType: validatedInput.transactionType,
       userId: validatedInput.userId,
       organization: {
-        connect: { id: input.organizationId }
+        connect: { id: input.organizationId },
       },
       ...(validatedInput.categoryId && {
         category: {
-          connect: { id: validatedInput.categoryId }
-        }
+          connect: { id: validatedInput.categoryId },
+        },
       }),
       ...(validatedInput.paymentMethodId && {
         paymentMethod: {
-          connect: { id: validatedInput.paymentMethodId }
-        }
+          connect: { id: validatedInput.paymentMethodId },
+        },
       }),
       ...(validatedInput.tags && { tags: validatedInput.tags }),
       ...(validatedInput.memo && { memo: validatedInput.memo }),
-      ...(validatedInput.receiptUrl && { receiptUrl: validatedInput.receiptUrl }),
+      ...(validatedInput.receiptUrl && {
+        receiptUrl: validatedInput.receiptUrl,
+      }),
     }
 
     const transaction = await prisma.transaction.create({
@@ -255,19 +279,25 @@ class TransactionActions extends BaseServerAction {
     revalidatePath(`/org/${input.organizationId}/dashboard`)
     revalidatePath(`/org/${input.organizationId}/analytics`)
 
-    return transformTransactionForFrontend(transaction as TransactionWithDetails)
+    return transformTransactionForFrontend(
+      transaction as TransactionWithDetails
+    )
   }
 
   /**
    * Update an existing transaction
    */
-  async updateTransaction(input: TransactionUpdateInput): Promise<ReturnType<typeof transformTransactionForFrontend>> {
+  async updateTransaction(
+    input: TransactionUpdateInput
+  ): Promise<ReturnType<typeof transformTransactionForFrontend>> {
     this.validateUUID(input.id, 'Transaction ID')
-    
+
     if (!input.organizationId) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Organization ID is required`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Organization ID is required`
+      )
     }
-    
+
     const { user } = await this.validateAuth(input.organizationId)
 
     // Check if transaction exists and belongs to the organization
@@ -293,7 +323,9 @@ class TransactionActions extends BaseServerAction {
     }
 
     if (updateData.transactionType !== undefined) {
-      updateData.transactionType = validateTransactionType(updateData.transactionType)
+      updateData.transactionType = validateTransactionType(
+        updateData.transactionType
+      )
     }
 
     if (updateData.transactionDate !== undefined) {
@@ -304,7 +336,7 @@ class TransactionActions extends BaseServerAction {
     if (updateData.categoryId !== undefined) {
       if (updateData.categoryId) {
         this.validateUUID(updateData.categoryId, 'Category ID')
-        
+
         const category = await prisma.category.findFirst({
           where: {
             id: updateData.categoryId,
@@ -313,13 +345,18 @@ class TransactionActions extends BaseServerAction {
         })
 
         if (!category) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`
+          )
         }
 
         // Validate transaction type matches category if both are being updated
-        const finalTransactionType = updateData.transactionType || existingTransaction.transactionType
+        const finalTransactionType =
+          updateData.transactionType || existingTransaction.transactionType
         if (category.transactionType !== finalTransactionType) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Transaction type does not match category type`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Transaction type does not match category type`
+          )
         }
       }
     }
@@ -328,7 +365,7 @@ class TransactionActions extends BaseServerAction {
     if (updateData.paymentMethodId !== undefined) {
       if (updateData.paymentMethodId) {
         this.validateUUID(updateData.paymentMethodId, 'Payment Method ID')
-        
+
         const paymentMethod = await prisma.paymentMethod.findFirst({
           where: {
             id: updateData.paymentMethodId,
@@ -337,7 +374,9 @@ class TransactionActions extends BaseServerAction {
         })
 
         if (!paymentMethod) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Payment method not found or does not belong to this organization`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Payment method not found or does not belong to this organization`
+          )
         }
       }
     }
@@ -377,13 +416,18 @@ class TransactionActions extends BaseServerAction {
     revalidatePath(`/org/${input.organizationId}/dashboard`)
     revalidatePath(`/org/${input.organizationId}/analytics`)
 
-    return transformTransactionForFrontend(updatedTransaction as TransactionWithDetails)
+    return transformTransactionForFrontend(
+      updatedTransaction as TransactionWithDetails
+    )
   }
 
   /**
    * Delete a transaction
    */
-  async deleteTransaction(transactionId: string, organizationId: string): Promise<{ success: boolean }> {
+  async deleteTransaction(
+    transactionId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     this.validateUUID(transactionId, 'Transaction ID')
     await this.validateAuth(organizationId)
 
@@ -479,8 +523,11 @@ const transactionActions = new TransactionActions()
 
 // Export server actions with error handling
 export const getTransactions = createServerAction(
-  async (organizationId: string, filters?: Partial<TransactionFilters>, pagination?: PaginationOptions) =>
-    transactionActions.getTransactions(organizationId, filters, pagination)
+  async (
+    organizationId: string,
+    filters?: Partial<TransactionFilters>,
+    pagination?: PaginationOptions
+  ) => transactionActions.getTransactions(organizationId, filters, pagination)
 )
 
 export const getTransaction = createServerAction(

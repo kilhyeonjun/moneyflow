@@ -4,10 +4,10 @@ import { useState, useMemo } from 'react'
 import { Select, SelectItem } from '@heroui/react'
 import type { Category } from '@prisma/client'
 import type { HierarchicalCategorySelectProps } from '@/types/category'
-import { 
-  buildCategoryTree, 
-  filterCategories, 
-  formatCategoryDisplay 
+import {
+  buildCategoryTree,
+  filterCategories,
+  formatCategoryDisplay,
 } from '@/lib/category-utils'
 
 export default function HierarchicalCategorySelect({
@@ -15,11 +15,11 @@ export default function HierarchicalCategorySelect({
   selectedCategoryId,
   onSelectionChange,
   transactionType,
-  label = "카테고리",
-  placeholder = "카테고리를 선택하세요",
+  label = '카테고리',
+  placeholder = '카테고리를 선택하세요',
   isRequired = false,
   isDisabled = false,
-  className = ""
+  className = '',
 }: HierarchicalCategorySelectProps) {
   // 트랜잭션 타입에 따라 카테고리 필터링
   const filteredCategories = useMemo(() => {
@@ -33,12 +33,12 @@ export default function HierarchicalCategorySelect({
       if (a.level !== b.level) {
         return a.level - b.level
       }
-      
+
       // 같은 레벨 내에서 부모가 같은 경우 이름순 정렬
       if (a.parentId === b.parentId) {
         return a.name.localeCompare(b.name)
       }
-      
+
       return 0
     })
   }, [filteredCategories])
@@ -48,8 +48,13 @@ export default function HierarchicalCategorySelect({
 
   const handleSelectionChange = (keys: any) => {
     console.log('HierarchicalCategorySelect - 선택 변경:', keys)
-    console.log('keys의 타입:', typeof keys, 'instanceof Set:', keys instanceof Set)
-    
+    console.log(
+      'keys의 타입:',
+      typeof keys,
+      'instanceof Set:',
+      keys instanceof Set
+    )
+
     // keys가 Set인지 확인하고 적절히 처리
     let keyArray: string[]
     if (keys instanceof Set) {
@@ -60,13 +65,13 @@ export default function HierarchicalCategorySelect({
       console.warn('예상하지 못한 keys 타입:', keys)
       keyArray = []
     }
-    
+
     console.log('변환된 키 배열:', keyArray)
-    
+
     if (keyArray.length > 0) {
       const selectedId = keyArray[0] as string
       console.log('선택된 카테고리 ID:', selectedId)
-      
+
       // 유효한 ID인지 확인
       if (selectedId && selectedId.trim() !== '') {
         onSelectionChange(selectedId)
@@ -92,21 +97,21 @@ export default function HierarchicalCategorySelect({
       aria-label={`${label} 선택${transactionType ? ` (${transactionType} 타입)` : ''}`}
       aria-describedby={`${label.replace(/\s/g, '')}-description`}
       classNames={{
-        listbox: "max-h-60 overflow-y-auto",
-        popoverContent: "w-full min-w-[200px]",
-        trigger: "focus:ring-2 focus:ring-primary-500",
-        label: "text-sm font-medium"
+        listbox: 'max-h-60 overflow-y-auto',
+        popoverContent: 'w-full min-w-[200px]',
+        trigger: 'focus:ring-2 focus:ring-primary-500',
+        label: 'text-sm font-medium',
       }}
     >
       {sortedCategories.map(category => {
         const displayText = formatCategoryDisplay(category, {
           showIcons: true,
           showHierarchySymbols: true,
-          indentSize: 2
+          indentSize: 2,
         })
-        
+
         return (
-          <SelectItem 
+          <SelectItem
             key={category.id}
             textValue={category.name} // 검색을 위한 순수 텍스트
             aria-label={`${category.name}, 레벨 ${category.level}${category.parentId ? ', 하위 카테고리' : ', 최상위 카테고리'}`}
@@ -122,7 +127,7 @@ export default function HierarchicalCategorySelect({
             `}
           >
             <div className="flex items-center gap-1">
-              <span 
+              <span
                 className="block whitespace-pre font-mono text-xs leading-tight"
                 style={{ fontFamily: 'ui-monospace, monospace' }}
                 aria-hidden="true"
@@ -143,11 +148,11 @@ export function HierarchicalCategoryTreeSelect({
   selectedCategoryId,
   onSelectionChange,
   transactionType,
-  label = "카테고리",
-  placeholder = "카테고리를 선택하세요",
+  label = '카테고리',
+  placeholder = '카테고리를 선택하세요',
   isRequired = false,
   isDisabled = false,
-  className = ""
+  className = '',
 }: HierarchicalCategorySelectProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
 

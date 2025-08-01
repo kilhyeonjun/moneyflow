@@ -1,4 +1,4 @@
-import { Prisma, type FinancialGoal } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 // Core Prisma types for database models
 export type {
@@ -12,7 +12,6 @@ export type {
   AssetCategory,
   Debt,
   Liability,
-  FinancialGoal,
   DefaultCategory,
   DefaultAssetCategory,
 } from '@prisma/client'
@@ -87,13 +86,12 @@ export type OrganizationWithStats = Prisma.OrganizationGetPayload<{
         categories: true
         assets: true
         debts: true
-        financialGoals: true
       }
     }
   }
 }>
 
-// User's organization view (from getUserOrganizations)  
+// User's organization view (from getUserOrganizations)
 export type UserOrganization = {
   id: string
   name: string
@@ -108,7 +106,6 @@ export type UserOrganization = {
     categories: number
     assets: number
     debts: number
-    financialGoals: number
     members: number
   }
 }
@@ -127,27 +124,6 @@ export type AssetWithCategory = Prisma.AssetGetPayload<{
     }
   }
 }>
-
-// Financial goal with progress calculation helpers
-export type FinancialGoalWithProgress = Prisma.FinancialGoalGetPayload<{
-  select: {
-    id: true
-    name: true
-    category: true
-    targetAmount: true
-    currentAmount: true
-    targetDate: true
-    priority: true
-    status: true
-    description: true
-    createdAt: true
-    updatedAt: true
-  }
-}> & {
-  progressPercentage: number
-  remainingAmount: number
-  isOverdue: boolean
-}
 
 // Payment method with transaction count
 export type PaymentMethodWithUsage = Prisma.PaymentMethodGetPayload<{
@@ -181,7 +157,13 @@ export type CategoryFilters = {
 // Input types for forms (excluding auto-generated fields)
 export type TransactionCreateInput = Omit<
   Prisma.TransactionCreateInput,
-  'id' | 'userId' | 'organization' | 'category' | 'paymentMethod' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'userId'
+  | 'organization'
+  | 'category'
+  | 'paymentMethod'
+  | 'createdAt'
+  | 'updatedAt'
 > & {
   organizationId: string
   categoryId?: string
@@ -194,7 +176,13 @@ export type TransactionUpdateInput = Partial<TransactionCreateInput> & {
 
 export type CategoryCreateInput = Omit<
   Prisma.CategoryCreateInput,
-  'id' | 'organization' | 'parent' | 'children' | 'transactions' | 'createdAt' | 'updatedAt'
+  | 'id'
+  | 'organization'
+  | 'parent'
+  | 'children'
+  | 'transactions'
+  | 'createdAt'
+  | 'updatedAt'
 > & {
   organizationId: string
   parentId?: string
@@ -213,17 +201,6 @@ export type AssetCreateInput = Omit<
 }
 
 export type AssetUpdateInput = Partial<AssetCreateInput> & {
-  id: string
-}
-
-export type FinancialGoalCreateInput = Omit<
-  Prisma.FinancialGoalCreateInput,
-  'id' | 'organization' | 'createdAt' | 'updatedAt'
-> & {
-  organizationId: string
-}
-
-export type FinancialGoalUpdateInput = Partial<FinancialGoalCreateInput> & {
   id: string
 }
 
@@ -271,31 +248,10 @@ export function isCategoryWithHierarchy(
   )
 }
 
-// Helper function to calculate financial goal progress
-export function calculateGoalProgress(goal: FinancialGoal): FinancialGoalWithProgress {
-  const progressPercentage = goal.targetAmount.toNumber() > 0 
-    ? Math.min((goal.currentAmount.toNumber() / goal.targetAmount.toNumber()) * 100, 100)
-    : 0
-  
-  const remainingAmount = Math.max(
-    goal.targetAmount.toNumber() - goal.currentAmount.toNumber(),
-    0
-  )
-  
-  const isOverdue = goal.targetDate 
-    ? new Date() > goal.targetDate && goal.currentAmount.lt(goal.targetAmount)
-    : false
-
-  return {
-    ...goal,
-    progressPercentage: Math.round(progressPercentage * 100) / 100,
-    remainingAmount,
-    isOverdue,
-  }
-}
-
 // Type-safe field transformers for frontend compatibility
-export function transformTransactionForFrontend(transaction: TransactionWithDetails) {
+export function transformTransactionForFrontend(
+  transaction: TransactionWithDetails
+) {
   return {
     id: transaction.id,
     organizationId: transaction.organizationId,
@@ -311,17 +267,21 @@ export function transformTransactionForFrontend(transaction: TransactionWithDeta
     receiptUrl: transaction.receiptUrl,
     createdAt: transaction.createdAt?.toISOString(),
     updatedAt: transaction.updatedAt?.toISOString(),
-    category: transaction.category ? {
-      id: transaction.category.id,
-      name: transaction.category.name,
-      transactionType: transaction.category.transactionType,
-      icon: transaction.category.icon,
-      color: transaction.category.color,
-    } : null,
-    paymentMethod: transaction.paymentMethod ? {
-      id: transaction.paymentMethod.id,
-      name: transaction.paymentMethod.name,
-      type: transaction.paymentMethod.type,
-    } : null,
+    category: transaction.category
+      ? {
+          id: transaction.category.id,
+          name: transaction.category.name,
+          transactionType: transaction.category.transactionType,
+          icon: transaction.category.icon,
+          color: transaction.category.color,
+        }
+      : null,
+    paymentMethod: transaction.paymentMethod
+      ? {
+          id: transaction.paymentMethod.id,
+          name: transaction.paymentMethod.name,
+          type: transaction.paymentMethod.type,
+        }
+      : null,
   }
 }

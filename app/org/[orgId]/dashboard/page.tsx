@@ -37,7 +37,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const params = useParams()
   const orgId = params?.orgId as string
-  
+
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats>({
     monthlyIncome: 0,
@@ -48,8 +48,12 @@ export default function DashboardPage() {
     previousMonthExpense: 0,
     previousMonthSavings: 0,
   })
-  const [recentTransactions, setRecentTransactions] = useState<TransactionForFrontend[]>([])
-  const [allTransactions, setAllTransactions] = useState<TransactionForFrontend[]>([])
+  const [recentTransactions, setRecentTransactions] = useState<
+    TransactionForFrontend[]
+  >([])
+  const [allTransactions, setAllTransactions] = useState<
+    TransactionForFrontend[]
+  >([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -61,32 +65,36 @@ export default function DashboardPage() {
   const loadDashboardData = async (organizationId: string) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       // Load dashboard data using server action
       const result = await getDashboardData(organizationId)
       const data = handleServerActionResult(result)
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('로드된 대시보드 데이터:', data)
       }
 
       // Set data from server action result
       if (data) {
-        const { stats: dashboardStats, recentTransactions: recent, allTransactions: all } = data
+        const {
+          stats: dashboardStats,
+          recentTransactions: recent,
+          allTransactions: all,
+        } = data
         setStats(dashboardStats)
         setRecentTransactions(recent)
         setAllTransactions(all)
       }
     } catch (error) {
       console.error('대시보드 데이터 처리 실패:', error)
-      
+
       // Handle specific errors that should not go to Error Boundary
       if (error instanceof Error && error.message === 'FORBIDDEN') {
         setError('이 조직에 접근할 권한이 없습니다.')
         return
       }
-      
+
       // Re-throw other errors to be handled by Error Boundary
       throw error
     } finally {
@@ -140,10 +148,7 @@ export default function DashboardPage() {
             데이터 로드 오류
           </h3>
           <p className="text-gray-600 mb-4">{error}</p>
-          <Button
-            color="primary"
-            onPress={retryLoadData}
-          >
+          <Button color="primary" onPress={retryLoadData}>
             다시 시도
           </Button>
         </div>
@@ -362,7 +367,9 @@ export default function DashboardPage() {
                         </Chip>
                         <span className="text-xs text-gray-500">
                           {transaction.transactionDate
-                            ? new Date(transaction.transactionDate).toLocaleDateString('ko-KR')
+                            ? new Date(
+                                transaction.transactionDate
+                              ).toLocaleDateString('ko-KR')
                             : '-'}
                         </span>
                       </div>

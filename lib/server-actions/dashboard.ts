@@ -68,7 +68,9 @@ class DashboardActions extends BaseServerAction {
     })
 
     // Transform for frontend compatibility
-    const transformedTransactions = transactions.map(transformTransactionForFrontend)
+    const transformedTransactions = transactions.map(
+      transformTransactionForFrontend
+    )
 
     // Calculate statistics
     const stats = this.calculateDashboardStats(transformedTransactions)
@@ -86,7 +88,9 @@ class DashboardActions extends BaseServerAction {
   /**
    * Calculate dashboard statistics from transactions
    */
-  private calculateDashboardStats(transactions: ReturnType<typeof transformTransactionForFrontend>[]): DashboardStats {
+  private calculateDashboardStats(
+    transactions: ReturnType<typeof transformTransactionForFrontend>[]
+  ): DashboardStats {
     const now = new Date()
     const currentMonth = now.getMonth()
     const currentYear = now.getFullYear()
@@ -94,7 +98,7 @@ class DashboardActions extends BaseServerAction {
     const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear
 
     // Filter transactions by month
-    const currentMonthTxns = transactions.filter((txn) => {
+    const currentMonthTxns = transactions.filter(txn => {
       if (!txn.transactionDate) return false
       const txnDate = new Date(txn.transactionDate)
       return (
@@ -103,7 +107,7 @@ class DashboardActions extends BaseServerAction {
       )
     })
 
-    const previousMonthTxns = transactions.filter((txn) => {
+    const previousMonthTxns = transactions.filter(txn => {
       if (!txn.transactionDate) return false
       const txnDate = new Date(txn.transactionDate)
       return (
@@ -165,7 +169,10 @@ class DashboardActions extends BaseServerAction {
   /**
    * Get recent transactions only (for components that only need recent data)
    */
-  async getRecentTransactions(organizationId: string, limit: number = 5): Promise<ReturnType<typeof transformTransactionForFrontend>[]> {
+  async getRecentTransactions(
+    organizationId: string,
+    limit: number = 5
+  ): Promise<ReturnType<typeof transformTransactionForFrontend>[]> {
     await this.validateAuth(organizationId)
 
     const transactions = await prisma.transaction.findMany({
@@ -204,7 +211,9 @@ class DashboardActions extends BaseServerAction {
   /**
    * Get transactions for chart components
    */
-  async getTransactionsForCharts(organizationId: string): Promise<ReturnType<typeof transformTransactionForFrontend>[]> {
+  async getTransactionsForCharts(
+    organizationId: string
+  ): Promise<ReturnType<typeof transformTransactionForFrontend>[]> {
     await this.validateAuth(organizationId)
 
     const transactions = await prisma.transaction.findMany({
@@ -245,14 +254,16 @@ const dashboardActions = new DashboardActions()
 
 // Export server actions with error handling
 export const getDashboardData = createServerAction(
-  async (organizationId: string) => dashboardActions.getDashboardData(organizationId)
+  async (organizationId: string) =>
+    dashboardActions.getDashboardData(organizationId)
 )
 
 export const getRecentTransactions = createServerAction(
-  async (organizationId: string, limit?: number) => 
+  async (organizationId: string, limit?: number) =>
     dashboardActions.getRecentTransactions(organizationId, limit)
 )
 
 export const getTransactionsForCharts = createServerAction(
-  async (organizationId: string) => dashboardActions.getTransactionsForCharts(organizationId)
+  async (organizationId: string) =>
+    dashboardActions.getTransactionsForCharts(organizationId)
 )

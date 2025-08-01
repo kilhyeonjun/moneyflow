@@ -42,7 +42,9 @@ async function createAssetCategoriesFromDefaults(organizationId: string) {
       }
     }
 
-    console.log(`총 ${createdAssetCategories.length}개의 자산 카테고리가 생성되었습니다.`)
+    console.log(
+      `총 ${createdAssetCategories.length}개의 자산 카테고리가 생성되었습니다.`
+    )
     return createdAssetCategories
   } catch (error) {
     console.error('자산 카테고리 생성 중 오류 발생:', error)
@@ -62,7 +64,9 @@ async function createTransactionCategoriesFromDefaults(organizationId: string) {
     const createdCategories: Category[] = []
 
     // 레벨별로 정렬하여 부모 카테고리부터 생성
-    const sortedCategories = defaultTransactionCategories.sort((a, b) => a.level - b.level)
+    const sortedCategories = defaultTransactionCategories.sort(
+      (a, b) => a.level - b.level
+    )
 
     for (const categoryData of sortedCategories) {
       // 중복 확인
@@ -105,7 +109,9 @@ async function createTransactionCategoriesFromDefaults(organizationId: string) {
       }
     }
 
-    console.log(`총 ${createdCategories.length}개의 거래 카테고리가 생성되었습니다.`)
+    console.log(
+      `총 ${createdCategories.length}개의 거래 카테고리가 생성되었습니다.`
+    )
     return createdCategories
   } catch (error) {
     console.error('거래 카테고리 생성 중 오류 발생:', error)
@@ -164,11 +170,12 @@ export async function createInitialData(organizationId: string) {
     console.log(`조직 ${organizationId}에 대한 초기 데이터 생성 시작`)
 
     // 병렬로 실행하여 성능 향상
-    const [assetCategories, transactionCategories, paymentMethods] = await Promise.all([
-      createAssetCategoriesFromDefaults(organizationId),
-      createTransactionCategoriesFromDefaults(organizationId),
-      createPaymentMethodsFromDefaults(organizationId),
-    ])
+    const [assetCategories, transactionCategories, paymentMethods] =
+      await Promise.all([
+        createAssetCategoriesFromDefaults(organizationId),
+        createTransactionCategoriesFromDefaults(organizationId),
+        createPaymentMethodsFromDefaults(organizationId),
+      ])
 
     console.log('모든 초기 데이터 생성 완료')
 

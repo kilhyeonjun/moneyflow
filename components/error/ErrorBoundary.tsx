@@ -29,9 +29,12 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
-    
+
     // Handle UNAUTHORIZED error by redirecting to login
-    if (error.message === 'UNAUTHORIZED' || error instanceof UnauthorizedError) {
+    if (
+      error.message === 'UNAUTHORIZED' ||
+      error instanceof UnauthorizedError
+    ) {
       window.location.href = '/login'
       return
     }
@@ -101,13 +104,16 @@ export function useErrorHandler() {
     const errorMessage =
       error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다'
     console.error(`Error in ${context || 'unknown context'}:`, error)
-    
+
     // UNAUTHORIZED 에러인 경우 직접 리다이렉트
-    if (error instanceof Error && (error.message === 'UNAUTHORIZED' || error.name === 'UnauthorizedError')) {
+    if (
+      error instanceof Error &&
+      (error.message === 'UNAUTHORIZED' || error.name === 'UnauthorizedError')
+    ) {
       window.location.href = '/login'
       return
     }
-    
+
     return errorMessage
   }, [])
 
@@ -123,18 +129,20 @@ export class UnauthorizedError extends Error {
 }
 
 // Server Action 결과를 처리하는 유틸리티
-export function handleServerActionResult<T>(
-  result: { success: boolean; data?: T; error?: string }
-): T {
+export function handleServerActionResult<T>(result: {
+  success: boolean
+  data?: T
+  error?: string
+}): T {
   if (result.success && result.data) {
     return result.data
   }
-  
+
   // UNAUTHORIZED 에러는 특별한 에러 클래스로 throw
   if (result.error === 'UNAUTHORIZED') {
     throw new UnauthorizedError()
   }
-  
+
   // 다른 에러들
   throw new Error(result.error || '작업에 실패했습니다')
 }

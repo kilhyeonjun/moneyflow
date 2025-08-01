@@ -38,12 +38,15 @@ class OrganizationActions extends BaseServerAction {
    */
   async getOrganizationDetails(organizationId: string) {
     const user = await requireAuth()
-    const details = await getOrganizationDetailsFromAuth(user.id, organizationId)
-    
+    const details = await getOrganizationDetailsFromAuth(
+      user.id,
+      organizationId
+    )
+
     if (!details) {
       throw new Error(ServerActionError.NOT_FOUND)
     }
-    
+
     return details
   }
 
@@ -63,7 +66,7 @@ class OrganizationActions extends BaseServerAction {
     const sanitizedInput = this.sanitizeInput(input)
 
     // Create organization with the user as admin in a transaction
-    const organization = await withDatabaseTransaction(async (tx) => {
+    const organization = await withDatabaseTransaction(async tx => {
       // Create organization
       const org = await tx.organization.create({
         data: {
@@ -125,7 +128,9 @@ class OrganizationActions extends BaseServerAction {
   /**
    * Delete organization (admin only)
    */
-  async deleteOrganization(organizationId: string): Promise<{ success: boolean }> {
+  async deleteOrganization(
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
 
@@ -141,7 +146,6 @@ class OrganizationActions extends BaseServerAction {
             transactions: true,
             assets: true,
             debts: true,
-            financialGoals: true,
           },
         },
       },
@@ -151,13 +155,15 @@ class OrganizationActions extends BaseServerAction {
       throw new Error(ServerActionError.NOT_FOUND)
     }
 
-    const hasData = counts._count.transactions > 0 || 
-                   counts._count.assets > 0 || 
-                   counts._count.debts > 0 || 
-                   counts._count.financialGoals > 0
+    const hasData =
+      counts._count.transactions > 0 ||
+      counts._count.assets > 0 ||
+      counts._count.debts > 0
 
     if (hasData) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot delete organization with existing data. Delete all transactions, assets, debts, and goals first.`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Cannot delete organization with existing data. Delete all transactions, assets, and debts first.`
+      )
     }
 
     // Delete organization (cascading deletes will handle related data)
@@ -174,7 +180,9 @@ class OrganizationActions extends BaseServerAction {
   /**
    * Get organization members (admin only)
    */
-  async getOrganizationMembers(organizationId: string): Promise<OrganizationMember[]> {
+  async getOrganizationMembers(
+    organizationId: string
+  ): Promise<OrganizationMember[]> {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
 
@@ -222,7 +230,9 @@ class OrganizationActions extends BaseServerAction {
       })
 
       if (adminCount <= 1) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot remove admin role - organization must have at least one admin`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Cannot remove admin role - organization must have at least one admin`
+        )
       }
     }
 
@@ -262,7 +272,10 @@ class OrganizationActions extends BaseServerAction {
   /**
    * Remove member from organization (admin only)
    */
-  async removeMember(organizationId: string, userId: string): Promise<{ success: boolean }> {
+  async removeMember(
+    organizationId: string,
+    userId: string
+  ): Promise<{ success: boolean }> {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
     this.validateUUID(userId, 'User ID')
@@ -280,7 +293,9 @@ class OrganizationActions extends BaseServerAction {
       })
 
       if (adminCount <= 1) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot remove the only admin from organization`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Cannot remove the only admin from organization`
+        )
       }
     }
 
@@ -334,7 +349,9 @@ class OrganizationActions extends BaseServerAction {
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(input.email)) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invalid email format`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Invalid email format`
+      )
     }
 
     // Validate role
@@ -363,12 +380,14 @@ class OrganizationActions extends BaseServerAction {
     })
 
     if (existingInvitation) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Invitation already sent to this email`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Invitation already sent to this email`
+      )
     }
 
     // Generate invitation token
     const token = crypto.randomUUID()
-    
+
     // Set expiration date (7 days from now)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7)
@@ -396,7 +415,10 @@ class OrganizationActions extends BaseServerAction {
   /**
    * Cancel invitation (admin only)
    */
-  async cancelInvitation(invitationId: string, organizationId: string): Promise<{ success: boolean }> {
+  async cancelInvitation(
+    invitationId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     const user = await requireAuth()
     this.validateUUID(invitationId, 'Invitation ID')
     this.validateUUID(organizationId, 'Organization ID')
@@ -434,7 +456,9 @@ class OrganizationActions extends BaseServerAction {
   /**
    * Accept invitation (public - accessed via invitation token)
    */
-  async acceptInvitation(token: string): Promise<{ success: boolean; organizationId: string }> {
+  async acceptInvitation(
+    token: string
+  ): Promise<{ success: boolean; organizationId: string }> {
     const user = await requireAuth()
 
     // Find invitation by token
@@ -457,7 +481,9 @@ class OrganizationActions extends BaseServerAction {
     })
 
     if (!invitation) {
-      throw new Error(`${ServerActionError.NOT_FOUND}: Invitation not found or expired`)
+      throw new Error(
+        `${ServerActionError.NOT_FOUND}: Invitation not found or expired`
+      )
     }
 
     // Check if user is already a member
@@ -471,11 +497,13 @@ class OrganizationActions extends BaseServerAction {
     })
 
     if (existingMember) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: You are already a member of this organization`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: You are already a member of this organization`
+      )
     }
 
     // Accept invitation in a transaction
-    await withDatabaseTransaction(async (tx) => {
+    await withDatabaseTransaction(async tx => {
       // Create membership
       await tx.organizationMember.create({
         data: {
@@ -555,7 +583,7 @@ class OrganizationActions extends BaseServerAction {
     member?: OrganizationMember
   }> {
     const user = await getCurrentUser()
-    
+
     if (!user) {
       return { isMember: false }
     }
@@ -576,12 +604,13 @@ class OrganizationActions extends BaseServerAction {
 const organizationActions = new OrganizationActions()
 
 // Export server actions with error handling
-export const getUserOrganizations = createServerAction(
-  async () => organizationActions.getUserOrganizations()
+export const getUserOrganizations = createServerAction(async () =>
+  organizationActions.getUserOrganizations()
 )
 
 export const getOrganizationDetails = createServerAction(
-  async (organizationId: string) => organizationActions.getOrganizationDetails(organizationId)
+  async (organizationId: string) =>
+    organizationActions.getOrganizationDetails(organizationId)
 )
 
 export const createOrganization = createServerAction(
@@ -595,11 +624,13 @@ export const updateOrganization = createServerAction(
 )
 
 export const deleteOrganization = createServerAction(
-  async (organizationId: string) => organizationActions.deleteOrganization(organizationId)
+  async (organizationId: string) =>
+    organizationActions.deleteOrganization(organizationId)
 )
 
 export const getOrganizationMembers = createServerAction(
-  async (organizationId: string) => organizationActions.getOrganizationMembers(organizationId)
+  async (organizationId: string) =>
+    organizationActions.getOrganizationMembers(organizationId)
 )
 
 export const updateMemberRole = createServerAction(
@@ -622,14 +653,15 @@ export const cancelInvitation = createServerAction(
     organizationActions.cancelInvitation(invitationId, organizationId)
 )
 
-export const acceptInvitation = createServerAction(
-  async (token: string) => organizationActions.acceptInvitation(token)
+export const acceptInvitation = createServerAction(async (token: string) =>
+  organizationActions.acceptInvitation(token)
 )
 
-export const getInvitationByToken = createServerAction(
-  async (token: string) => organizationActions.getInvitationByToken(token)
+export const getInvitationByToken = createServerAction(async (token: string) =>
+  organizationActions.getInvitationByToken(token)
 )
 
 export const checkMembership = createServerAction(
-  async (organizationId: string) => organizationActions.checkMembership(organizationId)
+  async (organizationId: string) =>
+    organizationActions.checkMembership(organizationId)
 )

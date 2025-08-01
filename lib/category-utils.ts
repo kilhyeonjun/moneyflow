@@ -1,8 +1,8 @@
 import type { Category } from '@prisma/client'
-import type { 
-  HierarchicalCategory, 
-  CategoryTreeNode, 
-  CategoryFilterOptions 
+import type {
+  HierarchicalCategory,
+  CategoryTreeNode,
+  CategoryFilterOptions,
 } from '@/types/category'
 
 /**
@@ -23,14 +23,14 @@ export function buildCategoryTree(categories: Category[]): CategoryTreeNode[] {
       transactionType: category.transactionType,
       children: [],
       isExpanded: false,
-      path: []
+      path: [],
     })
   })
 
   // 부모-자식 관계 설정 및 경로 생성
   categories.forEach(category => {
     const node = categoryMap.get(category.id)!
-    
+
     if (category.parentId) {
       const parent = categoryMap.get(category.parentId)
       if (parent) {
@@ -51,27 +51,33 @@ export function buildCategoryTree(categories: Category[]): CategoryTreeNode[] {
  * 카테고리 필터링
  */
 export function filterCategories(
-  categories: Category[], 
+  categories: Category[],
   options: CategoryFilterOptions
 ): Category[] {
   return categories.filter(category => {
-    if (options.transactionType && category.transactionType !== options.transactionType) {
+    if (
+      options.transactionType &&
+      category.transactionType !== options.transactionType
+    ) {
       return false
     }
-    
+
     if (options.level !== undefined && category.level !== options.level) {
       return false
     }
-    
-    if (options.parentId !== undefined && category.parentId !== options.parentId) {
+
+    if (
+      options.parentId !== undefined &&
+      category.parentId !== options.parentId
+    ) {
       return false
     }
-    
+
     if (options.searchTerm) {
       const searchLower = options.searchTerm.toLowerCase()
       return category.name.toLowerCase().includes(searchLower)
     }
-    
+
     return true
   })
 }
@@ -80,12 +86,12 @@ export function filterCategories(
  * 카테고리의 계층형 표시 문자열 생성 (개선된 버전)
  */
 export function formatCategoryDisplay(
-  category: { 
+  category: {
     name: string
     level: number
     icon?: string | null
     parentId?: string | null | undefined
-  }, 
+  },
   options: {
     showIcons?: boolean
     showHierarchySymbols?: boolean
@@ -97,11 +103,11 @@ export function formatCategoryDisplay(
     showIcons = true,
     showHierarchySymbols = true,
     indentSize = 2,
-    useTreeSymbols = true
+    useTreeSymbols = true,
   } = options
 
   const levelIndent = ' '.repeat((category.level - 1) * indentSize)
-  
+
   // 개선된 계층 구조 표시 기호
   let hierarchySymbol = ''
   if (showHierarchySymbols && category.level > 1) {
@@ -112,9 +118,9 @@ export function formatCategoryDisplay(
       hierarchySymbol = '└─ '
     }
   }
-  
+
   const categoryIcon = showIcons && category.icon ? `${category.icon} ` : ''
-  
+
   return `${levelIndent}${hierarchySymbol}${categoryIcon}${category.name}`
 }
 
@@ -122,19 +128,19 @@ export function formatCategoryDisplay(
  * 트리에서 특정 카테고리까지의 경로 찾기
  */
 export function findCategoryPath(
-  treeNodes: CategoryTreeNode[], 
+  treeNodes: CategoryTreeNode[],
   targetId: string
 ): string[] | null {
   function searchNode(node: CategoryTreeNode): string[] | null {
     if (node.id === targetId) {
       return node.path
     }
-    
+
     for (const child of node.children) {
       const path = searchNode(child)
       if (path) return path
     }
-    
+
     return null
   }
 
@@ -142,7 +148,7 @@ export function findCategoryPath(
     const path = searchNode(node)
     if (path) return path
   }
-  
+
   return null
 }
 
@@ -150,17 +156,17 @@ export function findCategoryPath(
  * 트리 노드의 펼침/접힘 상태 토글
  */
 export function toggleNodeExpansion(
-  treeNodes: CategoryTreeNode[], 
+  treeNodes: CategoryTreeNode[],
   targetId: string
 ): CategoryTreeNode[] {
   function updateNode(node: CategoryTreeNode): CategoryTreeNode {
     if (node.id === targetId) {
       return { ...node, isExpanded: !node.isExpanded }
     }
-    
+
     return {
       ...node,
-      children: node.children.map(updateNode)
+      children: node.children.map(updateNode),
     }
   }
 
@@ -171,14 +177,14 @@ export function toggleNodeExpansion(
  * 모든 노드를 펼치거나 접기
  */
 export function expandAllNodes(
-  treeNodes: CategoryTreeNode[], 
+  treeNodes: CategoryTreeNode[],
   expanded: boolean = true
 ): CategoryTreeNode[] {
   function updateNode(node: CategoryTreeNode): CategoryTreeNode {
     return {
       ...node,
       isExpanded: expanded,
-      children: node.children.map(updateNode)
+      children: node.children.map(updateNode),
     }
   }
 
@@ -194,7 +200,7 @@ export function sortCategoriesByLevel(categories: Category[]): Category[] {
     if (a.level !== b.level) {
       return a.level - b.level
     }
-    
+
     // 같은 레벨 내에서는 이름순 정렬
     return a.name.localeCompare(b.name)
   })

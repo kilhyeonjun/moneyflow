@@ -5,13 +5,12 @@ import { useRouter, useParams } from 'next/navigation'
 import { Sidebar } from '@/components/sidebar'
 import { createClient } from '@/lib/supabase'
 import { isValidUUID } from '@/lib/utils/validation'
-import { checkMembership, getOrganizationDetails } from '@/lib/server-actions/organizations'
+import {
+  checkMembership,
+  getOrganizationDetails,
+} from '@/lib/server-actions/organizations'
 
-export default function OrgLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function OrgLayout({ children }: { children: React.ReactNode }) {
   const [hasOrgAccess, setHasOrgAccess] = useState<boolean | null>(null)
   const [currentOrg, setCurrentOrg] = useState<any>(null)
   const router = useRouter()
@@ -33,7 +32,7 @@ export default function OrgLayout({
 
       // 조직 접근 권한 확인
       const membershipResult = await checkMembership(orgId)
-      
+
       if (!membershipResult.success || !membershipResult.data?.isMember) {
         console.error('Organization access denied')
         setHasOrgAccess(false)
@@ -43,7 +42,7 @@ export default function OrgLayout({
 
       // 조직 상세 정보 가져오기
       const orgDetailsResult = await getOrganizationDetails(orgId)
-      
+
       if (!orgDetailsResult.success) {
         console.error('Failed to get organization details')
         setHasOrgAccess(false)
@@ -57,7 +56,6 @@ export default function OrgLayout({
         role: membershipResult.data.role,
       })
       setHasOrgAccess(true)
-
     } catch (error) {
       console.error('Organization check failed:', error)
       setHasOrgAccess(false)

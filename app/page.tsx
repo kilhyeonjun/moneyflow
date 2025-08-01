@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, Card, CardBody, CardHeader } from '@heroui/react'
-import { ArrowRight, BarChart3, Users, Target, Shield } from 'lucide-react'
+import { ArrowRight, BarChart3, Users, Shield } from 'lucide-react'
 import Link from 'next/link'
 
 export default function HomePage() {
@@ -34,8 +34,8 @@ export default function HomePage() {
             <span className="text-blue-600">스마트 가계부</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            조직 단위로 재정을 관리하고, 목표를 설정하며, 실시간으로 동기화되는
-            종합 재정 관리 시스템
+            조직 단위로 재정을 관리하고, 실시간으로 동기화되는 종합 재정 관리
+            시스템
           </p>
           <div className="flex items-center justify-center space-x-4">
             <Link href="/signup">
@@ -83,12 +83,12 @@ export default function HomePage() {
 
           <Card className="p-6">
             <CardHeader className="pb-4">
-              <Target className="h-12 w-12 text-purple-600 mb-4" />
-              <h3 className="text-xl font-semibold">목표 지향적</h3>
+              <BarChart3 className="h-12 w-12 text-purple-600 mb-4" />
+              <h3 className="text-xl font-semibold">데이터 분석</h3>
             </CardHeader>
             <CardBody>
               <p className="text-gray-600">
-                자산 증가 목표를 설정하고 달성률을 추적하세요
+                상세한 재정 분석과 통계로 현명한 결정을 내리세요
               </p>
             </CardBody>
           </Card>

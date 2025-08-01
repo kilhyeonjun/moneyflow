@@ -2,7 +2,7 @@
 
 **조직 단위의 종합 가계부 관리 시스템**
 
-가족과 팀을 위한 실시간 재정 관리 플랫폼으로, 조직 단위로 수입·지출·저축을 체계적으로 관리하고 재정 목표를 달성할 수 있도록 도와줍니다.
+가족과 팀을 위한 실시간 재정 관리 플랫폼으로, 조직 단위로 수입·지출·저축을 체계적으로 관리할 수 있습니다.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/moneyflow)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -21,10 +21,6 @@
 - **중분류**: 카테고리별 세분화
 - **세분류**: 상세 항목 관리
 
-### 🎯 **목표 지향적 관리**
-- 자산 증가 목표 설정
-- 달성률 추적 및 분석
-- 개인화된 재정 조언
 
 ### 📈 **고급 분석 기능**
 - 월별/연간 수입·지출 추이
@@ -115,7 +111,7 @@ http://localhost:3000에서 애플리케이션을 확인할 수 있습니다.
 ### **🏦 자산 관리**
 - 자산/부채 등록 및 관리
 - 카테고리별 자산 분류
-- 목표 달성률 추적
+- 자산 현황 추적
 
 ### **📈 통계 분석**
 - 월별/연간 분석 탭

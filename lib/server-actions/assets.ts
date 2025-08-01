@@ -3,9 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { validateUserAndOrganization } from '@/lib/auth-server'
-import {
-  ServerActionError,
-} from '@/lib/types'
+import { ServerActionError } from '@/lib/types'
 import {
   BaseServerAction,
   createServerAction,
@@ -24,8 +22,6 @@ interface AssetSummary {
   totalAssets: number
   totalLiabilities: number
   netWorth: number
-  yearlyGoal: number
-  achievementRate: number
 }
 
 interface AssetData {
@@ -64,18 +60,20 @@ class AssetActions extends BaseServerAction {
     })
 
     // Calculate summary
-    const totalAssets = assets.reduce((sum, asset) => sum + Number(asset.currentValue), 0)
-    const totalLiabilities = liabilities.reduce((sum, liability) => sum + Number(liability.currentAmount), 0)
+    const totalAssets = assets.reduce(
+      (sum, asset) => sum + Number(asset.currentValue),
+      0
+    )
+    const totalLiabilities = liabilities.reduce(
+      (sum, liability) => sum + Number(liability.currentAmount),
+      0
+    )
     const netWorth = totalAssets - totalLiabilities
-    const yearlyGoal = 100000000 // Default 1억원
-    const achievementRate = yearlyGoal > 0 ? (netWorth / yearlyGoal) * 100 : 0
 
     const summary: AssetSummary = {
       totalAssets,
       totalLiabilities,
       netWorth,
-      yearlyGoal,
-      achievementRate: Math.max(0, Math.min(100, achievementRate)),
     }
 
     return {
@@ -89,7 +87,9 @@ class AssetActions extends BaseServerAction {
   /**
    * Create default asset categories
    */
-  async createDefaultAssetCategories(organizationId: string): Promise<{ success: boolean }> {
+  async createDefaultAssetCategories(
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     await this.validateAuth(organizationId)
 
     const defaultCategories = [
@@ -102,7 +102,7 @@ class AssetActions extends BaseServerAction {
       { name: '기타 부채', type: 'liability' },
     ]
 
-    await withDatabaseTransaction(async (tx) => {
+    await withDatabaseTransaction(async tx => {
       for (const category of defaultCategories) {
         await tx.assetCategory.create({
           data: {
@@ -135,7 +135,13 @@ class AssetActions extends BaseServerAction {
     await this.validateAuth(input.organizationId)
 
     // Validate required fields
-    this.validateRequiredFields(input, ['name', 'type', 'categoryId', 'currentValue', 'organizationId'])
+    this.validateRequiredFields(input, [
+      'name',
+      'type',
+      'categoryId',
+      'currentValue',
+      'organizationId',
+    ])
 
     // Sanitize input
     const sanitizedInput = this.sanitizeInput(input)
@@ -149,7 +155,9 @@ class AssetActions extends BaseServerAction {
     })
 
     if (!category) {
-      throw new Error(`${ServerActionError.NOT_FOUND}: Asset category not found`)
+      throw new Error(
+        `${ServerActionError.NOT_FOUND}: Asset category not found`
+      )
     }
 
     const asset = await prisma.asset.create({
@@ -159,7 +167,9 @@ class AssetActions extends BaseServerAction {
         type: sanitizedInput.type!,
         categoryId: sanitizedInput.categoryId,
         currentValue: Number(sanitizedInput.currentValue),
-        targetValue: sanitizedInput.targetValue ? Number(sanitizedInput.targetValue) : undefined,
+        targetValue: sanitizedInput.targetValue
+          ? Number(sanitizedInput.targetValue)
+          : undefined,
         organizationId: sanitizedInput.organizationId!,
       },
     })
@@ -211,18 +221,26 @@ class AssetActions extends BaseServerAction {
       })
 
       if (!category) {
-        throw new Error(`${ServerActionError.NOT_FOUND}: Asset category not found`)
+        throw new Error(
+          `${ServerActionError.NOT_FOUND}: Asset category not found`
+        )
       }
     }
 
     // Prepare update data
     const updateData: any = {}
     if (sanitizedInput.name !== undefined) updateData.name = sanitizedInput.name
-    if (sanitizedInput.description !== undefined) updateData.description = sanitizedInput.description
+    if (sanitizedInput.description !== undefined)
+      updateData.description = sanitizedInput.description
     if (sanitizedInput.type !== undefined) updateData.type = sanitizedInput.type
-    if (sanitizedInput.categoryId !== undefined) updateData.categoryId = sanitizedInput.categoryId
-    if (sanitizedInput.currentValue !== undefined) updateData.currentValue = Number(sanitizedInput.currentValue)
-    if (sanitizedInput.targetValue !== undefined) updateData.targetValue = sanitizedInput.targetValue ? Number(sanitizedInput.targetValue) : undefined
+    if (sanitizedInput.categoryId !== undefined)
+      updateData.categoryId = sanitizedInput.categoryId
+    if (sanitizedInput.currentValue !== undefined)
+      updateData.currentValue = Number(sanitizedInput.currentValue)
+    if (sanitizedInput.targetValue !== undefined)
+      updateData.targetValue = sanitizedInput.targetValue
+        ? Number(sanitizedInput.targetValue)
+        : undefined
 
     const asset = await prisma.asset.update({
       where: { id: input.id },
@@ -238,7 +256,10 @@ class AssetActions extends BaseServerAction {
   /**
    * Delete asset
    */
-  async deleteAsset(assetId: string, organizationId: string): Promise<{ success: boolean }> {
+  async deleteAsset(
+    assetId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     await this.validateAuth(organizationId)
     this.validateUUID(assetId, 'Asset ID')
 
@@ -278,7 +299,12 @@ class AssetActions extends BaseServerAction {
     await this.validateAuth(input.organizationId)
 
     // Validate required fields
-    this.validateRequiredFields(input, ['name', 'type', 'currentAmount', 'organizationId'])
+    this.validateRequiredFields(input, [
+      'name',
+      'type',
+      'currentAmount',
+      'organizationId',
+    ])
 
     // Sanitize input
     const sanitizedInput = this.sanitizeInput(input)
@@ -331,9 +357,11 @@ class AssetActions extends BaseServerAction {
     // Prepare update data
     const updateData: any = {}
     if (sanitizedInput.name !== undefined) updateData.name = sanitizedInput.name
-    if (sanitizedInput.description !== undefined) updateData.description = sanitizedInput.description || null
+    if (sanitizedInput.description !== undefined)
+      updateData.description = sanitizedInput.description || null
     if (sanitizedInput.type !== undefined) updateData.type = sanitizedInput.type
-    if (sanitizedInput.currentAmount !== undefined) updateData.currentAmount = Number(sanitizedInput.currentAmount)
+    if (sanitizedInput.currentAmount !== undefined)
+      updateData.currentAmount = Number(sanitizedInput.currentAmount)
 
     const liability = await prisma.liability.update({
       where: { id: input.id },
@@ -349,7 +377,10 @@ class AssetActions extends BaseServerAction {
   /**
    * Delete liability
    */
-  async deleteLiability(liabilityId: string, organizationId: string): Promise<{ success: boolean }> {
+  async deleteLiability(
+    liabilityId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     await this.validateAuth(organizationId)
     this.validateUUID(liabilityId, 'Liability ID')
 
@@ -381,12 +412,13 @@ class AssetActions extends BaseServerAction {
 const assetActions = new AssetActions()
 
 // Export server actions with error handling
-export const getAssetData = createServerAction(
-  async (organizationId: string) => assetActions.getAssetData(organizationId)
+export const getAssetData = createServerAction(async (organizationId: string) =>
+  assetActions.getAssetData(organizationId)
 )
 
 export const createDefaultAssetCategories = createServerAction(
-  async (organizationId: string) => assetActions.createDefaultAssetCategories(organizationId)
+  async (organizationId: string) =>
+    assetActions.createDefaultAssetCategories(organizationId)
 )
 
 export const createAsset = createServerAction(

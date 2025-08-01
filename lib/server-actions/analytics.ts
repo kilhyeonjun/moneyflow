@@ -3,13 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { validateUserAndOrganization } from '@/lib/auth-server'
-import {
-  ServerActionError,
-} from '@/lib/types'
-import {
-  BaseServerAction,
-  createServerAction,
-} from './base'
+import { ServerActionError } from '@/lib/types'
+import { BaseServerAction, createServerAction } from './base'
 
 // Analytics related types
 interface MonthlyData {
@@ -90,7 +85,9 @@ class AnalyticsActions extends BaseServerAction {
   ): Promise<AnalyticsData> {
     // Get monthly transaction data for the year
     const monthlyData: MonthlyData[] = []
-    const categoryData: { [key: string]: { amount: number; count: number; name: string } } = {}
+    const categoryData: {
+      [key: string]: { amount: number; count: number; name: string }
+    } = {}
 
     for (let m = 1; m <= 12; m++) {
       const startDate = new Date(year, m - 1, 1)
@@ -113,14 +110,14 @@ class AnalyticsActions extends BaseServerAction {
       // Calculate monthly totals
       let income = 0
       let expense = 0
-      
+
       transactions.forEach(transaction => {
         const amount = Number(transaction.amount)
         if (amount > 0) {
           income += amount
         } else {
           expense += Math.abs(amount)
-          
+
           // Track category data for expense analysis
           if (transaction.category) {
             const categoryName = transaction.category.name
@@ -138,7 +135,7 @@ class AnalyticsActions extends BaseServerAction {
       })
 
       const savings = income - expense
-      
+
       monthlyData.push({
         month: `${m}월`,
         monthNumber: m,
@@ -151,22 +148,40 @@ class AnalyticsActions extends BaseServerAction {
     }
 
     // Get current month data
-    const currentMonthData = month ? monthlyData.find(m => m.monthNumber === month) : null
+    const currentMonthData = month
+      ? monthlyData.find(m => m.monthNumber === month)
+      : null
 
     // Create category analysis with colors
     const colors = [
-      '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
-      '#FF9FF3', '#54A0FF', '#5F27CD', '#00D2D3', '#FF9F43',
-      '#10AC84', '#EE5A24', '#0F3460', '#F25287', '#5F27CD'
+      '#FF6B6B',
+      '#4ECDC4',
+      '#45B7D1',
+      '#96CEB4',
+      '#FECA57',
+      '#FF9FF3',
+      '#54A0FF',
+      '#5F27CD',
+      '#00D2D3',
+      '#FF9F43',
+      '#10AC84',
+      '#EE5A24',
+      '#0F3460',
+      '#F25287',
+      '#5F27CD',
     ]
-    
-    const totalExpense = Object.values(categoryData).reduce((sum, cat) => sum + cat.amount, 0)
+
+    const totalExpense = Object.values(categoryData).reduce(
+      (sum, cat) => sum + cat.amount,
+      0
+    )
     const categoryAnalysis: CategoryAnalysis[] = Object.values(categoryData)
       .map((cat, index) => ({
         name: cat.name,
         amount: cat.amount,
         count: cat.count,
-        percentage: totalExpense > 0 ? Math.round((cat.amount / totalExpense) * 100) : 0,
+        percentage:
+          totalExpense > 0 ? Math.round((cat.amount / totalExpense) * 100) : 0,
         color: colors[index % colors.length],
       }))
       .sort((a, b) => b.amount - a.amount)
@@ -199,7 +214,7 @@ class AnalyticsActions extends BaseServerAction {
     currentYear: number
   ): Promise<AnalyticsData> {
     const yearlyData: YearlyData[] = []
-    
+
     // Get data for current year and previous 4 years
     for (let y = currentYear - 4; y <= currentYear; y++) {
       const startDate = new Date(y, 0, 1)
@@ -219,7 +234,7 @@ class AnalyticsActions extends BaseServerAction {
       // Calculate yearly totals
       let income = 0
       let expense = 0
-      
+
       transactions.forEach(transaction => {
         const amount = Number(transaction.amount)
         if (amount > 0) {
@@ -230,15 +245,14 @@ class AnalyticsActions extends BaseServerAction {
       })
 
       const savings = income - expense
-      
+
       // Calculate growth rates (simplified)
       const prevYearData = yearlyData[yearlyData.length - 1]
-      const incomeGrowth = prevYearData && prevYearData.income > 0
-        ? ((income - prevYearData.income) / prevYearData.income) * 100
-        : 0
-      const netWorthGrowth = prevYearData
-        ? savings - prevYearData.savings
-        : 0
+      const incomeGrowth =
+        prevYearData && prevYearData.income > 0
+          ? ((income - prevYearData.income) / prevYearData.income) * 100
+          : 0
+      const netWorthGrowth = prevYearData ? savings - prevYearData.savings : 0
 
       yearlyData.push({
         year: y.toString(),
@@ -256,14 +270,20 @@ class AnalyticsActions extends BaseServerAction {
     const totalIncome = yearlyData.reduce((sum, y) => sum + y.income, 0)
     const totalExpense = yearlyData.reduce((sum, y) => sum + y.expense, 0)
     const totalSavings = totalIncome - totalExpense
-    const averageAnnualIncome = yearlyData.length > 0 ? totalIncome / yearlyData.length : 0
-    const averageAnnualExpense = yearlyData.length > 0 ? totalExpense / yearlyData.length : 0
-    const totalNetWorthGrowth = yearlyData.length > 0 
-      ? yearlyData[yearlyData.length - 1].netWorth - (yearlyData[0]?.netWorth || 0)
-      : 0
-    const averageIncomeGrowth = yearlyData.length > 1
-      ? yearlyData.slice(1).reduce((sum, y) => sum + y.incomeGrowth, 0) / (yearlyData.length - 1)
-      : 0
+    const averageAnnualIncome =
+      yearlyData.length > 0 ? totalIncome / yearlyData.length : 0
+    const averageAnnualExpense =
+      yearlyData.length > 0 ? totalExpense / yearlyData.length : 0
+    const totalNetWorthGrowth =
+      yearlyData.length > 0
+        ? yearlyData[yearlyData.length - 1].netWorth -
+          (yearlyData[0]?.netWorth || 0)
+        : 0
+    const averageIncomeGrowth =
+      yearlyData.length > 1
+        ? yearlyData.slice(1).reduce((sum, y) => sum + y.incomeGrowth, 0) /
+          (yearlyData.length - 1)
+        : 0
 
     const summary = {
       totalIncome,

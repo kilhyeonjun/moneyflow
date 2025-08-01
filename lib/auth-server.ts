@@ -24,8 +24,11 @@ type OrganizationMemberWithOrganization = Prisma.OrganizationMemberGetPayload<{
 export async function getCurrentUser() {
   try {
     const supabase = await createClient()
-    const { data: { user }, error } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
     if (error) {
       console.error('Error getting current user:', error)
       return null
@@ -44,11 +47,11 @@ export async function getCurrentUser() {
  */
 export async function requireAuth() {
   const user = await getCurrentUser()
-  
+
   if (!user) {
     throw new Error(ServerActionError.UNAUTHORIZED)
   }
-  
+
   return user
 }
 
@@ -137,7 +140,6 @@ export async function getUserOrganizations(userId: string) {
                 categories: true,
                 assets: true,
                 debts: true,
-                financialGoals: true,
               },
             },
           },
@@ -163,13 +165,16 @@ export async function getUserOrganizations(userId: string) {
 /**
  * Check if user has admin role in organization
  */
-export async function requireAdminRole(userId: string, organizationId: string): Promise<OrganizationMemberWithOrganization> {
+export async function requireAdminRole(
+  userId: string,
+  organizationId: string
+): Promise<OrganizationMemberWithOrganization> {
   const member = await checkOrganizationMembership(userId, organizationId)
-  
+
   if (!member || member.role !== 'admin') {
     throw new Error(ServerActionError.FORBIDDEN)
   }
-  
+
   return member
 }
 
@@ -218,7 +223,6 @@ export async function getOrganizationDetails(
           categories: true,
           assets: true,
           debts: true,
-          financialGoals: true,
         },
       },
     },
@@ -231,7 +235,8 @@ export async function getOrganizationDetails(
  * Utility function to validate UUID format
  */
 export function isValidUUID(uuid: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
   return uuidRegex.test(uuid)
 }
 
@@ -294,13 +299,17 @@ export async function withErrorHandling<T>(
     return createSuccessResponse(result)
   } catch (error) {
     console.error('Server action error:', error)
-    
+
     if (error instanceof Error) {
       // Check if it's one of our known error types (including UNAUTHORIZED)
-      if (Object.values(ServerActionError).includes(error.message as ServerActionError)) {
+      if (
+        Object.values(ServerActionError).includes(
+          error.message as ServerActionError
+        )
+      ) {
         return createErrorResponse(error.message)
       }
-      
+
       // Handle Prisma errors
       if (error.message.includes('Unique constraint failed')) {
         return createErrorResponse(
@@ -308,7 +317,7 @@ export async function withErrorHandling<T>(
           '중복된 데이터가 있습니다.'
         )
       }
-      
+
       if (error.message.includes('Foreign key constraint failed')) {
         return createErrorResponse(
           ServerActionError.VALIDATION_ERROR,
@@ -316,7 +325,7 @@ export async function withErrorHandling<T>(
         )
       }
     }
-    
+
     return createErrorResponse(ServerActionError.UNKNOWN_ERROR)
   }
 }
@@ -330,15 +339,15 @@ export function extractOrganizationId(
   if (typeof input === 'string') {
     return input
   }
-  
+
   if ('organizationId' in input) {
     return input.organizationId
   }
-  
+
   if ('organization_id' in input) {
     return input.organization_id
   }
-  
+
   throw new Error(ServerActionError.VALIDATION_ERROR)
 }
 
@@ -364,14 +373,16 @@ export function validateRequiredFields<T extends Record<string, any>>(
 /**
  * Sanitize input data by removing undefined/null values
  */
-export function sanitizeInput<T extends Record<string, any>>(data: T): Partial<T> {
+export function sanitizeInput<T extends Record<string, any>>(
+  data: T
+): Partial<T> {
   const sanitized: Partial<T> = {}
-  
+
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined && value !== null && value !== '') {
       sanitized[key as keyof T] = value
     }
   }
-  
+
   return sanitized
 }

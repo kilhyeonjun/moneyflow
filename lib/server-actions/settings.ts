@@ -55,7 +55,10 @@ class SettingsActions extends BaseServerAction {
     this.validateUUID(organizationId, 'Organization ID')
 
     // Check organization membership
-    const membership = await checkOrganizationMembership(user.id, organizationId)
+    const membership = await checkOrganizationMembership(
+      user.id,
+      organizationId
+    )
     if (!membership) {
       throw new Error(ServerActionError.FORBIDDEN)
     }
@@ -97,7 +100,9 @@ class SettingsActions extends BaseServerAction {
   /**
    * Get organization invitations (admin only)
    */
-  async getOrganizationInvitations(organizationId: string): Promise<InvitationData[]> {
+  async getOrganizationInvitations(
+    organizationId: string
+  ): Promise<InvitationData[]> {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
 
@@ -142,8 +147,11 @@ class SettingsActions extends BaseServerAction {
     // Update user metadata via Supabase Auth API
     // Note: This would typically require Supabase Admin API or service role
     // For now, this is a placeholder - in production you'd integrate with Supabase Auth Admin API
-    
-    console.log('Profile update request:', { userId: user.id, ...sanitizedInput })
+
+    console.log('Profile update request:', {
+      userId: user.id,
+      ...sanitizedInput,
+    })
 
     // Revalidate relevant pages
     revalidatePath('/settings')
@@ -154,7 +162,10 @@ class SettingsActions extends BaseServerAction {
   /**
    * Resend invitation (admin only)
    */
-  async resendInvitation(invitationId: string, organizationId: string): Promise<{ success: boolean }> {
+  async resendInvitation(
+    invitationId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     const user = await requireAuth()
     this.validateUUID(invitationId, 'Invitation ID')
     this.validateUUID(organizationId, 'Organization ID')
@@ -201,11 +212,13 @@ const settingsActions = new SettingsActions()
 
 // Export server actions with error handling
 export const getSettingsData = createServerAction(
-  async (organizationId: string) => settingsActions.getSettingsData(organizationId)
+  async (organizationId: string) =>
+    settingsActions.getSettingsData(organizationId)
 )
 
 export const getOrganizationInvitations = createServerAction(
-  async (organizationId: string) => settingsActions.getOrganizationInvitations(organizationId)
+  async (organizationId: string) =>
+    settingsActions.getOrganizationInvitations(organizationId)
 )
 
 export const updateUserProfile = createServerAction(

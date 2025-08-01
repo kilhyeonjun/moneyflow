@@ -9,7 +9,7 @@ export function createClient() {
         persistSession: true,
         detectSessionInUrl: true,
         autoRefreshToken: true,
-      }
+      },
     }
   )
 }

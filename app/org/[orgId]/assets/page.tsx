@@ -26,7 +26,6 @@ import {
 } from '@heroui/react'
 import {
   TrendingUp,
-  Target,
   Home,
   PiggyBank,
   Wallet,
@@ -50,7 +49,10 @@ import {
   updateLiability,
   deleteLiability,
 } from '@/lib/server-actions/assets'
-import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
+import {
+  handleServerActionResult,
+  useErrorHandler,
+} from '@/components/error/ErrorBoundary'
 import { createClient } from '@/lib/supabase'
 
 // Prisma 타입 import
@@ -70,8 +72,6 @@ interface AssetSummary {
   totalAssets: number
   totalLiabilities: number
   netWorth: number
-  yearlyGoal: number
-  achievementRate: number
 }
 
 export default function AssetsPage() {
@@ -110,14 +110,11 @@ export default function AssetsPage() {
     description: '',
     categoryId: '',
     currentValue: '',
-    targetValue: '',
   })
   const [assetSummary, setAssetSummary] = useState<AssetSummary>({
     totalAssets: 0,
     totalLiabilities: 0,
     netWorth: 0,
-    yearlyGoal: 100000000, // 기본 목표 1억원
-    achievementRate: 0,
   })
   const [assetCategories, setAssetCategories] = useState<AssetCategory[]>([])
   const [assets, setAssets] = useState<AssetWithCategory[]>([])
@@ -184,8 +181,10 @@ export default function AssetsPage() {
 
   const createDefaultCategories = async (orgId: string) => {
     try {
-      const data = handleServerActionResult(await createDefaultAssetCategories(orgId))
-      
+      const data = handleServerActionResult(
+        await createDefaultAssetCategories(orgId)
+      )
+
       console.log('초기 데이터 생성 완료:', data)
       toast.success('기본 카테고리가 생성되었습니다!')
     } catch (error) {
@@ -221,8 +220,10 @@ export default function AssetsPage() {
       }
 
       // Get selected category to determine asset type
-      const selectedCategory = assetCategories.find(cat => cat.id === formData.categoryId)
-      
+      const selectedCategory = assetCategories.find(
+        cat => cat.id === formData.categoryId
+      )
+
       const assetData = {
         name: formData.name,
         description: formData.description || undefined,
@@ -261,7 +262,6 @@ export default function AssetsPage() {
       description: asset.description ?? '',
       categoryId: asset.categoryId as string,
       currentValue: asset.currentValue.toString(),
-      targetValue: asset.targetValue ? asset.targetValue.toString() : '',
     })
     onEditOpen()
   }
@@ -285,8 +285,10 @@ export default function AssetsPage() {
 
     try {
       // Get selected category to determine asset type
-      const selectedCategory = assetCategories.find(cat => cat.id === editFormData.categoryId)
-      
+      const selectedCategory = assetCategories.find(
+        cat => cat.id === editFormData.categoryId
+      )
+
       const assetData = {
         id: selectedAsset.id,
         name: editFormData.name,
@@ -294,9 +296,6 @@ export default function AssetsPage() {
         type: selectedCategory?.type || selectedAsset.type, // Use category type or keep existing type
         categoryId: editFormData.categoryId,
         currentValue: parseFloat(editFormData.currentValue),
-        targetValue: editFormData.targetValue
-          ? parseFloat(editFormData.targetValue)
-          : undefined,
         organizationId: orgId,
       }
 
@@ -330,7 +329,9 @@ export default function AssetsPage() {
     setDeleting(true)
 
     try {
-      const data = handleServerActionResult(await deleteAsset(selectedAsset.id, orgId))
+      const data = handleServerActionResult(
+        await deleteAsset(selectedAsset.id, orgId)
+      )
 
       toast.success('자산이 성공적으로 삭제되었습니다! 🗑️')
 
@@ -421,7 +422,7 @@ export default function AssetsPage() {
       )}
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <Card className="p-4">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <h3 className="text-sm font-medium text-gray-600">총 자산</h3>
@@ -455,26 +456,6 @@ export default function AssetsPage() {
             <div className="text-2xl font-bold text-green-600">
               {formatCurrency(assetSummary.netWorth)}
             </div>
-          </CardBody>
-        </Card>
-
-        <Card className="p-4">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <h3 className="text-sm font-medium text-gray-600">목표 달성률</h3>
-            <Target className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardBody className="pt-0">
-            <div className="text-2xl font-bold text-purple-600">
-              {assetSummary.achievementRate.toFixed(1)}%
-            </div>
-            <Progress
-              value={Math.max(
-                0,
-                Math.min(100, assetSummary.achievementRate + 100)
-              )}
-              className="mt-2"
-              color={assetSummary.achievementRate >= 0 ? 'success' : 'danger'}
-            />
           </CardBody>
         </Card>
       </div>
@@ -703,20 +684,6 @@ export default function AssetsPage() {
                 }
                 startContent={<span className="text-gray-500">₩</span>}
                 isRequired
-              />
-
-              <Input
-                label="목표 가치 (선택사항)"
-                placeholder="0"
-                type="number"
-                value={editFormData.targetValue}
-                onChange={e =>
-                  setEditFormData({
-                    ...editFormData,
-                    targetValue: e.target.value,
-                  })
-                }
-                startContent={<span className="text-gray-500">₩</span>}
               />
 
               <Textarea

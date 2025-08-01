@@ -23,8 +23,11 @@ export default function SignupPage() {
     const checkAuthAndRedirect = async () => {
       try {
         // 현재 세션 확인
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession()
+
         if (error) {
           // 토큰 관련 오류 발생 시 강제 로그아웃
           console.warn('토큰 확인 중 오류:', error)

@@ -3,13 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import { validateUserAndOrganization } from '@/lib/auth-server'
-import {
-  ServerActionError,
-} from '@/lib/types'
-import {
-  BaseServerAction,
-  createServerAction,
-} from './base'
+import { ServerActionError } from '@/lib/types'
+import { BaseServerAction, createServerAction } from './base'
 
 // Import Prisma types directly
 import type { OrganizationInvitation, OrganizationMember } from '@prisma/client'
@@ -35,7 +30,7 @@ class InvitationActions extends BaseServerAction {
 
     // Get pending invitations
     const invitations = await prisma.organizationInvitation.findMany({
-      where: { 
+      where: {
         organizationId,
         status: 'pending',
       },
@@ -122,7 +117,10 @@ class InvitationActions extends BaseServerAction {
   /**
    * Cancel organization invitation
    */
-  async cancelInvitation(invitationId: string, organizationId: string): Promise<{ success: boolean }> {
+  async cancelInvitation(
+    invitationId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     await this.validateAuth(organizationId)
     this.validateUUID(invitationId, 'Invitation ID')
 
@@ -195,7 +193,7 @@ class InvitationActions extends BaseServerAction {
     }
 
     // Use transaction to ensure consistency
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async tx => {
       // Create organization member
       await tx.organizationMember.create({
         data: {
@@ -225,7 +223,10 @@ class InvitationActions extends BaseServerAction {
   /**
    * Remove organization member
    */
-  async removeMember(memberId: string, organizationId: string): Promise<{ success: boolean }> {
+  async removeMember(
+    memberId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     await this.validateAuth(organizationId)
     this.validateUUID(memberId, 'Member ID')
 
@@ -261,7 +262,8 @@ class InvitationActions extends BaseServerAction {
    * Generate secure invitation token
    */
   private generateInvitationToken(): string {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    const characters =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     let result = ''
     for (let i = 0; i < 32; i++) {
       result += characters.charAt(Math.floor(Math.random() * characters.length))
@@ -275,15 +277,13 @@ const invitationActions = new InvitationActions()
 
 // Export server actions with error handling
 export const getOrganizationData = createServerAction(
-  async (organizationId: string) => invitationActions.getOrganizationData(organizationId)
+  async (organizationId: string) =>
+    invitationActions.getOrganizationData(organizationId)
 )
 
 export const createInvitation = createServerAction(
-  async (input: {
-    organizationId: string
-    email: string
-    role: string
-  }) => invitationActions.createInvitation(input)
+  async (input: { organizationId: string; email: string; role: string }) =>
+    invitationActions.createInvitation(input)
 )
 
 export const cancelInvitation = createServerAction(
@@ -292,10 +292,8 @@ export const cancelInvitation = createServerAction(
 )
 
 export const acceptInvitation = createServerAction(
-  async (input: {
-    token: string
-    userId: string
-  }) => invitationActions.acceptInvitation(input)
+  async (input: { token: string; userId: string }) =>
+    invitationActions.acceptInvitation(input)
 )
 
 export const removeMember = createServerAction(

@@ -24,8 +24,14 @@ import {
 import { createClient } from '@/lib/supabase'
 import { showToast } from '@/lib/utils/toast'
 import { LoadingSpinner, PageLoading } from '@/components/ui/LoadingStates'
-import { getInvitationByToken, acceptInvitation } from '@/lib/server-actions/organizations'
-import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
+import {
+  getInvitationByToken,
+  acceptInvitation,
+} from '@/lib/server-actions/organizations'
+import {
+  handleServerActionResult,
+  useErrorHandler,
+} from '@/components/error/ErrorBoundary'
 
 interface InvitationData {
   id: string
@@ -66,7 +72,9 @@ export default function InvitePage() {
       setLoading(true)
       setError(null)
 
-      setInvitation(handleServerActionResult(await getInvitationByToken(token)) || null)
+      setInvitation(
+        handleServerActionResult(await getInvitationByToken(token)) || null
+      )
     } catch (error: any) {
       const errorMessage = handleError(error, 'loadInvitation')
       if (errorMessage) {
@@ -163,8 +171,10 @@ export default function InvitePage() {
   const expiresAt = invitation.expiresAt
   const isValidDate = !isNaN(expiresAt.getTime())
   const isExpired = invitation.isExpired
-  const expiresIn = isValidDate 
-    ? Math.ceil((expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+  const expiresIn = isValidDate
+    ? Math.ceil(
+        (expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      )
     : 0
 
   return (
@@ -228,10 +238,9 @@ export default function InvitePage() {
                   <p className="text-sm text-gray-500">초대 만료</p>
                   <div className="flex items-center space-x-2">
                     <p className="font-medium">
-                      {isValidDate 
+                      {isValidDate
                         ? expiresAt.toLocaleDateString('ko-KR')
-                        : '알 수 없는 날짜'
-                      }
+                        : '알 수 없는 날짜'}
                     </p>
                     {!isExpired && (
                       <Chip
@@ -295,8 +304,10 @@ export default function InvitePage() {
               </h3>
               <p className="text-red-600">
                 이 초대는{' '}
-                {isValidDate ? expiresAt.toLocaleDateString('ko-KR') : '알 수 없는 날짜'}에
-                만료되었습니다. 새로운 초대를 요청해주세요.
+                {isValidDate
+                  ? expiresAt.toLocaleDateString('ko-KR')
+                  : '알 수 없는 날짜'}
+                에 만료되었습니다. 새로운 초대를 요청해주세요.
               </p>
             </CardBody>
           </Card>

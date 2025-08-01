@@ -63,10 +63,7 @@ class CategoryActions extends BaseServerAction {
           },
         },
       },
-      orderBy: [
-        { level: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ level: 'asc' }, { name: 'asc' }],
     })
 
     return categories
@@ -174,14 +171,22 @@ class CategoryActions extends BaseServerAction {
   /**
    * Create a new category
    */
-  async createCategory(input: CategoryCreateInput): Promise<CategoryWithHierarchy> {
+  async createCategory(
+    input: CategoryCreateInput
+  ): Promise<CategoryWithHierarchy> {
     await this.validateAuth(input.organizationId)
 
     // Validate required fields
-    this.validateRequiredFields(input, ['organizationId', 'name', 'transactionType'])
+    this.validateRequiredFields(input, [
+      'organizationId',
+      'name',
+      'transactionType',
+    ])
 
     // Validate transaction type
-    const validatedTransactionType = validateTransactionType(input.transactionType)
+    const validatedTransactionType = validateTransactionType(
+      input.transactionType
+    )
 
     let parentCategory = null
     let level = 0
@@ -198,18 +203,24 @@ class CategoryActions extends BaseServerAction {
       })
 
       if (!parentCategory) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Parent category not found`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Parent category not found`
+        )
       }
 
       // Validate that parent and child have the same transaction type
       if (parentCategory.transactionType !== validatedTransactionType) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Child category must have the same transaction type as parent`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Child category must have the same transaction type as parent`
+        )
       }
 
       // Calculate level (max 3 levels: 0, 1, 2)
       level = parentCategory.level + 1
       if (level > 2) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Maximum category depth (3 levels) exceeded`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Maximum category depth (3 levels) exceeded`
+        )
       }
     }
 
@@ -224,7 +235,9 @@ class CategoryActions extends BaseServerAction {
     })
 
     if (existingCategory) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Category with this name already exists at this level`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Category with this name already exists at this level`
+      )
     }
 
     // Create category
@@ -233,12 +246,12 @@ class CategoryActions extends BaseServerAction {
       transactionType: validatedTransactionType,
       level,
       organization: {
-        connect: { id: input.organizationId }
+        connect: { id: input.organizationId },
       },
       ...(input.parentId && {
         parent: {
-          connect: { id: input.parentId }
-        }
+          connect: { id: input.parentId },
+        },
       }),
       ...(input.icon && { icon: input.icon }),
       ...(input.color && { color: input.color }),
@@ -283,13 +296,17 @@ class CategoryActions extends BaseServerAction {
   /**
    * Update an existing category
    */
-  async updateCategory(input: CategoryUpdateInput): Promise<CategoryWithHierarchy> {
+  async updateCategory(
+    input: CategoryUpdateInput
+  ): Promise<CategoryWithHierarchy> {
     this.validateUUID(input.id, 'Category ID')
-    
+
     if (!input.organizationId) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Organization ID is required`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Organization ID is required`
+      )
     }
-    
+
     await this.validateAuth(input.organizationId)
 
     // Check if category exists
@@ -318,15 +335,21 @@ class CategoryActions extends BaseServerAction {
 
     // Validate transaction type if being updated
     if (updateData.transactionType) {
-      updateData.transactionType = validateTransactionType(updateData.transactionType)
+      updateData.transactionType = validateTransactionType(
+        updateData.transactionType
+      )
 
       // Check if category has children or transactions - if so, transaction type cannot be changed
       if (existingCategory.children.length > 0) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot change transaction type of category with child categories`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Cannot change transaction type of category with child categories`
+        )
       }
 
       if (existingCategory.transactions.length > 0) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot change transaction type of category with existing transactions`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Cannot change transaction type of category with existing transactions`
+        )
       }
     }
 
@@ -337,13 +360,20 @@ class CategoryActions extends BaseServerAction {
 
         // Prevent circular references
         if (updateData.parentId === input.id) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Category cannot be its own parent`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Category cannot be its own parent`
+          )
         }
 
         // Check if the new parent would create a circular reference
-        const isCircular = await this.checkCircularReference(input.id, updateData.parentId)
+        const isCircular = await this.checkCircularReference(
+          input.id,
+          updateData.parentId
+        )
         if (isCircular) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: This would create a circular reference`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: This would create a circular reference`
+          )
         }
 
         const newParent = await prisma.category.findFirst({
@@ -354,19 +384,26 @@ class CategoryActions extends BaseServerAction {
         })
 
         if (!newParent) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Parent category not found`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Parent category not found`
+          )
         }
 
         // Validate transaction types match
-        const finalTransactionType = updateData.transactionType || existingCategory.transactionType
+        const finalTransactionType =
+          updateData.transactionType || existingCategory.transactionType
         if (newParent.transactionType !== finalTransactionType) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Parent and child categories must have the same transaction type`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Parent and child categories must have the same transaction type`
+          )
         }
 
         // Calculate new level
         const newLevel = newParent.level + 1
         if (newLevel > 2) {
-          throw new Error(`${ServerActionError.VALIDATION_ERROR}: Maximum category depth (3 levels) exceeded`)
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Maximum category depth (3 levels) exceeded`
+          )
         }
 
         updateData.level = newLevel
@@ -378,8 +415,14 @@ class CategoryActions extends BaseServerAction {
 
     // Check for name conflicts if name is being updated
     if (updateData.name) {
-      const finalParentId = updateData.parentId !== undefined ? updateData.parentId : existingCategory.parentId
-      const finalLevel = updateData.level !== undefined ? updateData.level : existingCategory.level
+      const finalParentId =
+        updateData.parentId !== undefined
+          ? updateData.parentId
+          : existingCategory.parentId
+      const finalLevel =
+        updateData.level !== undefined
+          ? updateData.level
+          : existingCategory.level
 
       const conflictingCategory = await prisma.category.findFirst({
         where: {
@@ -392,7 +435,9 @@ class CategoryActions extends BaseServerAction {
       })
 
       if (conflictingCategory) {
-        throw new Error(`${ServerActionError.VALIDATION_ERROR}: Category with this name already exists at this level`)
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Category with this name already exists at this level`
+        )
       }
     }
 
@@ -436,7 +481,10 @@ class CategoryActions extends BaseServerAction {
   /**
    * Delete a category
    */
-  async deleteCategory(categoryId: string, organizationId: string): Promise<{ success: boolean }> {
+  async deleteCategory(
+    categoryId: string,
+    organizationId: string
+  ): Promise<{ success: boolean }> {
     this.validateUUID(categoryId, 'Category ID')
     await this.validateAuth(organizationId)
 
@@ -463,12 +511,16 @@ class CategoryActions extends BaseServerAction {
 
     // Check if category has children
     if (category.children.length > 0) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot delete category with child categories. Delete children first.`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Cannot delete category with child categories. Delete children first.`
+      )
     }
 
     // Check if category has transactions
     if (category.transactions.length > 0) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Cannot delete category with existing transactions. Move or delete transactions first.`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Cannot delete category with existing transactions. Move or delete transactions first.`
+      )
     }
 
     // Delete the category
@@ -491,23 +543,24 @@ class CategoryActions extends BaseServerAction {
 
     // Get default categories from the database
     const defaultCategories = await prisma.defaultCategory.findMany({
-      orderBy: [
-        { level: 'asc' },
-        { name: 'asc' },
-      ],
+      orderBy: [{ level: 'asc' }, { name: 'asc' }],
     })
 
     if (defaultCategories.length === 0) {
-      throw new Error(`${ServerActionError.NOT_FOUND}: No default categories found`)
+      throw new Error(
+        `${ServerActionError.NOT_FOUND}: No default categories found`
+      )
     }
 
     // Create categories in a transaction to ensure consistency
-    const createdCategories = await withDatabaseTransaction(async (tx) => {
+    const createdCategories = await withDatabaseTransaction(async tx => {
       const categoryMap = new Map<string, string>() // Maps default category name to created category ID
       const results: Category[] = []
 
       // First pass: create root categories (level 0)
-      for (const defaultCategory of defaultCategories.filter(c => c.level === 0)) {
+      for (const defaultCategory of defaultCategories.filter(
+        c => c.level === 0
+      )) {
         const category = await tx.category.create({
           data: {
             organizationId,
@@ -524,10 +577,16 @@ class CategoryActions extends BaseServerAction {
       }
 
       // Second pass: create level 1 categories
-      for (const defaultCategory of defaultCategories.filter(c => c.level === 1)) {
-        const parentId = defaultCategory.parentName ? categoryMap.get(defaultCategory.parentName) : null
+      for (const defaultCategory of defaultCategories.filter(
+        c => c.level === 1
+      )) {
+        const parentId = defaultCategory.parentName
+          ? categoryMap.get(defaultCategory.parentName)
+          : null
         if (defaultCategory.parentName && !parentId) {
-          console.warn(`Parent category '${defaultCategory.parentName}' not found for '${defaultCategory.name}'`)
+          console.warn(
+            `Parent category '${defaultCategory.parentName}' not found for '${defaultCategory.name}'`
+          )
           continue
         }
 
@@ -547,10 +606,16 @@ class CategoryActions extends BaseServerAction {
       }
 
       // Third pass: create level 2 categories
-      for (const defaultCategory of defaultCategories.filter(c => c.level === 2)) {
-        const parentId = defaultCategory.parentName ? categoryMap.get(defaultCategory.parentName) : null
+      for (const defaultCategory of defaultCategories.filter(
+        c => c.level === 2
+      )) {
+        const parentId = defaultCategory.parentName
+          ? categoryMap.get(defaultCategory.parentName)
+          : null
         if (defaultCategory.parentName && !parentId) {
-          console.warn(`Parent category '${defaultCategory.parentName}' not found for '${defaultCategory.name}'`)
+          console.warn(
+            `Parent category '${defaultCategory.parentName}' not found for '${defaultCategory.name}'`
+          )
           continue
         }
 
@@ -582,7 +647,10 @@ class CategoryActions extends BaseServerAction {
   /**
    * Check for circular references when changing parent
    */
-  private async checkCircularReference(categoryId: string, potentialParentId: string): Promise<boolean> {
+  private async checkCircularReference(
+    categoryId: string,
+    potentialParentId: string
+  ): Promise<boolean> {
     let currentId: string | null = potentialParentId
 
     while (currentId) {
@@ -590,10 +658,11 @@ class CategoryActions extends BaseServerAction {
         return true // Circular reference found
       }
 
-      const parent: { parentId: string | null } | null = await prisma.category.findUnique({
-        where: { id: currentId },
-        select: { parentId: true },
-      })
+      const parent: { parentId: string | null } | null =
+        await prisma.category.findUnique({
+          where: { id: currentId },
+          select: { parentId: true },
+        })
 
       currentId = parent?.parentId || null
     }
@@ -622,13 +691,11 @@ export const getCategory = createServerAction(
 )
 
 export const createCategory = createServerAction(
-  async (input: CategoryCreateInput) =>
-    categoryActions.createCategory(input)
+  async (input: CategoryCreateInput) => categoryActions.createCategory(input)
 )
 
 export const updateCategory = createServerAction(
-  async (input: CategoryUpdateInput) =>
-    categoryActions.updateCategory(input)
+  async (input: CategoryUpdateInput) => categoryActions.updateCategory(input)
 )
 
 export const deleteCategory = createServerAction(

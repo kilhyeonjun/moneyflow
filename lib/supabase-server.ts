@@ -49,7 +49,9 @@ export function createAdminClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       cookies: {
-        get() { return undefined },
+        get() {
+          return undefined
+        },
         set() {},
         remove() {},
       },
