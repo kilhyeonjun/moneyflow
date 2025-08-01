@@ -162,27 +162,17 @@ export default function PaymentMethodSelect({
       size={size}
       variant={variant}
       isLoading={loading}
-      startContent={
-        value && paymentMethods.length > 0 ? (
-          (() => {
-            const selectedMethod = paymentMethods.find(pm => pm.id === value)
-            return selectedMethod ? (
-              <div className={getTypeColor(selectedMethod.type)}>
-                {getTypeIcon(selectedMethod.type)}
-              </div>
-            ) : null
-          })()
-        ) : null
-      }
       renderValue={(items) => {
         if (items.length === 0) return placeholder
 
         return items.map((item) => {
           if (item.key === 'none') {
             return (
-              <div key={item.key} className="flex items-center gap-2 text-gray-500">
-                <AlertCircle className="w-4 h-4" />
-                <span>{noneOptionLabel}</span>
+              <div key={item.key} className="flex items-center gap-3 py-2 px-1 text-gray-500">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="w-4 h-4" />
+                </div>
+                <span className="leading-tight">{noneOptionLabel}</span>
               </div>
             )
           }
@@ -191,13 +181,13 @@ export default function PaymentMethodSelect({
           if (!paymentMethod) return null
 
           return (
-            <div key={item.key} className="flex items-center gap-2">
-              <div className={getTypeColor(paymentMethod.type)}>
+            <div key={item.key} className="flex items-center gap-3 py-2 px-1">
+              <div className={`${getTypeColor(paymentMethod.type)} flex-shrink-0`}>
                 {getTypeIcon(paymentMethod.type)}
               </div>
-              <div className="flex flex-col">
-                <span className="font-medium">{paymentMethod.name}</span>
-                <span className="text-xs text-gray-500">
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="font-medium leading-tight">{paymentMethod.name}</span>
+                <span className="text-xs text-gray-500 leading-tight">
                   {getSubtitle(paymentMethod)}
                 </span>
               </div>
