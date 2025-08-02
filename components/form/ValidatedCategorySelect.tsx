@@ -207,7 +207,11 @@ export default function ValidatedCategorySelect({
   const processedLabel = useMemo(() => {
     if (!label) return label
     if (isRequired && typeof label === 'string' && !label.includes('*')) {
-      return `${label} *`
+      return (
+        <span>
+          {label} <span className="text-danger">*</span>
+        </span>
+      )
     }
     return label
   }, [label, isRequired])
@@ -219,7 +223,6 @@ export default function ValidatedCategorySelect({
       onSelectionChange={handleSelectionChange}
       label={processedLabel}
       placeholder={placeholder}
-      isRequired={isRequired}
       isInvalid={!!currentError}
       errorMessage={currentError || undefined}
       size={size}
