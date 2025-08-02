@@ -137,14 +137,10 @@ export default function ValidatedInput({
     [internalError, externalError, props.onFocus]
   )
 
-  // 필수 필드 라벨 처리
+  // 필수 필드 라벨 처리 (CSS로 * 표시하므로 라벨에서는 제거)
   const processedLabel = useMemo(() => {
-    if (!label) return label
-    if (isRequired && typeof label === 'string' && !label.includes('*')) {
-      return `${label} *`
-    }
     return label
-  }, [label, isRequired])
+  }, [label])
 
   return (
     <Input

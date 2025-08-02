@@ -127,6 +127,15 @@ export default function OrganizationsPage() {
     // loadReceivedInvitations()
   }, [])
 
+  // 디버깅용: form validation 상태 추적
+  useEffect(() => {
+    console.log('Form validation state changed:', {
+      formData,
+      errors,
+      isValid
+    })
+  }, [formData, errors, isValid])
+
   const fetchOrganizations = async () => {
     setLoading(true)
     try {
@@ -468,7 +477,16 @@ export default function OrganizationsPage() {
               </Button>
               <Button
                 color="primary"
-                onPress={createOrganization}
+                onPress={() => {
+                  console.log('Button pressed - Debug info:', {
+                    isValid,
+                    creating,
+                    formData,
+                    errors,
+                    disabled: !isValid || creating
+                  })
+                  createOrganization()
+                }}
                 isLoading={creating}
                 disabled={!isValid || creating}
               >

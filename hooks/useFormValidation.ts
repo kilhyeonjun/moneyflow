@@ -92,8 +92,20 @@ export function useFormValidation<T extends Record<string, any>>(
 
   // validation 상태 계산
   const validationState = useMemo<FormValidationState<T>>(() => {
-    const hasErrors = Object.keys(errors).length > 0
-    const isValid = !hasErrors
+    // undefined 값들을 제거한 실제 에러만 계산
+    const actualErrors = Object.entries(errors).filter(([_, error]) => error != null)
+    const hasErrors = actualErrors.length > 0
+    
+    // 올바른 isValid 계산: 모든 필드가 유효해야 함
+    const isValid = !hasErrors && Object.keys(validationRules).every(fieldName => {
+      const key = fieldName as keyof T
+      const validator = validationRules[key]
+      if (!validator) return true
+      
+      const currentValue = data[key]
+      const error = validator(currentValue)
+      return error === null
+    })
 
     return {
       errors,
@@ -101,7 +113,7 @@ export function useFormValidation<T extends Record<string, any>>(
       hasErrors,
       touchedFields,
     }
-  }, [errors, touchedFields])
+  }, [errors, touchedFields, data, validationRules])
 
   // 단일 필드 validation
   const validateField = useCallback(
@@ -116,10 +128,15 @@ export function useFormValidation<T extends Record<string, any>>(
       const error = validator(value)
 
       if (showError) {
-        setErrors(prev => ({
-          ...prev,
-          [fieldName]: error || undefined,
-        }))
+        setErrors(prev => {
+          const newErrors = { ...prev }
+          if (error) {
+            newErrors[fieldName] = error
+          } else {
+            delete newErrors[fieldName]
+          }
+          return newErrors
+        })
       }
 
       return error
