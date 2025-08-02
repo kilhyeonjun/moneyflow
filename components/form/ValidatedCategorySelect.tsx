@@ -203,26 +203,14 @@ export default function ValidatedCategorySelect({
     ]
   )
 
-  // 필수 필드 라벨 처리
-  const processedLabel = useMemo(() => {
-    if (!label) return label
-    if (isRequired && typeof label === 'string' && !label.includes('*')) {
-      return (
-        <span>
-          {label} <span className="text-danger">*</span>
-        </span>
-      )
-    }
-    return label
-  }, [label, isRequired])
-
   return (
     <HierarchicalCategorySelect
       organizationId={organizationId}
       value={value}
       onSelectionChange={handleSelectionChange}
-      label={processedLabel}
+      label={label}
       placeholder={placeholder}
+      isRequired={isRequired}
       isInvalid={!!currentError}
       errorMessage={currentError || undefined}
       size={size}

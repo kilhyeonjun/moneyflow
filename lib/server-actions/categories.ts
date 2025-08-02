@@ -149,6 +149,59 @@ class CategoriesActions extends BaseServerAction {
   }
 
   /**
+   * Get all categories for an organization (optimized for category selects)
+   */
+  async getAllCategories(
+    organizationId: string,
+    includeChildren: boolean = true,
+    lightweight: boolean = false
+  ): Promise<ReturnType<typeof transformCategoryForFrontend>[]> {
+    await this.validateAuth(organizationId)
+
+    const categories = await prisma.category.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+      },
+      include: {
+        children: includeChildren
+          ? {
+              select: {
+                id: true,
+                name: true,
+                type: true,
+                displayOrder: true,
+                isActive: true,
+              },
+              where: { isActive: true },
+              orderBy: {
+                displayOrder: 'asc',
+              },
+            }
+          : false,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        // 경량화 모드에서는 transaction count 제외 (성능 향상)
+        ...(!lightweight && {
+          _count: {
+            select: {
+              transactions: true,
+            },
+          },
+        }),
+      },
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    })
+
+    return categories.map(transformCategoryForFrontend)
+  }
+
+  /**
    * Get a single category by ID
    */
   async getCategory(
@@ -796,6 +849,11 @@ export const getCategories = createServerAction(
 export const getCategoriesByType = createServerAction(
   async (organizationId: string, type: string, includeChildren?: boolean) =>
     categoriesActions.getCategoriesByType(organizationId, type, includeChildren)
+)
+
+export const getAllCategories = createServerAction(
+  async (organizationId: string, includeChildren?: boolean, lightweight?: boolean) =>
+    categoriesActions.getAllCategories(organizationId, includeChildren, lightweight)
 )
 
 export const getCategory = createServerAction(

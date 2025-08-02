@@ -323,7 +323,7 @@ export function transformCategoryForFrontend(category: CategoryWithChildren) {
       displayOrder: child.displayOrder,
       isActive: child.isActive,
     })),
-    transactionCount: category._count.transactions,
+    transactionCount: category._count?.transactions || 0,
   }
 }
 

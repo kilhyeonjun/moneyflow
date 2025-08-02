@@ -20,7 +20,7 @@ import {
   handleServerActionResult,
   useErrorHandler,
 } from '@/components/error/ErrorBoundary'
-import { getCategoriesByType } from '@/lib/server-actions/categories'
+import { getCategoriesByType, getAllCategories } from '@/lib/server-actions/categories'
 import CategoryIcon, {
   getTypeName,
   CategoryNameIcon,
@@ -123,7 +123,7 @@ export default function HierarchicalCategorySelect({
   // 상태 관리
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [categories, setCategories] = useState<CategoryData[]>([])
+  const [allCategories, setAllCategories] = useState<CategoryData[]>([]) // 전체 카테고리 캐시
   const [selectedType, setSelectedType] = useState<TransactionType | null>(null)
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const [selectedCategoryData, setSelectedCategoryData] =
@@ -137,97 +137,74 @@ export default function HierarchicalCategorySelect({
     'variable_expense',
   ]
 
-  // 선택된 카테고리 정보 로드
+  // 전체 카테고리 로드 (컴포넌트 마운트 시 한 번만)
   useEffect(() => {
-    if (value && organizationId) {
-      loadSelectedCategory()
-    } else {
-      setSelectedCategoryData(null)
-      setSelectedType(null)
-      setSelectedParentId(null)
+    if (organizationId) {
+      loadAllCategories()
     }
-  }, [value, organizationId])
+  }, [organizationId])
 
-  // 선택된 카테고리 정보 로드
-  const loadSelectedCategory = async () => {
-    if (!value) return
-
-    try {
-      // 모든 타입의 카테고리를 로드하여 선택된 카테고리 찾기
-      const allCategories: CategoryData[] = []
-
-      for (const type of transactionTypes) {
-        try {
-          const result = await getCategoriesByType(organizationId, type, true)
-          const typeCategories = handleServerActionResult(
-            result
-          ) as CategoryData[]
-          allCategories.push(...typeCategories)
-        } catch (error) {
-          // 개별 타입 로드 실패는 무시하고 계속 진행
-          console.warn(`Failed to load categories for type ${type}:`, error)
-        }
-      }
-
+  // 선택된 카테고리 정보 설정 (캐시된 데이터에서 찾기)
+  useEffect(() => {
+    if (value && allCategories.length > 0) {
       const foundCategory = allCategories.find(cat => cat.id === value)
       if (foundCategory) {
         setSelectedCategoryData(foundCategory)
         setSelectedType(foundCategory.type)
         setSelectedParentId(foundCategory.parentId)
       }
+    } else {
+      setSelectedCategoryData(null)
+      setSelectedType(null)
+      setSelectedParentId(null)
+    }
+  }, [value, allCategories])
+
+  // 전체 카테고리 로드 (최적화: 단일 API 호출, 경량화 모드)
+  const loadAllCategories = async () => {
+    try {
+      setLoading(true)
+      const result = await getAllCategories(organizationId, true, true)
+      const categories = handleServerActionResult(result) as CategoryData[]
+      setAllCategories(categories)
     } catch (error) {
-      const errorMessage = handleError(error, 'loadSelectedCategory')
+      const errorMessage = handleError(error, 'loadAllCategories')
       if (errorMessage) {
-        console.error('선택된 카테고리 로드 실패:', errorMessage)
+        console.error('카테고리 로드 실패:', errorMessage)
       }
+    } finally {
+      setLoading(false)
     }
   }
 
-  // 특정 타입의 카테고리 로드
-  const loadCategoriesForType = useCallback(
-    async (type: TransactionType) => {
-      try {
-        setLoading(true)
-        const result = await getCategoriesByType(organizationId, type, true)
-        const typeCategories = handleServerActionResult(
-          result
-        ) as CategoryData[]
-        setCategories(typeCategories)
-      } catch (error) {
-        const errorMessage = handleError(error, 'loadCategoriesForType')
-        if (errorMessage) {
-          console.error('카테고리 로드 실패:', errorMessage)
-        }
-        setCategories([])
-      } finally {
-        setLoading(false)
-      }
+  // 클라이언트 사이드 필터링: 특정 타입의 카테고리 가져오기
+  const getCategoriesForType = useCallback(
+    (type: TransactionType): CategoryData[] => {
+      return allCategories.filter(cat => cat.type === type)
     },
-    [organizationId, handleError]
+    [allCategories]
   )
 
-  // 타입 선택 시 카테고리 로드
-  useEffect(() => {
-    if (selectedType && isOpen) {
-      loadCategoriesForType(selectedType)
-    }
-  }, [selectedType, isOpen, loadCategoriesForType])
+  // 현재 선택된 타입의 카테고리들 (메모이제이션)
+  const currentTypeCategories = useMemo(() => {
+    return selectedType ? getCategoriesForType(selectedType) : []
+  }, [selectedType, getCategoriesForType])
 
   // 대분류 카테고리 목록 (parentId가 null인 카테고리들)
   const parentCategories = useMemo(() => {
-    return categories
+    return currentTypeCategories
       .filter(cat => !cat.parentId && cat.isActive)
       .sort(
         (a, b) =>
           a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)
       )
-  }, [categories])
+  }, [currentTypeCategories])
 
   // 소분류 카테고리 목록 (선택된 대분류의 children)
   const childCategories = useMemo(() => {
     if (!selectedParentId) return []
 
-    const parentCategory = categories.find(cat => cat.id === selectedParentId)
+    const parentCategory = currentTypeCategories.find(cat => cat.id === selectedParentId)
     return (
       parentCategory?.children
         .filter(child => child.isActive)
@@ -236,7 +213,7 @@ export default function HierarchicalCategorySelect({
             a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)
         ) || []
     )
-  }, [categories, selectedParentId])
+  }, [currentTypeCategories, selectedParentId])
 
   // 검색 필터링
   const filteredParentCategories = useMemo(() => {
@@ -284,9 +261,9 @@ export default function HierarchicalCategorySelect({
 
   // 소분류 선택 (최종 선택)
   const handleCategorySelect = (categoryId: string) => {
-    const selectedCategory = categories
-      .flatMap(cat => cat.children)
-      .find(child => child.id === categoryId)
+    const selectedCategory = currentTypeCategories
+      .flatMap((cat: CategoryData) => cat.children)
+      .find((child: any) => child.id === categoryId)
 
     if (selectedCategory) {
       const fullCategoryData = {
@@ -308,7 +285,7 @@ export default function HierarchicalCategorySelect({
 
   // 대분류만 선택 (소분류가 없는 경우)
   const handleParentOnlySelect = (parentId: string) => {
-    const parentCategory = categories.find(cat => cat.id === parentId)
+    const parentCategory = currentTypeCategories.find((cat: CategoryData) => cat.id === parentId)
     if (parentCategory) {
       onSelectionChange(parentId, parentCategory)
       onClose()
@@ -381,7 +358,7 @@ export default function HierarchicalCategorySelect({
             {label && (
               <span className="text-xs text-gray-500 font-medium">
                 {label}
-                {isRequired && ' *'}
+                {isRequired && <span className="text-danger"> *</span>}
               </span>
             )}
             <div className="flex items-center justify-between w-full">
