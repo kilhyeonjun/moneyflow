@@ -10,6 +10,7 @@ import {
   getUserOrganizations as getUserOrganizationsFromAuth,
   getOrganizationDetails as getOrganizationDetailsFromAuth,
 } from '@/lib/auth-server'
+import { createInitialData } from '@/lib/initial-data'
 import {
   Organization,
   OrganizationWithStats,
@@ -85,39 +86,18 @@ class OrganizationActions extends BaseServerAction {
         },
       })
 
-      // Create default payment methods
-      const defaultPaymentMethods = [
-        {
-          name: '현금',
-          type: 'cash' as const,
-          isActive: true,
-        },
-        {
-          name: '체크카드',
-          type: 'card' as const,
-          isActive: true,
-        },
-        {
-          name: '신용카드',
-          type: 'card' as const,
-          isActive: true,
-        },
-      ]
-
-      // Create default payment methods for the organization
-      for (const paymentMethod of defaultPaymentMethods) {
-        await tx.paymentMethod.create({
-          data: {
-            organizationId: org.id,
-            name: paymentMethod.name,
-            type: paymentMethod.type,
-            isActive: paymentMethod.isActive,
-          },
-        })
-      }
-
       return org
     })
+
+    // Create initial data (payment methods and categories) for the organization
+    try {
+      await createInitialData(organization.id)
+      console.log(`조직 ${organization.name}에 대한 초기 데이터 생성 완료`)
+    } catch (error) {
+      console.error(`조직 ${organization.name}의 초기 데이터 생성 실패:`, error)
+      // Initial data creation failure should not prevent organization creation
+      // but we should log it for monitoring
+    }
 
     // Revalidate organizations page
     revalidatePath('/organizations')
