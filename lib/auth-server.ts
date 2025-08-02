@@ -178,6 +178,22 @@ export async function requireAdminRole(
 }
 
 /**
+ * Check if user has admin or owner role in organization
+ */
+export async function requireAdminOrOwnerRole(
+  userId: string,
+  organizationId: string
+): Promise<OrganizationMemberWithOrganization> {
+  const member = await checkOrganizationMembership(userId, organizationId)
+
+  if (!member || !['admin', 'owner'].includes(member.role)) {
+    throw new Error(ServerActionError.FORBIDDEN)
+  }
+
+  return member
+}
+
+/**
  * Get organization with full details (for admins)
  */
 export async function getOrganizationDetails(
@@ -296,7 +312,7 @@ export async function withErrorHandling<T>(
     const result = await action()
     return createSuccessResponse(result)
   } catch (error) {
-    console.error('Server action error:', error)
+    console.error('Server action error:', error || 'Unknown error')
 
     if (error instanceof Error) {
       // Check if it's one of our known error types (including UNAUTHORIZED)

@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 
@@ -15,7 +16,7 @@ model OrganizationMember {
   userId         String       @map("user_id") @db.Uuid
   role           String       @default("member") @db.VarChar(50)
   joinedAt       DateTime?    @default(now()) @map("joined_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, userId])
   @@index([organizationId], map: "idx_organization_members_org_id")
@@ -52,7 +53,7 @@ model PaymentMethod {
   isActive       Boolean?      @default(true) @map("is_active")
   createdAt      DateTime?     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime?     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization   Organization  @relation(fields: [organizationId], references: [id])
   transactions   Transaction[]
 
   @@index([organizationId], map: "idx_payment_methods_org_id")
@@ -71,10 +72,11 @@ model Category {
   isActive       Boolean       @default(true) @map("is_active")
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  parent         Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id], onUpdate: NoAction)
-  children       Category[]    @relation("CategoryHierarchy")
-  transactions   Transaction[]
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  // Remove self-referential relationship - handle parent-child logic in application
+  // parent         Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  // children       Category[]    @relation("CategoryHierarchy")
+  // transactions   Transaction[]
 
   @@index([organizationId], map: "idx_categories_org_id")
   @@index([type], map: "idx_categories_type")
@@ -100,9 +102,10 @@ model Transaction {
   receiptUrl      String?        @map("receipt_url")
   createdAt       DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime?      @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  category        Category?      @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
-  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onUpdate: NoAction)
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+  // Remove category relationship - handle in application level
+  // category        Category?      @relation(fields: [categoryId], references: [id])
+  paymentMethod   PaymentMethod? @relation(fields: [paymentMethodId], references: [id])
 
   @@index([transactionDate], map: "idx_transactions_date")
   @@index([organizationId], map: "idx_transactions_org_id")
@@ -126,7 +129,7 @@ model OrganizationInvitation {
   expiresAt      DateTime     @map("expires_at") @db.Timestamptz(6)
   acceptedAt     DateTime?    @map("accepted_at") @db.Timestamptz(6)
   acceptedBy     String?      @map("accepted_by") @db.Uuid
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId], map: "idx_organization_invitations_org_id")
   @@index([email], map: "idx_organization_invitations_email")

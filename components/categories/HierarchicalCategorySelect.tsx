@@ -20,7 +20,10 @@ import {
   handleServerActionResult,
   useErrorHandler,
 } from '@/components/error/ErrorBoundary'
-import { getCategoriesByType, getAllCategories } from '@/lib/server-actions/categories'
+import {
+  getCategoriesByType,
+  getAllCategories,
+} from '@/lib/server-actions/categories'
 import CategoryIcon, {
   getTypeName,
   CategoryNameIcon,
@@ -204,7 +207,9 @@ export default function HierarchicalCategorySelect({
   const childCategories = useMemo(() => {
     if (!selectedParentId) return []
 
-    const parentCategory = currentTypeCategories.find(cat => cat.id === selectedParentId)
+    const parentCategory = currentTypeCategories.find(
+      cat => cat.id === selectedParentId
+    )
     return (
       parentCategory?.children
         .filter(child => child.isActive)
@@ -285,7 +290,9 @@ export default function HierarchicalCategorySelect({
 
   // 대분류만 선택 (소분류가 없는 경우)
   const handleParentOnlySelect = (parentId: string) => {
-    const parentCategory = currentTypeCategories.find((cat: CategoryData) => cat.id === parentId)
+    const parentCategory = currentTypeCategories.find(
+      (cat: CategoryData) => cat.id === parentId
+    )
     if (parentCategory) {
       onSelectionChange(parentId, parentCategory)
       onClose()

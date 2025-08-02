@@ -13,6 +13,10 @@ import {
   ModalBody,
   ModalFooter,
   useDisclosure,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from '@heroui/react'
 import {
   Plus,
@@ -23,6 +27,9 @@ import {
   XCircle,
   Clock,
   Building,
+  MoreVertical,
+  Settings,
+  Trash2,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { Chip } from '@heroui/react'
@@ -37,6 +44,7 @@ import {
 import {
   getUserOrganizations,
   createOrganization as createOrganizationAction,
+  deleteOrganization,
 } from '@/lib/server-actions/organizations'
 import {
   handleServerActionResult,
@@ -83,6 +91,13 @@ export default function OrganizationsPage() {
     string | null
   >(null)
   const { isOpen, onOpen, onClose } = useDisclosure()
+  const {
+    isOpen: isDeleteModalOpen,
+    onOpen: onDeleteModalOpen,
+    onClose: onDeleteModalClose,
+  } = useDisclosure()
+  const [selectedOrganization, setSelectedOrganization] = useState<UserOrganization | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const router = useRouter()
   const { handleError } = useErrorHandler()
 
@@ -132,7 +147,7 @@ export default function OrganizationsPage() {
     console.log('Form validation state changed:', {
       formData,
       errors,
-      isValid
+      isValid,
     })
   }, [formData, errors, isValid])
 
@@ -245,6 +260,41 @@ export default function OrganizationsPage() {
   const selectOrganization = (orgId: string) => {
     // 새로운 URL 구조로 이동
     router.push(`/org/${orgId}/dashboard`)
+  }
+
+  const handleDeleteOrganization = async () => {
+    if (!selectedOrganization) return
+
+    setDeleting(true)
+    try {
+      // 서버 액션으로 조직 삭제
+      const data = handleServerActionResult(
+        await deleteOrganization(selectedOrganization.id)
+      )
+
+      toast.success('조직이 성공적으로 삭제되었습니다.')
+      onDeleteModalClose()
+      setSelectedOrganization(null)
+
+      // 조직 목록 새로고침
+      await fetchOrganizations()
+    } catch (error: any) {
+      const errorMessage = handleError(error, 'handleDeleteOrganization')
+      if (errorMessage) {
+        toast.error(errorMessage)
+      }
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const openDeleteModal = (
+    org: UserOrganization,
+    event: React.MouseEvent
+  ) => {
+    event.stopPropagation() // 카드 클릭 이벤트 방지
+    setSelectedOrganization(org)
+    onDeleteModalOpen()
   }
 
   if (loading) {
@@ -408,12 +458,11 @@ export default function OrganizationsPage() {
             {organizations.map(org => (
               <Card
                 key={org.id}
-                isPressable
-                onPress={() => selectOrganization(org.id)}
-                className="hover:shadow-lg transition-shadow"
+                className="hover:shadow-lg transition-shadow relative cursor-pointer"
+                onClick={() => selectOrganization(org.id)}
               >
                 <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 w-full">
                     <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
                       <Users className="h-6 w-6 text-blue-600" />
                     </div>
@@ -427,17 +476,120 @@ export default function OrganizationsPage() {
                           : '날짜 없음'}
                       </p>
                     </div>
+                    {/* Owner인 경우만 드롭다운 메뉴 표시 */}
+                    {org.membershipRole === 'owner' && (
+                      <Dropdown>
+                        <DropdownTrigger>
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="light"
+                            className="text-gray-500 hover:text-gray-700"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu aria-label="조직 관리">
+                          <DropdownItem
+                            key="settings"
+                            startContent={<Settings className="w-4 h-4" />}
+                            onPress={(e) => {
+                              e.stopPropagation?.()
+                              router.push(`/org/${org.id}/settings`)
+                            }}
+                          >
+                            설정
+                          </DropdownItem>
+                          <DropdownItem
+                            key="delete"
+                            className="text-danger"
+                            color="danger"
+                            startContent={<Trash2 className="w-4 h-4" />}
+                            onPress={() => {
+                              setSelectedOrganization(org)
+                              onDeleteModalOpen()
+                            }}
+                          >
+                            삭제
+                          </DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
+                    )}
                   </div>
                 </CardHeader>
                 <CardBody className="pt-0">
                   {org.description && (
                     <p className="text-gray-600 text-sm">{org.description}</p>
                   )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Chip
+                      color={getRoleColor(org.membershipRole) as any}
+                      variant="flat"
+                      size="sm"
+                    >
+                      {getRoleDisplayName(org.membershipRole)}
+                    </Chip>
+                  </div>
                 </CardBody>
               </Card>
             ))}
           </div>
         )}
+
+        {/* 조직 삭제 확인 모달 */}
+        <Modal isOpen={isDeleteModalOpen} onClose={onDeleteModalClose}>
+          <ModalContent>
+            <ModalHeader className="flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-orange-600" />
+              조직 삭제
+            </ModalHeader>
+            <ModalBody>
+              <div className="space-y-4">
+                <p>
+                  정말로{' '}
+                  <strong>"{selectedOrganization?.name}"</strong> 조직을
+                  삭제하시겠습니까?
+                </p>
+
+                <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <p className="text-orange-800 font-medium mb-2">
+                    ⚠️ 주의사항
+                  </p>
+                  <ul className="text-orange-700 text-sm space-y-1">
+                    <li>• 조직의 모든 거래 내역이 삭제됩니다</li>
+                    <li>• 조직의 모든 카테고리가 삭제됩니다</li>
+                    <li>• 조직의 모든 결제수단이 삭제됩니다</li>
+                    <li>• 조직의 모든 멤버가 제거됩니다</li>
+                    <li>• 대기 중인 초대가 모두 취소됩니다</li>
+                    <li>• 이 작업은 되돌릴 수 없습니다</li>
+                  </ul>
+                </div>
+
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-red-800 font-medium text-sm">
+                    <strong>참고:</strong> 조직을 삭제하면 위의 모든 데이터가 
+                    영구적으로 삭제되며 복구할 수 없습니다.
+                  </p>
+                </div>
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="light" onPress={onDeleteModalClose}>
+                취소
+              </Button>
+              <Button
+                color="warning"
+                onPress={handleDeleteOrganization}
+                startContent={<Trash2 className="w-4 h-4" />}
+                isLoading={deleting}
+                isDisabled={deleting}
+              >
+                조직 삭제
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
 
         {/* 조직 생성 모달 */}
         <Modal isOpen={isOpen} onClose={onClose} size="md">
@@ -483,7 +635,7 @@ export default function OrganizationsPage() {
                     creating,
                     formData,
                     errors,
-                    disabled: !isValid || creating
+                    disabled: !isValid || creating,
                   })
                   createOrganization()
                 }}

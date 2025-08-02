@@ -47,6 +47,7 @@ import {
   updateOrganization,
   createInvitation,
   cancelInvitation,
+  deleteOrganization,
 } from '@/lib/server-actions/organizations'
 import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import { PaymentMethodList } from '@/components/payment-methods'
@@ -100,6 +101,11 @@ export default function SettingsPage() {
     isOpen: isInviteModalOpen,
     onOpen: onInviteModalOpen,
     onClose: onInviteModalClose,
+  } = useDisclosure()
+  const {
+    isOpen: isDeleteOrgModalOpen,
+    onOpen: onDeleteOrgModalOpen,
+    onClose: onDeleteOrgModalClose,
   } = useDisclosure()
 
   const [loading, setLoading] = useState(true)
@@ -444,6 +450,42 @@ export default function SettingsPage() {
       onClose()
     } catch (error) {
       toast.error('계정 삭제에 실패했습니다.')
+    }
+  }
+
+  const handleDeleteOrganization = async () => {
+    // 권한 검증 - owner만 가능
+    if (!currentUserRole || currentUserRole !== 'owner') {
+      toast.error('조직 삭제 권한이 없습니다.')
+      return
+    }
+
+    if (!orgId) {
+      toast.error('조직 ID가 없습니다.')
+      return
+    }
+
+    try {
+      // 서버 액션으로 조직 삭제
+      const data = handleServerActionResult(await deleteOrganization(orgId))
+
+      toast.success('조직이 성공적으로 삭제되었습니다.')
+      onDeleteOrgModalClose()
+
+      // 조직 목록 페이지로 리다이렉트
+      router.push('/organizations')
+    } catch (error: any) {
+      console.error('조직 삭제 실패:', error)
+      
+      let errorMessage = '조직 삭제에 실패했습니다.'
+      
+      if (error.message && error.message.includes('existing data')) {
+        errorMessage = '조직에 거래 내역이나 결제수단이 있어 삭제할 수 없습니다. 먼저 모든 데이터를 삭제해주세요.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage)
     }
   }
 
@@ -902,6 +944,25 @@ export default function SettingsPage() {
 
                 <div className="flex items-center justify-between">
                   <div>
+                    <p className="font-medium text-orange-600">조직 삭제</p>
+                    <p className="text-sm text-gray-600">
+                      조직과 모든 관련 데이터가 영구적으로 삭제됩니다
+                    </p>
+                  </div>
+                  <Button
+                    color="warning"
+                    variant="light"
+                    startContent={<Trash2 className="w-4 h-4" />}
+                    onPress={onDeleteOrgModalOpen}
+                  >
+                    조직 삭제
+                  </Button>
+                </div>
+
+                <Divider />
+
+                <div className="flex items-center justify-between">
+                  <div>
                     <p className="font-medium text-red-600">계정 삭제</p>
                     <p className="text-sm text-gray-600">
                       계정과 모든 데이터가 영구적으로 삭제됩니다
@@ -944,6 +1005,52 @@ export default function SettingsPage() {
             </Button>
             <Button color="danger" onPress={handleDeleteAccount}>
               계정 삭제
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* 조직 삭제 확인 모달 */}
+      <Modal isOpen={isDeleteOrgModalOpen} onClose={onDeleteOrgModalClose}>
+        <ModalContent>
+          <ModalHeader className="flex items-center gap-2">
+            <Trash2 className="w-5 h-5 text-orange-600" />
+            조직 삭제
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-4">
+              <p>정말로 <strong>"{organization?.name}"</strong> 조직을 삭제하시겠습니까?</p>
+              
+              <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-orange-800 font-medium mb-2">⚠️ 주의사항</p>
+                <ul className="text-orange-700 text-sm space-y-1">
+                  <li>• 조직의 모든 거래 내역이 삭제됩니다</li>
+                  <li>• 조직의 모든 카테고리가 삭제됩니다</li>
+                  <li>• 조직의 모든 결제수단이 삭제됩니다</li>
+                  <li>• 조직의 모든 멤버가 제거됩니다</li>
+                  <li>• 대기 중인 초대가 모두 취소됩니다</li>
+                  <li>• 이 작업은 되돌릴 수 없습니다</li>
+                </ul>
+              </div>
+
+              <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-red-800 font-medium text-sm">
+                  <strong>참고:</strong> 조직에 거래 내역이나 결제수단이 있는 경우 삭제할 수 없습니다. 
+                  먼저 모든 거래와 결제수단을 삭제한 후 다시 시도해주세요.
+                </p>
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="light" onPress={onDeleteOrgModalClose}>
+              취소
+            </Button>
+            <Button 
+              color="warning" 
+              onPress={handleDeleteOrganization}
+              startContent={<Trash2 className="w-4 h-4" />}
+            >
+              조직 삭제
             </Button>
           </ModalFooter>
         </ModalContent>

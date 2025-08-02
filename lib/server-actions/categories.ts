@@ -852,8 +852,16 @@ export const getCategoriesByType = createServerAction(
 )
 
 export const getAllCategories = createServerAction(
-  async (organizationId: string, includeChildren?: boolean, lightweight?: boolean) =>
-    categoriesActions.getAllCategories(organizationId, includeChildren, lightweight)
+  async (
+    organizationId: string,
+    includeChildren?: boolean,
+    lightweight?: boolean
+  ) =>
+    categoriesActions.getAllCategories(
+      organizationId,
+      includeChildren,
+      lightweight
+    )
 )
 
 export const getCategory = createServerAction(

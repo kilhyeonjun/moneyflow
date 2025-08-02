@@ -7,6 +7,7 @@ import {
   requireAuth,
   checkOrganizationMembership,
   requireAdminRole,
+  requireAdminOrOwnerRole,
   getUserOrganizations as getUserOrganizationsFromAuth,
   getOrganizationDetails as getOrganizationDetailsFromAuth,
 } from '@/lib/auth-server'
@@ -77,12 +78,12 @@ class OrganizationActions extends BaseServerAction {
         },
       })
 
-      // Add creator as admin member
+      // Add creator as owner member
       await tx.organizationMember.create({
         data: {
           organizationId: org.id,
           userId: user.id,
-          role: 'admin',
+          role: 'owner',
         },
       })
 
@@ -137,7 +138,7 @@ class OrganizationActions extends BaseServerAction {
   }
 
   /**
-   * Delete organization (admin only)
+   * Delete organization (admin or owner only)
    */
   async deleteOrganization(
     organizationId: string
@@ -145,39 +146,36 @@ class OrganizationActions extends BaseServerAction {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, organizationId)
 
-    // Check if organization has any data that would prevent deletion
-    const counts = await prisma.organization.findUnique({
+    // Check if organization exists
+    const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
-      select: {
-        _count: {
-          select: {
-            transactions: true,
-            paymentMethods: true,
-            invitations: true,
-          },
-        },
-      },
     })
 
-    if (!counts) {
+    if (!organization) {
       throw new Error(ServerActionError.NOT_FOUND)
     }
 
-    const hasData =
-      counts._count.transactions > 0 || counts._count.paymentMethods > 0
+    // Delete organization and all related data in transaction
+    // With relationMode = "prisma", no foreign key constraints exist in DB
+    await prisma.$transaction(async (tx) => {
+      // Delete all related data - order doesn't matter without FK constraints
+      await Promise.all([
+        tx.transaction.deleteMany({ where: { organizationId } }),
+        tx.paymentMethod.deleteMany({ where: { organizationId } }),
+        tx.category.deleteMany({ where: { organizationId } }),
+        tx.asset.deleteMany({ where: { organizationId } }),
+        tx.debt.deleteMany({ where: { organizationId } }),
+        tx.organizationMember.deleteMany({ where: { organizationId } }),
+        tx.organizationInvitation.deleteMany({ where: { organizationId } }),
+      ])
 
-    if (hasData) {
-      throw new Error(
-        `${ServerActionError.VALIDATION_ERROR}: Cannot delete organization with existing data. Delete all transactions and payment methods first.`
-      )
-    }
-
-    // Delete organization (cascading deletes will handle related data)
-    await prisma.organization.delete({
-      where: { id: organizationId },
+      // Finally delete the organization
+      await tx.organization.delete({
+        where: { id: organizationId },
+      })
     })
 
     // Revalidate organizations page
