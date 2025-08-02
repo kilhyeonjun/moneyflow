@@ -54,7 +54,8 @@ export async function createInitialData(organizationId: string) {
   try {
     console.log(`조직 ${organizationId}에 대한 초기 데이터 생성 시작`)
 
-    const paymentMethods = await createPaymentMethodsFromDefaults(organizationId)
+    const paymentMethods =
+      await createPaymentMethodsFromDefaults(organizationId)
 
     console.log('모든 초기 데이터 생성 완료')
 

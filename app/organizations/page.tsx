@@ -44,7 +44,10 @@ import {
 } from '@/components/error/ErrorBoundary'
 import type { UserOrganization } from '@/lib/types'
 import { ValidatedInput, validationRules } from '@/components/form'
-import { useFormValidation, commonValidationRules } from '@/hooks/useFormValidation'
+import {
+  useFormValidation,
+  commonValidationRules,
+} from '@/hooks/useFormValidation'
 import { organizationCreateSchema } from '@/lib/validation/schemas'
 
 interface ReceivedInvitation {
@@ -91,7 +94,7 @@ export default function OrganizationsPage() {
     updateField,
     validateAll,
     reset: resetForm,
-    getFieldProps
+    getFieldProps,
   } = useFormValidation<OrganizationFormData>(
     {
       name: commonValidationRules.combine(
@@ -109,12 +112,12 @@ export default function OrganizationsPage() {
           return '조직 설명은 500자 이하여야 합니다'
         }
         return null
-      }
+      },
     },
     {
       initialData: { name: '', description: '' },
       realTimeValidation: true,
-      mode: 'onChange'
+      mode: 'onChange',
     }
   )
 
@@ -437,7 +440,7 @@ export default function OrganizationsPage() {
                   label="조직 이름"
                   placeholder="예: 김씨 가족, ABC 팀"
                   value={formData.name}
-                  onValueChange={(value) => updateField('name', value)}
+                  onValueChange={value => updateField('name', value)}
                   validation={getFieldProps('name').validation}
                   error={errors.name}
                   isRequired
@@ -448,7 +451,7 @@ export default function OrganizationsPage() {
                   label="설명 (선택사항)"
                   placeholder="조직에 대한 간단한 설명"
                   value={formData.description || ''}
-                  onValueChange={(value) => updateField('description', value)}
+                  onValueChange={value => updateField('description', value)}
                   validation={getFieldProps('description').validation}
                   error={errors.description}
                   realTimeValidation
@@ -456,7 +459,11 @@ export default function OrganizationsPage() {
               </div>
             </ModalBody>
             <ModalFooter>
-              <Button variant="light" onPress={handleModalClose} disabled={creating}>
+              <Button
+                variant="light"
+                onPress={handleModalClose}
+                disabled={creating}
+              >
                 취소
               </Button>
               <Button

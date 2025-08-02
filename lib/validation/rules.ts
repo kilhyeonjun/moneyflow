@@ -12,48 +12,56 @@ import { isValidUUID, isValidUUIDv7 } from '@/lib/utils/validation'
 /**
  * 필수 필드 검증
  */
-export const required = (fieldName: string = '필드') => (value: any) => {
-  if (value === null || value === undefined || value === '') {
-    return `${fieldName}은(는) 필수입니다`
+export const required =
+  (fieldName: string = '필드') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') {
+      return `${fieldName}은(는) 필수입니다`
+    }
+    if (typeof value === 'string' && value.trim() === '') {
+      return `${fieldName}을(를) 입력해주세요`
+    }
+    return null
   }
-  if (typeof value === 'string' && value.trim() === '') {
-    return `${fieldName}을(를) 입력해주세요`
-  }
-  return null
-}
 
 /**
  * 최소 길이 검증
  */
-export const minLength = (min: number, fieldName: string = '값') => (value: string) => {
-  if (!value) return null // required와 함께 사용
-  if (value.length < min) {
-    return `${fieldName}은(는) 최소 ${min}자 이상이어야 합니다`
+export const minLength =
+  (min: number, fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null // required와 함께 사용
+    if (value.length < min) {
+      return `${fieldName}은(는) 최소 ${min}자 이상이어야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 최대 길이 검증
  */
-export const maxLength = (max: number, fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  if (value.length > max) {
-    return `${fieldName}은(는) ${max}자 이하여야 합니다`
+export const maxLength =
+  (max: number, fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    if (value.length > max) {
+      return `${fieldName}은(는) ${max}자 이하여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 정확한 길이 검증
  */
-export const exactLength = (length: number, fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  if (value.length !== length) {
-    return `${fieldName}은(는) 정확히 ${length}자여야 합니다`
+export const exactLength =
+  (length: number, fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    if (value.length !== length) {
+      return `${fieldName}은(는) 정확히 ${length}자여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 이메일 형식 검증
@@ -98,110 +106,129 @@ export const pattern = (regex: RegExp, message: string) => (value: string) => {
 /**
  * 숫자 형식 검증
  */
-export const isNumber = (fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) {
-    return `${fieldName}은(는) 숫자여야 합니다`
+export const isNumber =
+  (fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) {
+      return `${fieldName}은(는) 숫자여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 정수 검증
  */
-export const isInteger = (fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num) || !Number.isInteger(num)) {
-    return `${fieldName}은(는) 정수여야 합니다`
+export const isInteger =
+  (fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num) || !Number.isInteger(num)) {
+      return `${fieldName}은(는) 정수여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 최솟값 검증
  */
-export const min = (minValue: number, fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) return null // isNumber와 함께 사용
-  if (num < minValue) {
-    return `${fieldName}은(는) ${minValue} 이상이어야 합니다`
+export const min =
+  (minValue: number, fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) return null // isNumber와 함께 사용
+    if (num < minValue) {
+      return `${fieldName}은(는) ${minValue} 이상이어야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 최댓값 검증
  */
-export const max = (maxValue: number, fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) return null
-  if (num > maxValue) {
-    return `${fieldName}은(는) ${maxValue} 이하여야 합니다`
+export const max =
+  (maxValue: number, fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) return null
+    if (num > maxValue) {
+      return `${fieldName}은(는) ${maxValue} 이하여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 양수 검증
  */
-export const positive = (fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) return null
-  if (num <= 0) {
-    return `${fieldName}은(는) 0보다 큰 양수여야 합니다`
+export const positive =
+  (fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) return null
+    if (num <= 0) {
+      return `${fieldName}은(는) 0보다 큰 양수여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 음이 아닌 수 검증 (0 이상)
  */
-export const nonNegative = (fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) return null
-  if (num < 0) {
-    return `${fieldName}은(는) 0 이상이어야 합니다`
+export const nonNegative =
+  (fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) return null
+    if (num < 0) {
+      return `${fieldName}은(는) 0 이상이어야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 화폐 형식 검증 (소수점 2자리까지)
  */
-export const currency = (fieldName: string = '금액') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) {
-    return `${fieldName}은(는) 올바른 숫자여야 합니다`
+export const currency =
+  (fieldName: string = '금액') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) {
+      return `${fieldName}은(는) 올바른 숫자여야 합니다`
+    }
+    if (num < 0) {
+      return `${fieldName}은(는) 음수일 수 없습니다`
+    }
+    // 소수점 2자리까지만 허용
+    if (
+      num.toString().includes('.') &&
+      num.toString().split('.')[1].length > 2
+    ) {
+      return `${fieldName}은(는) 소수점 2자리까지만 입력 가능합니다`
+    }
+    return null
   }
-  if (num < 0) {
-    return `${fieldName}은(는) 음수일 수 없습니다`
-  }
-  // 소수점 2자리까지만 허용
-  if (num.toString().includes('.') && num.toString().split('.')[1].length > 2) {
-    return `${fieldName}은(는) 소수점 2자리까지만 입력 가능합니다`
-  }
-  return null
-}
 
 /**
  * 범위 검증
  */
-export const range = (minValue: number, maxValue: number, fieldName: string = '값') => (value: any) => {
-  if (value === null || value === undefined || value === '') return null
-  const num = Number(value)
-  if (isNaN(num)) return null
-  if (num < minValue || num > maxValue) {
-    return `${fieldName}은(는) ${minValue}와 ${maxValue} 사이의 값이어야 합니다`
+export const range =
+  (minValue: number, maxValue: number, fieldName: string = '값') =>
+  (value: any) => {
+    if (value === null || value === undefined || value === '') return null
+    const num = Number(value)
+    if (isNaN(num)) return null
+    if (num < minValue || num > maxValue) {
+      return `${fieldName}은(는) ${minValue}와 ${maxValue} 사이의 값이어야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 // ============================================================================
 // 문자열 관련 규칙 (String Rules)
@@ -210,50 +237,58 @@ export const range = (minValue: number, maxValue: number, fieldName: string = '�
 /**
  * 영문자만 허용
  */
-export const alphabetic = (fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  const alphaRegex = /^[a-zA-Z]+$/
-  if (!alphaRegex.test(value)) {
-    return `${fieldName}은(는) 영문자만 입력 가능합니다`
+export const alphabetic =
+  (fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    const alphaRegex = /^[a-zA-Z]+$/
+    if (!alphaRegex.test(value)) {
+      return `${fieldName}은(는) 영문자만 입력 가능합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 영문자와 숫자만 허용
  */
-export const alphanumeric = (fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  const alphanumericRegex = /^[a-zA-Z0-9]+$/
-  if (!alphanumericRegex.test(value)) {
-    return `${fieldName}은(는) 영문자와 숫자만 입력 가능합니다`
+export const alphanumeric =
+  (fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    const alphanumericRegex = /^[a-zA-Z0-9]+$/
+    if (!alphanumericRegex.test(value)) {
+      return `${fieldName}은(는) 영문자와 숫자만 입력 가능합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 한글만 허용
  */
-export const korean = (fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  const koreanRegex = /^[가-힣\s]+$/
-  if (!koreanRegex.test(value)) {
-    return `${fieldName}은(는) 한글만 입력 가능합니다`
+export const korean =
+  (fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    const koreanRegex = /^[가-힣\s]+$/
+    if (!koreanRegex.test(value)) {
+      return `${fieldName}은(는) 한글만 입력 가능합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 한글, 영문, 숫자만 허용
  */
-export const koreanAlphanumeric = (fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  const koreanAlphanumericRegex = /^[가-힣a-zA-Z0-9\s]+$/
-  if (!koreanAlphanumericRegex.test(value)) {
-    return `${fieldName}은(는) 한글, 영문, 숫자만 입력 가능합니다`
+export const koreanAlphanumeric =
+  (fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    const koreanAlphanumericRegex = /^[가-힣a-zA-Z0-9\s]+$/
+    if (!koreanAlphanumericRegex.test(value)) {
+      return `${fieldName}은(는) 한글, 영문, 숫자만 입력 가능합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 휴대폰 번호 형식 검증
@@ -271,25 +306,29 @@ export const phone = (value: string) => {
 /**
  * 공백 제거 후 검증
  */
-export const noWhitespace = (fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  if (value.includes(' ')) {
-    return `${fieldName}에는 공백을 포함할 수 없습니다`
+export const noWhitespace =
+  (fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    if (value.includes(' ')) {
+      return `${fieldName}에는 공백을 포함할 수 없습니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 특수문자 제외 검증
  */
-export const noSpecialChars = (fieldName: string = '값') => (value: string) => {
-  if (!value) return null
-  const specialCharsRegex = /[!@#$%^&*(),.?":{}|<>]/
-  if (specialCharsRegex.test(value)) {
-    return `${fieldName}에는 특수문자를 포함할 수 없습니다`
+export const noSpecialChars =
+  (fieldName: string = '값') =>
+  (value: string) => {
+    if (!value) return null
+    const specialCharsRegex = /[!@#$%^&*(),.?":{}|<>]/
+    if (specialCharsRegex.test(value)) {
+      return `${fieldName}에는 특수문자를 포함할 수 없습니다`
+    }
+    return null
   }
-  return null
-}
 
 // ============================================================================
 // 날짜 관련 규칙 (Date Rules)
@@ -298,54 +337,62 @@ export const noSpecialChars = (fieldName: string = '값') => (value: string) => 
 /**
  * 날짜 형식 검증
  */
-export const dateFormat = (format: string = 'YYYY-MM-DD') => (value: string) => {
-  if (!value) return null
-  const date = new Date(value)
-  if (isNaN(date.getTime())) {
-    return `올바른 날짜 형식(${format})을 입력해주세요`
+export const dateFormat =
+  (format: string = 'YYYY-MM-DD') =>
+  (value: string) => {
+    if (!value) return null
+    const date = new Date(value)
+    if (isNaN(date.getTime())) {
+      return `올바른 날짜 형식(${format})을 입력해주세요`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 과거 날짜 검증
  */
-export const pastDate = (fieldName: string = '날짜') => (value: string) => {
-  if (!value) return null
-  const date = new Date(value)
-  const today = new Date()
-  today.setHours(23, 59, 59, 999) // 오늘 끝까지
-  if (date > today) {
-    return `${fieldName}은(는) 과거 또는 오늘 날짜여야 합니다`
+export const pastDate =
+  (fieldName: string = '날짜') =>
+  (value: string) => {
+    if (!value) return null
+    const date = new Date(value)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999) // 오늘 끝까지
+    if (date > today) {
+      return `${fieldName}은(는) 과거 또는 오늘 날짜여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 미래 날짜 검증
  */
-export const futureDate = (fieldName: string = '날짜') => (value: string) => {
-  if (!value) return null
-  const date = new Date(value)
-  const today = new Date()
-  today.setHours(0, 0, 0, 0) // 오늘 시작
-  if (date < today) {
-    return `${fieldName}은(는) 오늘 또는 미래 날짜여야 합니다`
+export const futureDate =
+  (fieldName: string = '날짜') =>
+  (value: string) => {
+    if (!value) return null
+    const date = new Date(value)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // 오늘 시작
+    if (date < today) {
+      return `${fieldName}은(는) 오늘 또는 미래 날짜여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 날짜 범위 검증
  */
-export const dateRange = (startDate: Date, endDate: Date, fieldName: string = '날짜') => (value: string) => {
-  if (!value) return null
-  const date = new Date(value)
-  if (date < startDate || date > endDate) {
-    return `${fieldName}은(는) ${startDate.toLocaleDateString('ko-KR')}와 ${endDate.toLocaleDateString('ko-KR')} 사이여야 합니다`
+export const dateRange =
+  (startDate: Date, endDate: Date, fieldName: string = '날짜') =>
+  (value: string) => {
+    if (!value) return null
+    const date = new Date(value)
+    if (date < startDate || date > endDate) {
+      return `${fieldName}은(는) ${startDate.toLocaleDateString('ko-KR')}와 ${endDate.toLocaleDateString('ko-KR')} 사이여야 합니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 만 나이 검증 (주민등록번호 생년월일 기준)
@@ -356,10 +403,11 @@ export const minAge = (minAgeValue: number) => (value: string) => {
   const today = new Date()
   const age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
-  
-  const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
-    ? age - 1 
-    : age
+
+  const actualAge =
+    monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ? age - 1
+      : age
 
   if (actualAge < minAgeValue) {
     return `만 ${minAgeValue}세 이상이어야 합니다`
@@ -374,24 +422,28 @@ export const minAge = (minAgeValue: number) => (value: string) => {
 /**
  * UUID 검증
  */
-export const uuid = (fieldName: string = 'ID') => (value: string) => {
-  if (!value) return null
-  if (!isValidUUID(value)) {
-    return `올바른 ${fieldName} 형식이 아닙니다`
+export const uuid =
+  (fieldName: string = 'ID') =>
+  (value: string) => {
+    if (!value) return null
+    if (!isValidUUID(value)) {
+      return `올바른 ${fieldName} 형식이 아닙니다`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * UUID v7 검증
  */
-export const uuidv7 = (fieldName: string = 'ID') => (value: string) => {
-  if (!value) return null
-  if (!isValidUUIDv7(value)) {
-    return `올바른 ${fieldName} 형식이 아닙니다 (UUID v7 필요)`
+export const uuidv7 =
+  (fieldName: string = 'ID') =>
+  (value: string) => {
+    if (!value) return null
+    if (!isValidUUIDv7(value)) {
+      return `올바른 ${fieldName} 형식이 아닙니다 (UUID v7 필요)`
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 계좌번호 검증 (한국 은행 계좌번호)
@@ -522,32 +574,37 @@ export const userRole = (value: string) => {
 /**
  * 여러 validation 규칙을 조합하여 실행
  */
-export const combine = (...rules: Array<(value: any) => string | null>) => (value: any) => {
-  for (const rule of rules) {
-    const result = rule(value)
-    if (result !== null) {
-      return result // 첫 번째 에러를 반환
+export const combine =
+  (...rules: Array<(value: any) => string | null>) =>
+  (value: any) => {
+    for (const rule of rules) {
+      const result = rule(value)
+      if (result !== null) {
+        return result // 첫 번째 에러를 반환
+      }
     }
+    return null
   }
-  return null
-}
 
 /**
  * 조건부 validation
  */
-export const when = (condition: (value: any) => boolean, rule: (value: any) => string | null) => (value: any) => {
-  if (condition(value)) {
-    return rule(value)
+export const when =
+  (condition: (value: any) => boolean, rule: (value: any) => string | null) =>
+  (value: any) => {
+    if (condition(value)) {
+      return rule(value)
+    }
+    return null
   }
-  return null
-}
 
 /**
  * 선택적 validation (값이 있을 때만 검증)
  */
-export const optional = (rule: (value: any) => string | null) => (value: any) => {
-  if (value === null || value === undefined || value === '') {
-    return null
+export const optional =
+  (rule: (value: any) => string | null) => (value: any) => {
+    if (value === null || value === undefined || value === '') {
+      return null
+    }
+    return rule(value)
   }
-  return rule(value)
-}

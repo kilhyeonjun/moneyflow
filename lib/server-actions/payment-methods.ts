@@ -92,15 +92,13 @@ class PaymentMethodActions extends BaseServerAction {
     const { user } = await this.validateAuth(input.organizationId)
 
     // Validate required fields
-    this.validateRequiredFields(input, [
-      'organizationId',
-      'name',
-      'type',
-    ])
+    this.validateRequiredFields(input, ['organizationId', 'name', 'type'])
 
     // Ensure organizationId is provided
     if (!input.organizationId) {
-      throw new Error(`${ServerActionError.VALIDATION_ERROR}: Organization ID is required`)
+      throw new Error(
+        `${ServerActionError.VALIDATION_ERROR}: Organization ID is required`
+      )
     }
 
     // Validate and sanitize input
@@ -429,7 +427,10 @@ export const deletePaymentMethod = createServerAction(
 
 export const togglePaymentMethodStatus = createServerAction(
   async (paymentMethodId: string, organizationId: string) =>
-    paymentMethodActions.togglePaymentMethodStatus(paymentMethodId, organizationId)
+    paymentMethodActions.togglePaymentMethodStatus(
+      paymentMethodId,
+      organizationId
+    )
 )
 
 export const getPaymentMethodsSummary = createServerAction(

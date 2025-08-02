@@ -118,7 +118,6 @@ export default function SettingsPage() {
   })
   const [inviting, setInviting] = useState(false)
 
-
   // Settings state - 추후 구현 예정
   // const [settings, setSettings] = useState({
   //   notifications: {
@@ -226,7 +225,6 @@ export default function SettingsPage() {
       console.error('초대 목록 로드 실패:', error)
     }
   }
-
 
   const handleInviteMember = async () => {
     // 권한 검증
@@ -448,7 +446,6 @@ export default function SettingsPage() {
       toast.error('계정 삭제에 실패했습니다.')
     }
   }
-
 
   if (loading) {
     return (
@@ -1012,7 +1009,6 @@ export default function SettingsPage() {
           </ModalFooter>
         </ModalContent>
       </Modal>
-
 
       {/* Toast 알림 */}
       <Toaster

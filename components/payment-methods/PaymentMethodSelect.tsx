@@ -1,11 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-  Select,
-  SelectItem,
-  Avatar,
-} from '@heroui/react'
+import { Select, SelectItem, Avatar } from '@heroui/react'
 import {
   Banknote,
   CreditCard,
@@ -13,7 +9,10 @@ import {
   Wallet,
   AlertCircle,
 } from 'lucide-react'
-import { handleServerActionResult, useErrorHandler } from '@/components/error/ErrorBoundary'
+import {
+  handleServerActionResult,
+  useErrorHandler,
+} from '@/components/error/ErrorBoundary'
 import { getPaymentMethods } from '@/lib/server-actions/payment-methods'
 import type { PaymentMethodData } from './PaymentMethodCard'
 
@@ -104,7 +103,7 @@ export default function PaymentMethodSelect({
       setLoading(true)
       const result = await getPaymentMethods(organizationId)
       const methods = handleServerActionResult(result)
-      
+
       // 활성화된 결제수단만 필터링하고 최근 사용순으로 정렬
       const activeMethods = (methods as PaymentMethodData[])
         .filter(pm => pm.isActive)
@@ -114,9 +113,12 @@ export default function PaymentMethodSelect({
             return b.transactionCount - a.transactionCount
           }
           // 거래 수가 같으면 생성일 순으로 정렬
-          return new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()
+          return (
+            new Date(b.createdAt || '').getTime() -
+            new Date(a.createdAt || '').getTime()
+          )
         })
-      
+
       setPaymentMethods(activeMethods)
     } catch (error) {
       const errorMessage = handleError(error, 'loadPaymentMethods')
@@ -162,13 +164,16 @@ export default function PaymentMethodSelect({
       size={size}
       variant={variant}
       isLoading={loading}
-      renderValue={(items) => {
+      renderValue={items => {
         if (items.length === 0) return placeholder
 
-        return items.map((item) => {
+        return items.map(item => {
           if (item.key === 'none') {
             return (
-              <div key={item.key} className="flex items-center gap-3 py-2 px-1 text-gray-500">
+              <div
+                key={item.key}
+                className="flex items-center gap-3 py-2 px-1 text-gray-500"
+              >
                 <div className="flex-shrink-0">
                   <AlertCircle className="w-4 h-4" />
                 </div>
@@ -182,11 +187,15 @@ export default function PaymentMethodSelect({
 
           return (
             <div key={item.key} className="flex items-center gap-3 py-2 px-1">
-              <div className={`${getTypeColor(paymentMethod.type)} flex-shrink-0`}>
+              <div
+                className={`${getTypeColor(paymentMethod.type)} flex-shrink-0`}
+              >
                 {getTypeIcon(paymentMethod.type)}
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="font-medium leading-tight">{paymentMethod.name}</span>
+                <span className="font-medium leading-tight">
+                  {paymentMethod.name}
+                </span>
                 <span className="text-xs text-gray-500 leading-tight">
                   {getSubtitle(paymentMethod)}
                 </span>
@@ -206,8 +215,8 @@ export default function PaymentMethodSelect({
             {noneOptionLabel}
           </SelectItem>
         )}
-        
-        {paymentMethods.map((paymentMethod) => (
+
+        {paymentMethods.map(paymentMethod => (
           <SelectItem
             key={paymentMethod.id}
             startContent={
@@ -227,7 +236,7 @@ export default function PaymentMethodSelect({
             </div>
           </SelectItem>
         ))}
-        
+
         {!loading && paymentMethods.length === 0 && (
           <SelectItem
             key="empty"

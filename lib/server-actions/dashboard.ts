@@ -48,6 +48,19 @@ class DashboardActions extends BaseServerAction {
             type: true,
           },
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         organization: {
           select: {
             id: true,
@@ -176,6 +189,19 @@ class DashboardActions extends BaseServerAction {
             type: true,
           },
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         organization: {
           select: {
             id: true,
@@ -206,6 +232,19 @@ class DashboardActions extends BaseServerAction {
             id: true,
             name: true,
             type: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
         organization: {

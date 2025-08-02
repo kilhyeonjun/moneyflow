@@ -46,14 +46,21 @@ const ConfirmDialog = forwardRef<ConfirmDialogRef>((_, ref) => {
 
   const getIcon = () => {
     const iconProps = { size: 24, className: 'flex-shrink-0' }
-    
+
     switch (confirmProps.type) {
       case 'warning':
-        return <AlertTriangle {...iconProps} className="text-warning flex-shrink-0" />
+        return (
+          <AlertTriangle
+            {...iconProps}
+            className="text-warning flex-shrink-0"
+          />
+        )
       case 'danger':
         return <Trash2 {...iconProps} className="text-danger flex-shrink-0" />
       default:
-        return <HelpCircle {...iconProps} className="text-primary flex-shrink-0" />
+        return (
+          <HelpCircle {...iconProps} className="text-primary flex-shrink-0" />
+        )
     }
   }
 
@@ -113,7 +120,7 @@ const ConfirmDialog = forwardRef<ConfirmDialogRef>((_, ref) => {
       }}
     >
       <ModalContent>
-        {(onClose) => (
+        {onClose => (
           <>
             <ModalHeader className="flex flex-col gap-1 pb-2">
               {confirmProps.title && (

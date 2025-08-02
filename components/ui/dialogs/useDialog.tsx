@@ -1,24 +1,56 @@
 'use client'
 
 import { useRef } from 'react'
-import AlertDialog, { type AlertDialogProps, type AlertDialogRef, type AlertType } from './AlertDialog'
-import ConfirmDialog, { type ConfirmDialogProps, type ConfirmDialogRef, type ConfirmType } from './ConfirmDialog'
-import PromptDialog, { type PromptDialogProps, type PromptDialogRef } from './PromptDialog'
+import AlertDialog, {
+  type AlertDialogProps,
+  type AlertDialogRef,
+  type AlertType,
+} from './AlertDialog'
+import ConfirmDialog, {
+  type ConfirmDialogProps,
+  type ConfirmDialogRef,
+  type ConfirmType,
+} from './ConfirmDialog'
+import PromptDialog, {
+  type PromptDialogProps,
+  type PromptDialogRef,
+} from './PromptDialog'
 
 export interface DialogHookReturn {
   // Alert functions
-  alert: (message: string, options?: Partial<Omit<AlertDialogProps, 'message'>>) => void
-  success: (message: string, options?: Partial<Omit<AlertDialogProps, 'message' | 'type'>>) => void
-  warning: (message: string, options?: Partial<Omit<AlertDialogProps, 'message' | 'type'>>) => void
-  error: (message: string, options?: Partial<Omit<AlertDialogProps, 'message' | 'type'>>) => void
-  
+  alert: (
+    message: string,
+    options?: Partial<Omit<AlertDialogProps, 'message'>>
+  ) => void
+  success: (
+    message: string,
+    options?: Partial<Omit<AlertDialogProps, 'message' | 'type'>>
+  ) => void
+  warning: (
+    message: string,
+    options?: Partial<Omit<AlertDialogProps, 'message' | 'type'>>
+  ) => void
+  error: (
+    message: string,
+    options?: Partial<Omit<AlertDialogProps, 'message' | 'type'>>
+  ) => void
+
   // Confirm functions
-  confirm: (message: string, options?: Partial<Omit<ConfirmDialogProps, 'message'>>) => Promise<boolean>
-  confirmDanger: (message: string, options?: Partial<Omit<ConfirmDialogProps, 'message' | 'type'>>) => Promise<boolean>
-  
+  confirm: (
+    message: string,
+    options?: Partial<Omit<ConfirmDialogProps, 'message'>>
+  ) => Promise<boolean>
+  confirmDanger: (
+    message: string,
+    options?: Partial<Omit<ConfirmDialogProps, 'message' | 'type'>>
+  ) => Promise<boolean>
+
   // Prompt functions
-  prompt: (message: string, options?: Partial<Omit<PromptDialogProps, 'message'>>) => Promise<string | null>
-  
+  prompt: (
+    message: string,
+    options?: Partial<Omit<PromptDialogProps, 'message'>>
+  ) => Promise<string | null>
+
   // Dialog components to render
   AlertDialogComponent: React.JSX.Element
   ConfirmDialogComponent: React.JSX.Element
@@ -31,7 +63,10 @@ export const useDialog = (): DialogHookReturn => {
   const promptRef = useRef<PromptDialogRef>(null)
 
   // Alert functions
-  const alert = (message: string, options: Partial<Omit<AlertDialogProps, 'message'>> = {}) => {
+  const alert = (
+    message: string,
+    options: Partial<Omit<AlertDialogProps, 'message'>> = {}
+  ) => {
     alertRef.current?.open({
       message,
       type: 'info',
@@ -39,7 +74,10 @@ export const useDialog = (): DialogHookReturn => {
     })
   }
 
-  const success = (message: string, options: Partial<Omit<AlertDialogProps, 'message' | 'type'>> = {}) => {
+  const success = (
+    message: string,
+    options: Partial<Omit<AlertDialogProps, 'message' | 'type'>> = {}
+  ) => {
     alertRef.current?.open({
       message,
       type: 'success',
@@ -47,7 +85,10 @@ export const useDialog = (): DialogHookReturn => {
     })
   }
 
-  const warning = (message: string, options: Partial<Omit<AlertDialogProps, 'message' | 'type'>> = {}) => {
+  const warning = (
+    message: string,
+    options: Partial<Omit<AlertDialogProps, 'message' | 'type'>> = {}
+  ) => {
     alertRef.current?.open({
       message,
       type: 'warning',
@@ -55,7 +96,10 @@ export const useDialog = (): DialogHookReturn => {
     })
   }
 
-  const error = (message: string, options: Partial<Omit<AlertDialogProps, 'message' | 'type'>> = {}) => {
+  const error = (
+    message: string,
+    options: Partial<Omit<AlertDialogProps, 'message' | 'type'>> = {}
+  ) => {
     alertRef.current?.open({
       message,
       type: 'error',
@@ -64,8 +108,11 @@ export const useDialog = (): DialogHookReturn => {
   }
 
   // Confirm functions
-  const confirm = (message: string, options: Partial<Omit<ConfirmDialogProps, 'message'>> = {}): Promise<boolean> => {
-    return new Promise((resolve) => {
+  const confirm = (
+    message: string,
+    options: Partial<Omit<ConfirmDialogProps, 'message'>> = {}
+  ): Promise<boolean> => {
+    return new Promise(resolve => {
       confirmRef.current?.open({
         message,
         type: 'default',
@@ -77,10 +124,10 @@ export const useDialog = (): DialogHookReturn => {
   }
 
   const confirmDanger = (
-    message: string, 
+    message: string,
     options: Partial<Omit<ConfirmDialogProps, 'message' | 'type'>> = {}
   ): Promise<boolean> => {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       confirmRef.current?.open({
         message,
         type: 'danger',
@@ -94,13 +141,13 @@ export const useDialog = (): DialogHookReturn => {
 
   // Prompt function
   const prompt = (
-    message: string, 
+    message: string,
     options: Partial<Omit<PromptDialogProps, 'message'>> = {}
   ): Promise<string | null> => {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       promptRef.current?.open({
         message,
-        onConfirm: (value) => resolve(value),
+        onConfirm: value => resolve(value),
         onCancel: () => resolve(null),
         ...options,
       })
@@ -113,14 +160,14 @@ export const useDialog = (): DialogHookReturn => {
     success,
     warning,
     error,
-    
+
     // Confirm functions
     confirm,
     confirmDanger,
-    
+
     // Prompt functions
     prompt,
-    
+
     // Dialog components
     AlertDialogComponent: <AlertDialog ref={alertRef} />,
     ConfirmDialogComponent: <ConfirmDialog ref={confirmRef} />,
@@ -130,9 +177,11 @@ export const useDialog = (): DialogHookReturn => {
 
 // Convenience function to create dialog context
 export const createDialogProvider = () => {
-  const DialogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
+    children,
+  }) => {
     const dialog = useDialog()
-    
+
     return (
       <>
         {children}
@@ -142,9 +191,15 @@ export const createDialogProvider = () => {
       </>
     )
   }
-  
+
   return DialogProvider
 }
 
 // Re-export types for convenience
-export type { AlertType, AlertDialogProps, ConfirmType, ConfirmDialogProps, PromptDialogProps }
+export type {
+  AlertType,
+  AlertDialogProps,
+  ConfirmType,
+  ConfirmDialogProps,
+  PromptDialogProps,
+}

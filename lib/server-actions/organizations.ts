@@ -187,8 +187,7 @@ class OrganizationActions extends BaseServerAction {
     }
 
     const hasData =
-      counts._count.transactions > 0 ||
-      counts._count.paymentMethods > 0
+      counts._count.transactions > 0 || counts._count.paymentMethods > 0
 
     if (hasData) {
       throw new Error(

@@ -22,6 +22,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx scripts/seed-default-data.ts",
     "db:seed-defaults": "tsx scripts/seed-default-data.ts",
+    "db:seed-categories": "tsx scripts/seed-categories.ts",
     "migrate:uuid-v7": "./scripts/migrate-to-uuid-v7.sh",
     "uuid:generate": "node -e \"console.log(require('uuid').v7())\"",
     "uuid:test": "node -e \"const {v7} = require('uuid'); console.log('UUID v7:', v7()); console.log('Timestamp:', new Date(parseInt(v7().replace(/-/g, '').substring(0, 12), 16)))\"",

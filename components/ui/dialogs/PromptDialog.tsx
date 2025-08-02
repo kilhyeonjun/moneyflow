@@ -11,7 +11,13 @@ import {
   useDisclosure,
 } from '@heroui/react'
 import { Edit3 } from 'lucide-react'
-import { forwardRef, useImperativeHandle, useState, useRef, useEffect } from 'react'
+import {
+  forwardRef,
+  useImperativeHandle,
+  useState,
+  useRef,
+  useEffect,
+} from 'react'
 
 export interface PromptDialogProps {
   title?: string
@@ -134,7 +140,7 @@ const PromptDialog = forwardRef<PromptDialogRef>((_, ref) => {
       }}
     >
       <ModalContent>
-        {(onClose) => (
+        {onClose => (
           <>
             <ModalHeader className="flex flex-col gap-1 pb-2">
               {promptProps.title && (

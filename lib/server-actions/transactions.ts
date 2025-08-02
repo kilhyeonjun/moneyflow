@@ -65,6 +65,19 @@ class TransactionActions extends BaseServerAction {
               type: true,
             },
           },
+          category: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+              parent: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
           organization: {
             select: {
               id: true,
@@ -115,6 +128,19 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         organization: {
           select: {
             id: true,
@@ -158,7 +184,6 @@ class TransactionActions extends BaseServerAction {
       userId: user.id,
     }
 
-
     // Validate payment method belongs to the organization if provided
     if (validatedInput.paymentMethodId) {
       this.validateUUID(validatedInput.paymentMethodId, 'Payment Method ID')
@@ -173,6 +198,33 @@ class TransactionActions extends BaseServerAction {
       if (!paymentMethod) {
         throw new Error(
           `${ServerActionError.VALIDATION_ERROR}: Payment method not found or does not belong to this organization`
+        )
+      }
+    }
+
+    // Validate category belongs to the organization if provided
+    if (validatedInput.categoryId) {
+      this.validateUUID(validatedInput.categoryId, 'Category ID')
+
+      const category = await prisma.category.findFirst({
+        where: {
+          id: validatedInput.categoryId,
+          organizationId: input.organizationId,
+          isActive: true,
+        },
+      })
+
+      if (!category) {
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`
+        )
+      }
+
+      // Validate category type matches transaction type
+      const transactionType = validatedInput.transactionType
+      if (!this.isCategoryTypeCompatible(category.type, transactionType)) {
+        throw new Error(
+          `${ServerActionError.VALIDATION_ERROR}: Category type '${category.type}' is not compatible with transaction type '${transactionType}'`
         )
       }
     }
@@ -192,6 +244,11 @@ class TransactionActions extends BaseServerAction {
           connect: { id: validatedInput.paymentMethodId },
         },
       }),
+      ...(validatedInput.categoryId && {
+        category: {
+          connect: { id: validatedInput.categoryId },
+        },
+      }),
       ...(validatedInput.tags && { tags: validatedInput.tags }),
       ...(validatedInput.memo && { memo: validatedInput.memo }),
       ...(validatedInput.receiptUrl && {
@@ -207,6 +264,19 @@ class TransactionActions extends BaseServerAction {
             id: true,
             name: true,
             type: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
         organization: {
@@ -275,7 +345,6 @@ class TransactionActions extends BaseServerAction {
       updateData.transactionDate = parseDate(updateData.transactionDate)
     }
 
-
     // Validate payment method if being updated
     if (updateData.paymentMethodId !== undefined) {
       if (updateData.paymentMethodId) {
@@ -296,6 +365,36 @@ class TransactionActions extends BaseServerAction {
       }
     }
 
+    // Validate category if being updated
+    if (updateData.categoryId !== undefined) {
+      if (updateData.categoryId) {
+        this.validateUUID(updateData.categoryId, 'Category ID')
+
+        const category = await prisma.category.findFirst({
+          where: {
+            id: updateData.categoryId,
+            organizationId: input.organizationId,
+            isActive: true,
+          },
+        })
+
+        if (!category) {
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Category not found or does not belong to this organization`
+          )
+        }
+
+        // Validate category type matches transaction type
+        const transactionType =
+          updateData.transactionType || existingTransaction.transactionType
+        if (!this.isCategoryTypeCompatible(category.type, transactionType)) {
+          throw new Error(
+            `${ServerActionError.VALIDATION_ERROR}: Category type '${category.type}' is not compatible with transaction type '${transactionType}'`
+          )
+        }
+      }
+    }
+
     // Update transaction
     const updatedTransaction = await prisma.transaction.update({
       where: { id: input.id },
@@ -306,6 +405,19 @@ class TransactionActions extends BaseServerAction {
             id: true,
             name: true,
             type: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
         organization: {
@@ -396,6 +508,19 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
         organization: {
           select: {
             id: true,
@@ -410,6 +535,129 @@ class TransactionActions extends BaseServerAction {
     })
 
     return transactions.map(transformTransactionForFrontend)
+  }
+
+  /**
+   * Get transactions grouped by category with statistics
+   */
+  async getTransactionsByCategory(
+    organizationId: string,
+    filters?: Partial<TransactionFilters>
+  ): Promise<
+    {
+      categoryId: string | null
+      categoryName: string
+      categoryType: string | null
+      transactionCount: number
+      totalAmount: number
+      averageAmount: number
+      transactions: ReturnType<typeof transformTransactionForFrontend>[]
+    }[]
+  > {
+    await this.validateAuth(organizationId)
+
+    const finalFilters: TransactionFilters = {
+      organizationId,
+      ...filters,
+    }
+
+    const where = buildTransactionWhereClause(finalFilters)
+
+    // Get transactions grouped by category
+    const transactions = await prisma.transaction.findMany({
+      where,
+      include: {
+        paymentMethod: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        organization: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        transactionDate: 'desc',
+      },
+    })
+
+    // Group by category
+    const categoryGroups = new Map<string | null, typeof transactions>()
+
+    transactions.forEach(transaction => {
+      const categoryId = transaction.categoryId
+      if (!categoryGroups.has(categoryId)) {
+        categoryGroups.set(categoryId, [])
+      }
+      categoryGroups.get(categoryId)!.push(transaction)
+    })
+
+    // Calculate statistics for each category
+    const result = Array.from(categoryGroups.entries()).map(
+      ([categoryId, categoryTransactions]) => {
+        const totalAmount = categoryTransactions.reduce(
+          (sum, t) => sum + t.amount.toNumber(),
+          0
+        )
+        const averageAmount = totalAmount / categoryTransactions.length
+
+        const firstTransaction = categoryTransactions[0]
+        const categoryName = firstTransaction?.category?.name || 'Uncategorized'
+        const categoryType = firstTransaction?.category?.type || null
+
+        return {
+          categoryId,
+          categoryName,
+          categoryType,
+          transactionCount: categoryTransactions.length,
+          totalAmount: Math.round(totalAmount * 100) / 100,
+          averageAmount: Math.round(averageAmount * 100) / 100,
+          transactions: categoryTransactions.map(
+            transformTransactionForFrontend
+          ),
+        }
+      }
+    )
+
+    // Sort by total amount (descending)
+    return result.sort((a, b) => b.totalAmount - a.totalAmount)
+  }
+
+  // Private helper methods
+
+  /**
+   * Check if category type is compatible with transaction type
+   */
+  private isCategoryTypeCompatible(
+    categoryType: string,
+    transactionType: string
+  ): boolean {
+    const compatibilityMap: Record<string, string[]> = {
+      income: ['income'],
+      savings: ['income', 'transfer'], // Savings can accept income or transfers
+      fixed_expense: ['expense'],
+      variable_expense: ['expense'],
+    }
+
+    return compatibilityMap[categoryType]?.includes(transactionType) || false
   }
 }
 
@@ -453,4 +701,9 @@ export const getTransactionStats = createServerAction(
 export const getRecentTransactions = createServerAction(
   async (organizationId: string, limit?: number) =>
     transactionActions.getRecentTransactions(organizationId, limit)
+)
+
+export const getTransactionsByCategory = createServerAction(
+  async (organizationId: string, filters?: Partial<TransactionFilters>) =>
+    transactionActions.getTransactionsByCategory(organizationId, filters)
 )

@@ -45,6 +45,7 @@ import {
   CreditCard,
   Building2,
   Wallet,
+  ChevronRight,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 // Import server actions and types
@@ -58,11 +59,19 @@ import { handleServerActionResult } from '@/components/error/ErrorBoundary'
 import PaymentMethodSelect from '@/components/payment-methods/PaymentMethodSelect'
 import ValidatedInput from '@/components/form/ValidatedInput'
 import ValidatedSelect from '@/components/form/ValidatedSelect'
-import { useFormValidation, commonValidationRules, type FieldValidation } from '@/hooks/useFormValidation'
-import { 
-  transactionCreateFormSchema, 
+import ValidatedCategorySelect, {
+  categoryValidationRules,
+} from '@/components/form/ValidatedCategorySelect'
+import { CategoryIcon, getTypeName } from '@/components/categories'
+import {
+  useFormValidation,
+  commonValidationRules,
+  type FieldValidation,
+} from '@/hooks/useFormValidation'
+import {
+  transactionCreateFormSchema,
   transactionUpdateFormSchema,
-  validateSchema 
+  validateSchema,
 } from '@/lib/validation/schemas'
 import { z } from 'zod'
 import type {
@@ -80,6 +89,7 @@ interface TransactionFormData {
   description: string
   transactionDate: string
   transactionType: string
+  categoryId: string
   paymentMethodId: string
 }
 
@@ -99,7 +109,9 @@ function createFieldValidationFromZodSchema<T extends z.ZodRawShape>(
         const fieldResult = (fieldSchema as any).safeParse(value)
         if (!fieldResult.success) {
           // 첫 번째 에러 메시지 반환
-          return fieldResult.error.errors[0]?.message || '유효하지 않은 값입니다'
+          return (
+            fieldResult.error.errors[0]?.message || '유효하지 않은 값입니다'
+          )
         }
         return null
       } catch (error) {
@@ -112,12 +124,21 @@ function createFieldValidationFromZodSchema<T extends z.ZodRawShape>(
 }
 
 // transactionCreateFormSchema에서 organizationId 제외한 클라이언트 폼 스키마
-const clientTransactionCreateFormSchema = transactionCreateFormSchema.omit({ organizationId: true })
-const clientTransactionUpdateFormSchema = transactionUpdateFormSchema.omit({ organizationId: true, id: true })
+const clientTransactionCreateFormSchema = transactionCreateFormSchema.omit({
+  organizationId: true,
+})
+const clientTransactionUpdateFormSchema = transactionUpdateFormSchema.omit({
+  organizationId: true,
+  id: true,
+})
 
 // Zod schema 기반 validation rules 생성
-const createZodValidationRules = createFieldValidationFromZodSchema(clientTransactionCreateFormSchema)
-const editZodValidationRules = createFieldValidationFromZodSchema(clientTransactionUpdateFormSchema)
+const createZodValidationRules = createFieldValidationFromZodSchema(
+  clientTransactionCreateFormSchema
+)
+const editZodValidationRules = createFieldValidationFromZodSchema(
+  clientTransactionUpdateFormSchema
+)
 
 export default function TransactionsPage() {
   const router = useRouter()
@@ -147,30 +168,38 @@ export default function TransactionsPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Create form validation 훅 (Zod schema 기반)
-  const createForm = useFormValidation<TransactionFormData>(createZodValidationRules, {
-    initialData: {
-      amount: '',
-      description: '',
-      transactionDate: new Date().toISOString().split('T')[0],
-      transactionType: 'expense',
-      paymentMethodId: '',
-    },
-    mode: 'onChange',
-    realTimeValidation: true
-  })
+  const createForm = useFormValidation<TransactionFormData>(
+    createZodValidationRules,
+    {
+      initialData: {
+        amount: '',
+        description: '',
+        transactionDate: new Date().toISOString().split('T')[0],
+        transactionType: 'expense',
+        categoryId: '',
+        paymentMethodId: '',
+      },
+      mode: 'onChange',
+      realTimeValidation: true,
+    }
+  )
 
   // Edit form validation 훅 (Zod schema 기반)
-  const editForm = useFormValidation<TransactionFormData>(editZodValidationRules, {
-    initialData: {
-      amount: '',
-      description: '',
-      transactionDate: '',
-      transactionType: 'expense',
-      paymentMethodId: '',
-    },
-    mode: 'onChange',
-    realTimeValidation: true
-  })
+  const editForm = useFormValidation<TransactionFormData>(
+    editZodValidationRules,
+    {
+      initialData: {
+        amount: '',
+        description: '',
+        transactionDate: '',
+        transactionType: 'expense',
+        categoryId: '',
+        paymentMethodId: '',
+      },
+      mode: 'onChange',
+      realTimeValidation: true,
+    }
+  )
 
   useEffect(() => {
     if (orgId) {
@@ -230,12 +259,15 @@ export default function TransactionsPage() {
     // Zod schema를 사용한 최종 데이터 검증
     const formDataWithOrgId = {
       ...createForm.data,
-      organizationId: orgId
+      organizationId: orgId,
     }
-    
-    const validationResult = transactionCreateFormSchema.safeParse(formDataWithOrgId)
+
+    const validationResult =
+      transactionCreateFormSchema.safeParse(formDataWithOrgId)
     if (!validationResult.success) {
-      const errorMessages = validationResult.error.errors.map(err => err.message).join(' ')
+      const errorMessages = validationResult.error.errors
+        .map(err => err.message)
+        .join(' ')
       toast.error(errorMessages || '필수 정보를 모두 입력해주세요')
       return
     }
@@ -249,6 +281,7 @@ export default function TransactionsPage() {
         description: validationResult.data.description,
         transactionDate: validationResult.data.transactionDate,
         transactionType: validationResult.data.transactionType,
+        categoryId: validationResult.data.categoryId,
         paymentMethodId: validationResult.data.paymentMethodId,
       }
 
@@ -268,6 +301,7 @@ export default function TransactionsPage() {
           description: '',
           transactionDate: new Date().toISOString().split('T')[0],
           transactionType: 'expense',
+          categoryId: '',
           paymentMethodId: '',
         })
 
@@ -300,6 +334,7 @@ export default function TransactionsPage() {
         ? new Date(transaction.transactionDate).toISOString().split('T')[0]
         : '',
       transactionType: transaction.transactionType || 'expense',
+      categoryId: transaction.category?.id || '',
       paymentMethodId: transaction.paymentMethodId || '',
     }
     editForm.reset(editData)
@@ -328,12 +363,15 @@ export default function TransactionsPage() {
     const formDataWithIds = {
       ...editForm.data,
       id: selectedTransaction.id,
-      organizationId: orgId
+      organizationId: orgId,
     }
-    
-    const validationResult = transactionUpdateFormSchema.safeParse(formDataWithIds)
+
+    const validationResult =
+      transactionUpdateFormSchema.safeParse(formDataWithIds)
     if (!validationResult.success) {
-      const errorMessages = validationResult.error.errors.map(err => err.message).join(' ')
+      const errorMessages = validationResult.error.errors
+        .map(err => err.message)
+        .join(' ')
       toast.error(errorMessages || '필수 정보를 모두 입력해주세요')
       return
     }
@@ -348,6 +386,7 @@ export default function TransactionsPage() {
         description: validationResult.data.description!,
         transactionDate: validationResult.data.transactionDate!,
         transactionType: validationResult.data.transactionType!,
+        categoryId: validationResult.data.categoryId,
         paymentMethodId: validationResult.data.paymentMethodId,
       }
 
@@ -575,6 +614,7 @@ export default function TransactionsPage() {
             <Table aria-label="거래 내역 테이블">
               <TableHeader>
                 <TableColumn>구분</TableColumn>
+                <TableColumn>카테고리</TableColumn>
                 <TableColumn>설명</TableColumn>
                 <TableColumn>결제수단</TableColumn>
                 <TableColumn>금액</TableColumn>
@@ -586,8 +626,14 @@ export default function TransactionsPage() {
                   <TableRow key={transaction.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getTransactionTypeIcon(
-                          transaction.transactionType || 'expense'
+                        {transaction.category ? (
+                          <CategoryIcon
+                            type={transaction.category.type as any}
+                          />
+                        ) : (
+                          getTransactionTypeIcon(
+                            transaction.transactionType || 'expense'
+                          )
                         )}
                         <Chip
                           size="sm"
@@ -609,6 +655,32 @@ export default function TransactionsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      {transaction.category ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <span className="text-gray-600">
+                            {getTypeName(transaction.category.type as any)}
+                          </span>
+                          <ChevronRight className="w-3 h-3 text-gray-400" />
+                          <span className="text-gray-700 font-medium">
+                            {transaction.category.parent?.name ||
+                              transaction.category.name}
+                          </span>
+                          {transaction.category.parent && (
+                            <>
+                              <ChevronRight className="w-3 h-3 text-gray-400" />
+                              <span className="text-gray-800 font-semibold">
+                                {transaction.category.name}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">
+                          카테고리 없음
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <span>{transaction.description}</span>
                     </TableCell>
                     <TableCell>
@@ -620,7 +692,9 @@ export default function TransactionsPage() {
                               {transaction.paymentMethod.name}
                             </span>
                             <span className="text-xs text-gray-500">
-                              {getPaymentMethodTypeName(transaction.paymentMethod.type)}
+                              {getPaymentMethodTypeName(
+                                transaction.paymentMethod.type
+                              )}
                             </span>
                           </div>
                         </div>
@@ -691,21 +765,20 @@ export default function TransactionsPage() {
           <ModalHeader>새 거래 추가</ModalHeader>
           <ModalBody>
             <div className="space-y-4">
-              <ValidatedSelect
-                label="거래 유형"
-                placeholder="거래 유형을 선택하세요"
-                description="수입은 돈이 들어오는 거래, 지출은 돈이 나가는 거래입니다"
-                options={[
-                  { key: 'income', label: '수입' },
-                  { key: 'expense', label: '지출' },
-                  { key: 'transfer', label: '이체' }
-                ]}
-                selectedKeys={createForm.data.transactionType ? [createForm.data.transactionType] : []}
-                onSelectionChange={keys => {
-                  const value = Array.from(keys)[0] as string
-                  createForm.updateField('transactionType', value)
+              <ValidatedCategorySelect
+                organizationId={orgId}
+                value={createForm.data.categoryId}
+                onSelectionChange={(categoryId: string | undefined) => {
+                  createForm.updateField('categoryId', categoryId || '')
+                  // 카테고리 선택 시 거래 유형 자동 설정 (하위 호환성)
+                  if (categoryId) {
+                    // 카테고리가 선택되면 해당 카테고리의 유형에 맞는 transactionType 설정
+                    // 이는 서버 액션에서 처리되므로 여기서는 기본값 유지
+                  }
                 }}
-                validation={createZodValidationRules.transactionType}
+                label="카테고리"
+                placeholder="카테고리를 선택하세요"
+                validation={categoryValidationRules.required('카테고리')}
                 isRequired
               />
 
@@ -729,7 +802,9 @@ export default function TransactionsPage() {
                 label="설명"
                 placeholder="예: 점심식사, 교통비, 월급 등"
                 value={createForm.data.description}
-                onValueChange={value => createForm.updateField('description', value)}
+                onValueChange={value =>
+                  createForm.updateField('description', value)
+                }
                 validation={createZodValidationRules.description}
                 isRequired
                 description="거래 내용을 간단히 설명해주세요"
@@ -739,7 +814,9 @@ export default function TransactionsPage() {
                 label="거래 날짜"
                 type="date"
                 value={createForm.data.transactionDate}
-                onValueChange={value => createForm.updateField('transactionDate', value)}
+                onValueChange={value =>
+                  createForm.updateField('transactionDate', value)
+                }
                 validation={createZodValidationRules.transactionDate}
                 isRequired
                 description="거래가 발생한 날짜를 선택하세요"
@@ -753,7 +830,10 @@ export default function TransactionsPage() {
                     const value = paymentMethodId || ''
                     createForm.updateField('paymentMethodId', value)
                     // 선택 시 에러 클리어 (paymentMethodId는 선택사항이므로)
-                    if (createZodValidationRules.paymentMethodId && !createZodValidationRules.paymentMethodId(value)) {
+                    if (
+                      createZodValidationRules.paymentMethodId &&
+                      !createZodValidationRules.paymentMethodId(value)
+                    ) {
                       createForm.clearFieldError('paymentMethodId')
                     }
                   }}
@@ -780,7 +860,13 @@ export default function TransactionsPage() {
               color="primary"
               onPress={handleCreateTransaction}
               isLoading={creating}
-              isDisabled={creating || !createForm.isValid || !createForm.data.amount || !createForm.data.description}
+              isDisabled={
+                creating ||
+                !createForm.isValid ||
+                !createForm.data.amount ||
+                !createForm.data.description ||
+                !createForm.data.categoryId
+              }
             >
               추가하기
             </Button>
@@ -794,21 +880,15 @@ export default function TransactionsPage() {
           <ModalHeader>거래 수정</ModalHeader>
           <ModalBody>
             <div className="space-y-4">
-              <ValidatedSelect
-                label="거래 유형"
-                placeholder="거래 유형을 선택하세요"
-                description="수입은 돈이 들어오는 거래, 지출은 돈이 나가는 거래입니다"
-                options={[
-                  { key: 'income', label: '수입' },
-                  { key: 'expense', label: '지출' },
-                  { key: 'transfer', label: '이체' }
-                ]}
-                selectedKeys={editForm.data.transactionType ? [editForm.data.transactionType] : []}
-                onSelectionChange={keys => {
-                  const value = Array.from(keys)[0] as string
-                  editForm.updateField('transactionType', value)
+              <ValidatedCategorySelect
+                organizationId={orgId}
+                value={editForm.data.categoryId}
+                onSelectionChange={(categoryId: string | undefined) => {
+                  editForm.updateField('categoryId', categoryId || '')
                 }}
-                validation={editZodValidationRules.transactionType}
+                label="카테고리"
+                placeholder="카테고리를 선택하세요"
+                validation={categoryValidationRules.required('카테고리')}
                 isRequired
               />
 
@@ -832,7 +912,9 @@ export default function TransactionsPage() {
                 label="설명"
                 placeholder="예: 점심식사, 교통비, 월급 등"
                 value={editForm.data.description}
-                onValueChange={value => editForm.updateField('description', value)}
+                onValueChange={value =>
+                  editForm.updateField('description', value)
+                }
                 validation={editZodValidationRules.description}
                 isRequired
                 description="거래 내용을 간단히 설명해주세요"
@@ -842,7 +924,9 @@ export default function TransactionsPage() {
                 label="거래 날짜"
                 type="date"
                 value={editForm.data.transactionDate}
-                onValueChange={value => editForm.updateField('transactionDate', value)}
+                onValueChange={value =>
+                  editForm.updateField('transactionDate', value)
+                }
                 validation={editZodValidationRules.transactionDate}
                 isRequired
                 description="거래가 발생한 날짜를 선택하세요"
@@ -856,7 +940,10 @@ export default function TransactionsPage() {
                     const value = paymentMethodId || ''
                     editForm.updateField('paymentMethodId', value)
                     // 선택 시 에러 클리어 (paymentMethodId는 선택사항이므로)
-                    if (editZodValidationRules.paymentMethodId && !editZodValidationRules.paymentMethodId(value)) {
+                    if (
+                      editZodValidationRules.paymentMethodId &&
+                      !editZodValidationRules.paymentMethodId(value)
+                    ) {
                       editForm.clearFieldError('paymentMethodId')
                     }
                   }}
@@ -883,7 +970,13 @@ export default function TransactionsPage() {
               color="primary"
               onPress={handleUpdateTransaction}
               isLoading={updating}
-              isDisabled={updating || !editForm.isValid || !editForm.data.amount || !editForm.data.description}
+              isDisabled={
+                updating ||
+                !editForm.isValid ||
+                !editForm.data.amount ||
+                !editForm.data.description ||
+                !editForm.data.categoryId
+              }
             >
               수정하기
             </Button>

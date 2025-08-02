@@ -43,12 +43,19 @@ const AlertDialog = forwardRef<AlertDialogRef>((_, ref) => {
 
   const getIcon = () => {
     const iconProps = { size: 24, className: 'flex-shrink-0' }
-    
+
     switch (alertProps.type) {
       case 'success':
-        return <CheckCircle {...iconProps} className="text-success flex-shrink-0" />
+        return (
+          <CheckCircle {...iconProps} className="text-success flex-shrink-0" />
+        )
       case 'warning':
-        return <AlertTriangle {...iconProps} className="text-warning flex-shrink-0" />
+        return (
+          <AlertTriangle
+            {...iconProps}
+            className="text-warning flex-shrink-0"
+          />
+        )
       case 'error':
         return <XCircle {...iconProps} className="text-danger flex-shrink-0" />
       default:
@@ -91,7 +98,7 @@ const AlertDialog = forwardRef<AlertDialogRef>((_, ref) => {
       }}
     >
       <ModalContent>
-        {(onClose) => (
+        {onClose => (
           <>
             <ModalHeader className="flex flex-col gap-1 pb-2">
               {alertProps.title && (

@@ -108,9 +108,18 @@ export function buildTransactionWhereClause(
     organizationId: filters.organizationId,
   }
 
-
   if (filters.transactionType) {
     where.transactionType = filters.transactionType
+  }
+
+  if (filters.categoryId) {
+    where.categoryId = filters.categoryId
+  }
+
+  if (filters.categoryType) {
+    where.category = {
+      type: filters.categoryType,
+    }
   }
 
   if (filters.startDate || filters.endDate) {
@@ -125,7 +134,6 @@ export function buildTransactionWhereClause(
 
   return where
 }
-
 
 /**
  * Common date utilities for server actions

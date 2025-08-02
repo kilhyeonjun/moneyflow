@@ -1,7 +1,13 @@
 'use client'
 
 import { Button, Card, CardBody, CardHeader } from '@heroui/react'
-import { AlertTriangle, CheckCircle, Info, MessageSquare, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle,
+  Info,
+  MessageSquare,
+  XCircle,
+} from 'lucide-react'
 import { useDialog } from './useDialog'
 
 /**
@@ -40,7 +46,7 @@ export default function DialogExample() {
   const handleBasicConfirm = async () => {
     const confirmed = await dialog.confirm('정말로 계속하시겠습니까?')
     console.log('Confirmed:', confirmed)
-    
+
     if (confirmed) {
       dialog.success('확인되었습니다!')
     } else {
@@ -57,7 +63,7 @@ export default function DialogExample() {
         cancelText: '보관',
       }
     )
-    
+
     if (confirmed) {
       dialog.error('삭제되었습니다!')
     } else {
@@ -71,7 +77,7 @@ export default function DialogExample() {
       placeholder: '홍길동',
       confirmText: '저장',
     })
-    
+
     if (result) {
       dialog.success(`안녕하세요, ${result}님!`)
     } else {
@@ -84,7 +90,7 @@ export default function DialogExample() {
       title: '이메일 확인',
       inputType: 'email',
       placeholder: 'example@domain.com',
-      validation: (value) => {
+      validation: value => {
         if (!value.trim()) {
           return '이메일 주소를 입력해주세요.'
         }
@@ -95,7 +101,7 @@ export default function DialogExample() {
       },
       confirmText: '확인',
     })
-    
+
     if (result) {
       dialog.success(`이메일 주소가 확인되었습니다: ${result}`)
     }
@@ -107,7 +113,7 @@ export default function DialogExample() {
       inputType: 'number',
       placeholder: '25',
       defaultValue: '20',
-      validation: (value) => {
+      validation: value => {
         const age = parseInt(value)
         if (isNaN(age) || age < 1 || age > 150) {
           return '1-150 사이의 숫자를 입력해주세요.'
@@ -115,7 +121,7 @@ export default function DialogExample() {
         return null
       },
     })
-    
+
     if (result) {
       dialog.success(`나이: ${result}세`)
     }
@@ -133,7 +139,7 @@ export default function DialogExample() {
         },
       }
     )
-    
+
     if (confirmed) {
       dialog.success('데이터가 서버에 저장되었습니다!')
     }
@@ -159,10 +165,18 @@ export default function DialogExample() {
               <Button variant="flat" onPress={handleBasicAlert}>
                 기본 알림
               </Button>
-              <Button color="success" variant="flat" onPress={handleSuccessAlert}>
+              <Button
+                color="success"
+                variant="flat"
+                onPress={handleSuccessAlert}
+              >
                 성공 알림
               </Button>
-              <Button color="warning" variant="flat" onPress={handleWarningAlert}>
+              <Button
+                color="warning"
+                variant="flat"
+                onPress={handleWarningAlert}
+              >
                 경고 알림
               </Button>
               <Button color="danger" variant="flat" onPress={handleErrorAlert}>
@@ -178,13 +192,25 @@ export default function DialogExample() {
               Confirm Dialog 예제
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <Button color="primary" variant="flat" onPress={handleBasicConfirm}>
+              <Button
+                color="primary"
+                variant="flat"
+                onPress={handleBasicConfirm}
+              >
                 기본 확인
               </Button>
-              <Button color="danger" variant="flat" onPress={handleDangerConfirm}>
+              <Button
+                color="danger"
+                variant="flat"
+                onPress={handleDangerConfirm}
+              >
                 위험한 작업 확인
               </Button>
-              <Button color="secondary" variant="flat" onPress={handleAsyncConfirm}>
+              <Button
+                color="secondary"
+                variant="flat"
+                onPress={handleAsyncConfirm}
+              >
                 비동기 작업 확인
               </Button>
             </div>
@@ -197,13 +223,25 @@ export default function DialogExample() {
               Prompt Dialog 예제
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <Button color="primary" variant="flat" onPress={handleBasicPrompt}>
+              <Button
+                color="primary"
+                variant="flat"
+                onPress={handleBasicPrompt}
+              >
                 기본 입력
               </Button>
-              <Button color="secondary" variant="flat" onPress={handleValidatedPrompt}>
+              <Button
+                color="secondary"
+                variant="flat"
+                onPress={handleValidatedPrompt}
+              >
                 이메일 입력 (검증)
               </Button>
-              <Button color="success" variant="flat" onPress={handleNumberPrompt}>
+              <Button
+                color="success"
+                variant="flat"
+                onPress={handleNumberPrompt}
+              >
                 숫자 입력 (검증)
               </Button>
             </div>
