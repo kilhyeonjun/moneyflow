@@ -36,7 +36,7 @@ interface CategoryData {
   name: string
   type: TransactionType
   parentId: string | null
-  displayOrder: number
+  displayOrder: number | null
   isActive: boolean
   parent: {
     id: string
@@ -47,7 +47,7 @@ interface CategoryData {
     id: string
     name: string
     type: TransactionType
-    displayOrder: number
+    displayOrder: number | null
     isActive: boolean
   }[]
   transactionCount: number
@@ -199,7 +199,7 @@ export default function HierarchicalCategorySelect({
       .filter(cat => !cat.parentId && cat.isActive)
       .sort(
         (a, b) =>
-          a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)
+          (a.displayOrder || 0) - (b.displayOrder || 0) || a.name.localeCompare(b.name)
       )
   }, [currentTypeCategories])
 
@@ -215,7 +215,7 @@ export default function HierarchicalCategorySelect({
         .filter(child => child.isActive)
         .sort(
           (a, b) =>
-            a.displayOrder - b.displayOrder || a.name.localeCompare(b.name)
+            (a.displayOrder || 0) - (b.displayOrder || 0) || a.name.localeCompare(b.name)
         ) || []
     )
   }, [currentTypeCategories, selectedParentId])
@@ -276,7 +276,7 @@ export default function HierarchicalCategorySelect({
         name: selectedCategory.name,
         type: selectedCategory.type,
         parentId: selectedParentId,
-        displayOrder: selectedCategory.displayOrder,
+        displayOrder: selectedCategory.displayOrder || 0,
         isActive: selectedCategory.isActive,
         parent: parentCategories.find(p => p.id === selectedParentId) || null,
         children: [],

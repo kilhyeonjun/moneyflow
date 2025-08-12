@@ -116,11 +116,9 @@ export function buildTransactionWhereClause(
     where.categoryId = filters.categoryId
   }
 
-  if (filters.categoryType) {
-    where.category = {
-      type: filters.categoryType,
-    }
-  }
+  // Note: categoryType filtering now needs to be handled at application level
+  // since we can't use category relations with relationMode = "prisma"
+  // This filter is applied post-query in the enrichment process
 
   if (filters.startDate || filters.endDate) {
     where.transactionDate = {}

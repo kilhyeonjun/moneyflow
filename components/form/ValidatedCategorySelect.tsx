@@ -8,7 +8,7 @@ interface CategoryData {
   name: string
   type: 'income' | 'savings' | 'fixed_expense' | 'variable_expense'
   parentId: string | null
-  displayOrder: number
+  displayOrder: number | null
   isActive: boolean
   parent: {
     id: string
@@ -19,7 +19,7 @@ interface CategoryData {
     id: string
     name: string
     type: 'income' | 'savings' | 'fixed_expense' | 'variable_expense'
-    displayOrder: number
+    displayOrder: number | null
     isActive: boolean
   }[]
   transactionCount: number

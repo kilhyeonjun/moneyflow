@@ -166,8 +166,6 @@ class OrganizationActions extends BaseServerAction {
         tx.transaction.deleteMany({ where: { organizationId } }),
         tx.paymentMethod.deleteMany({ where: { organizationId } }),
         tx.category.deleteMany({ where: { organizationId } }),
-        tx.asset.deleteMany({ where: { organizationId } }),
-        tx.debt.deleteMany({ where: { organizationId } }),
         tx.organizationMember.deleteMany({ where: { organizationId } }),
         tx.organizationInvitation.deleteMany({ where: { organizationId } }),
       ])

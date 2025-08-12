@@ -33,6 +33,83 @@ import {
 
 class TransactionActions extends BaseServerAction {
   /**
+   * Helper function to enrich transactions with category information
+   */
+  private async enrichTransactionsWithCategories<T extends { categoryId: string | null, [key: string]: any }>(
+    transactions: T[],
+    organizationId: string
+  ): Promise<(T & { category?: { id: string; name: string; type: string; parent?: { id: string; name: string; type: string } | null } | null })[]> {
+    if (transactions.length === 0) return []
+
+    // Get unique category IDs
+    const categoryIds = [...new Set(
+      transactions
+        .map(t => t.categoryId)
+        .filter(Boolean)
+    )] as string[]
+
+    if (categoryIds.length === 0) {
+      return transactions.map(t => ({ ...t, category: null }))
+    }
+
+    // Fetch all categories at once
+    const categories = await prisma.category.findMany({
+      where: {
+        id: { in: categoryIds },
+        organizationId,
+        isActive: true
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        parentId: true
+      }
+    })
+
+    // Get parent categories for hierarchical data
+    const parentIds = [...new Set(
+      categories
+        .map(c => c.parentId)
+        .filter(Boolean)
+    )] as string[]
+
+    const parentCategories = parentIds.length > 0 ?
+      await prisma.category.findMany({
+        where: {
+          id: { in: parentIds },
+          organizationId,
+          isActive: true
+        },
+        select: {
+          id: true,
+          name: true,
+          type: true
+        }
+      }) : []
+
+    // Create lookup maps
+    const categoryMap = new Map(categories.map(c => [c.id, c]))
+    const parentMap = new Map(parentCategories.map(c => [c.id, c]))
+
+    // Enrich transactions with category information
+    return transactions.map(transaction => {
+      const category = transaction.categoryId ? categoryMap.get(transaction.categoryId) : null
+      const enrichedCategory = category ? {
+        id: category.id,
+        name: category.name,
+        type: category.type,
+        parent: category.parentId ? parentMap.get(category.parentId) || null : null
+      } : null
+
+      return {
+        ...transaction,
+        category: enrichedCategory
+      }
+    })
+  }
+
+  /**
    * Get transactions with filtering, pagination, and search
    */
   async getTransactions(
@@ -65,19 +142,6 @@ class TransactionActions extends BaseServerAction {
               type: true,
             },
           },
-          category: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-              parent: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
           organization: {
             select: {
               id: true,
@@ -93,8 +157,14 @@ class TransactionActions extends BaseServerAction {
       }),
     ])
 
+    // Enrich with category information
+    const enrichedTransactions = await this.enrichTransactionsWithCategories(
+      transactions,
+      organizationId
+    )
+
     // Transform for frontend compatibility
-    const transformedTransactions = transactions.map(
+    const transformedTransactions = enrichedTransactions.map(
       transformTransactionForFrontend
     )
 
@@ -128,19 +198,6 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            parent: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
         organization: {
           select: {
             id: true,
@@ -154,7 +211,13 @@ class TransactionActions extends BaseServerAction {
       throw new Error(ServerActionError.NOT_FOUND)
     }
 
-    return transformTransactionForFrontend(transaction)
+    // Enrich with category information
+    const enrichedTransactions = await this.enrichTransactionsWithCategories(
+      [transaction],
+      organizationId
+    )
+
+    return transformTransactionForFrontend(enrichedTransactions[0])
   }
 
   /**
@@ -245,9 +308,7 @@ class TransactionActions extends BaseServerAction {
         },
       }),
       ...(validatedInput.categoryId && {
-        category: {
-          connect: { id: validatedInput.categoryId },
-        },
+        categoryId: validatedInput.categoryId,
       }),
       ...(validatedInput.tags && { tags: validatedInput.tags }),
       ...(validatedInput.memo && { memo: validatedInput.memo }),
@@ -266,19 +327,6 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            parent: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
         organization: {
           select: {
             id: true,
@@ -288,13 +336,17 @@ class TransactionActions extends BaseServerAction {
       },
     })
 
+    // Enrich with category information
+    const enrichedTransactions = await this.enrichTransactionsWithCategories(
+      [transaction],
+      input.organizationId
+    )
+
     // Revalidate relevant pages
     revalidatePath(`/org/${input.organizationId}/transactions`)
     revalidatePath(`/org/${input.organizationId}/dashboard`)
 
-    return transformTransactionForFrontend(
-      transaction as TransactionWithDetails
-    )
+    return transformTransactionForFrontend(enrichedTransactions[0])
   }
 
   /**
@@ -407,19 +459,6 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            parent: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
         organization: {
           select: {
             id: true,
@@ -429,13 +468,17 @@ class TransactionActions extends BaseServerAction {
       },
     })
 
+    // Enrich with category information
+    const enrichedTransactions = await this.enrichTransactionsWithCategories(
+      [updatedTransaction],
+      input.organizationId
+    )
+
     // Revalidate relevant pages
     revalidatePath(`/org/${input.organizationId}/transactions`)
     revalidatePath(`/org/${input.organizationId}/dashboard`)
 
-    return transformTransactionForFrontend(
-      updatedTransaction as TransactionWithDetails
-    )
+    return transformTransactionForFrontend(enrichedTransactions[0])
   }
 
   /**
@@ -508,19 +551,6 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            parent: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
         organization: {
           select: {
             id: true,
@@ -534,7 +564,13 @@ class TransactionActions extends BaseServerAction {
       take: Math.min(limit, 50), // Cap at 50
     })
 
-    return transactions.map(transformTransactionForFrontend)
+    // Enrich with category information
+    const enrichedTransactions = await this.enrichTransactionsWithCategories(
+      transactions,
+      organizationId
+    )
+
+    return enrichedTransactions.map(transformTransactionForFrontend)
   }
 
   /**
@@ -574,19 +610,6 @@ class TransactionActions extends BaseServerAction {
             type: true,
           },
         },
-        category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            parent: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
-        },
         organization: {
           select: {
             id: true,
@@ -599,10 +622,16 @@ class TransactionActions extends BaseServerAction {
       },
     })
 
-    // Group by category
-    const categoryGroups = new Map<string | null, typeof transactions>()
+    // Enrich with category information
+    const enrichedTransactions = await this.enrichTransactionsWithCategories(
+      transactions,
+      organizationId
+    )
 
-    transactions.forEach(transaction => {
+    // Group by category
+    const categoryGroups = new Map<string | null, typeof enrichedTransactions>()
+
+    enrichedTransactions.forEach(transaction => {
       const categoryId = transaction.categoryId
       if (!categoryGroups.has(categoryId)) {
         categoryGroups.set(categoryId, [])

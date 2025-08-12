@@ -494,8 +494,7 @@ export default function OrganizationsPage() {
                           <DropdownItem
                             key="settings"
                             startContent={<Settings className="w-4 h-4" />}
-                            onPress={(e) => {
-                              e.stopPropagation?.()
+                            onPress={() => {
                               router.push(`/org/${org.id}/settings`)
                             }}
                           >

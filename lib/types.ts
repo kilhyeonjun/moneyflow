@@ -1,7 +1,8 @@
-import { Prisma } from '@prisma/client'
+// Type definitions for MoneyFlow application
+// Updated for relationMode = "prisma" (no foreign key constraints)
 
-// Core Prisma types for database models
-export type {
+import { Prisma } from '@prisma/client'
+import type {
   Organization,
   OrganizationMember,
   OrganizationInvitation,
@@ -10,9 +11,41 @@ export type {
   Category,
 } from '@prisma/client'
 
+// Export Prisma types for use in other files
+export type { Organization, OrganizationMember, OrganizationInvitation } from '@prisma/client'
+
 // Extended types with relations for common use cases
 
-// Transaction with payment method and category details
+// Base category type without relations (for relationMode = "prisma")
+export type CategoryBase = {
+  id: string
+  organizationId: string
+  name: string
+  type: string
+  parentId: string | null
+  displayOrder: number | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Category with manually constructed hierarchy information
+export type CategoryWithHierarchy = CategoryBase & {
+  parent?: CategoryBase | null
+  children: CategoryBase[]
+  transactionCount: number
+}
+
+// Legacy type alias for backward compatibility
+export type CategoryWithChildren = CategoryWithHierarchy
+
+// Category with usage statistics (manual count)
+export type CategoryWithUsage = CategoryBase & {
+  transactionCount: number
+  childrenCount: number
+}
+
+// Transaction with payment method details (no category relation due to relationMode = "prisma")
 export type TransactionWithDetails = Prisma.TransactionGetPayload<{
   include: {
     paymentMethod: {
@@ -22,19 +55,6 @@ export type TransactionWithDetails = Prisma.TransactionGetPayload<{
         type: true
       }
     }
-    category: {
-      select: {
-        id: true
-        name: true
-        type: true
-        parent: {
-          select: {
-            id: true
-            name: true
-          }
-        }
-      }
-    }
     organization: {
       select: {
         id: true
@@ -42,7 +62,19 @@ export type TransactionWithDetails = Prisma.TransactionGetPayload<{
       }
     }
   }
-}>
+}> & {
+  // Manually added category information (populated by application logic)
+  category?: {
+    id: string
+    name: string
+    type: string
+    parent?: {
+      id: string
+      name: string
+      type: string
+    } | null
+  } | null
+}
 
 // Organization with member count and basic stats
 export type OrganizationWithStats = Prisma.OrganizationGetPayload<{
@@ -78,48 +110,6 @@ export type UserOrganization = {
     members: number
   }
 }
-
-// Category with children and parent for hierarchical structure
-export type CategoryWithChildren = Prisma.CategoryGetPayload<{
-  include: {
-    children: {
-      select: {
-        id: true
-        name: true
-        type: true
-        displayOrder: true
-        isActive: true
-      }
-      orderBy: {
-        displayOrder: 'asc'
-      }
-    }
-    parent: {
-      select: {
-        id: true
-        name: true
-        type: true
-      }
-    }
-    _count: {
-      select: {
-        transactions: true
-      }
-    }
-  }
-}>
-
-// Category with transaction usage statistics
-export type CategoryWithUsage = Prisma.CategoryGetPayload<{
-  include: {
-    _count: {
-      select: {
-        transactions: true
-        children: true
-      }
-    }
-  }
-}>
 
 // Payment method with transaction count
 export type PaymentMethodWithUsage = Prisma.PaymentMethodGetPayload<{
@@ -177,14 +167,15 @@ export type TransactionUpdateInput = Partial<TransactionCreateInput> & {
 export type PaymentMethodCreateInput = {
   organizationId: string
   name: string
-  type: 'cash' | 'card' | 'account' | 'other'
+  type: string
+  description?: string
   bankName?: string
   accountNumber?: string
   cardCompany?: string
   lastFourDigits?: string
 }
 
-export type PaymentMethodUpdateInput = PaymentMethodCreateInput & {
+export type PaymentMethodUpdateInput = Partial<PaymentMethodCreateInput> & {
   id: string
 }
 
@@ -192,17 +183,30 @@ export type PaymentMethodUpdateInput = PaymentMethodCreateInput & {
 export type CategoryCreateInput = {
   organizationId: string
   name: string
-  type: 'income' | 'savings' | 'fixed_expense' | 'variable_expense'
-  parentId?: string | null
+  type: string
+  parentId?: string
   displayOrder?: number
 }
 
-export type CategoryUpdateInput = CategoryCreateInput & {
+export type CategoryUpdateInput = Partial<CategoryCreateInput> & {
   id: string
-  isActive?: boolean
 }
 
-// Response types for server actions
+// Organization input types
+export type OrganizationCreateInput = {
+  name: string
+  description?: string
+}
+
+export type OrganizationUpdateInput = Partial<OrganizationCreateInput> & {
+  id: string
+}
+
+// Form validation types
+export type FormFieldError = string | null
+export type FormErrors<T> = Record<keyof T, FormFieldError>
+
+// API response types
 export type ServerActionResult<T = any> = {
   success: boolean
   data?: T
@@ -210,12 +214,14 @@ export type ServerActionResult<T = any> = {
   message?: string
 }
 
-// Common error types
+// Error types
 export enum ServerActionError {
   UNAUTHORIZED = 'UNAUTHORIZED',
   FORBIDDEN = 'FORBIDDEN',
   NOT_FOUND = 'NOT_FOUND',
   VALIDATION_ERROR = 'VALIDATION_ERROR',
+  CONFLICT = 'CONFLICT',
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
   DATABASE_ERROR = 'DATABASE_ERROR',
   UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
@@ -243,44 +249,23 @@ export function transformTransactionForFrontend(
     id: transaction.id,
     organizationId: transaction.organizationId,
     userId: transaction.userId,
-    amount: transaction.amount.toNumber(),
-    description: transaction.description,
-    transactionDate: transaction.transactionDate.toISOString(),
-    transactionType: transaction.transactionType,
     categoryId: transaction.categoryId,
     paymentMethodId: transaction.paymentMethodId,
-    tags: transaction.tags,
-    memo: transaction.memo,
+    transactionType: transaction.transactionType,
+    amount: transaction.amount.toNumber(),
+    description: transaction.description,
+    transactionDate: transaction.transactionDate?.toISOString() || null,
     receiptUrl: transaction.receiptUrl,
-    createdAt: transaction.createdAt?.toISOString(),
-    updatedAt: transaction.updatedAt?.toISOString(),
-    category: transaction.category
-      ? {
-          id: transaction.category.id,
-          name: transaction.category.name,
-          type: transaction.category.type,
-          parent: transaction.category.parent
-            ? {
-                id: transaction.category.parent.id,
-                name: transaction.category.parent.name,
-              }
-            : null,
-        }
-      : null,
-    paymentMethod: transaction.paymentMethod
-      ? {
-          id: transaction.paymentMethod.id,
-          name: transaction.paymentMethod.name,
-          type: transaction.paymentMethod.type,
-        }
-      : null,
+    createdAt: transaction.createdAt?.toISOString() || null,
+    updatedAt: transaction.updatedAt?.toISOString() || null,
+    paymentMethod: transaction.paymentMethod,
+    category: transaction.category,
+    organization: transaction.organization,
   }
 }
 
-// Transform payment method for frontend compatibility
-export function transformPaymentMethodForFrontend(
-  paymentMethod: PaymentMethodWithUsage
-) {
+// Payment method transformer for frontend compatibility
+export function transformPaymentMethodForFrontend(paymentMethod: PaymentMethodWithUsage) {
   return {
     id: paymentMethod.id,
     organizationId: paymentMethod.organizationId,
@@ -290,69 +275,14 @@ export function transformPaymentMethodForFrontend(
     accountNumber: paymentMethod.accountNumber,
     cardCompany: paymentMethod.cardCompany,
     lastFourDigits: paymentMethod.lastFourDigits,
-    isActive: paymentMethod.isActive,
-    createdAt: paymentMethod.createdAt?.toISOString(),
-    updatedAt: paymentMethod.updatedAt?.toISOString(),
-    transactionCount: paymentMethod._count.transactions,
+    isActive: paymentMethod.isActive ?? true,
+    createdAt: paymentMethod.createdAt?.toISOString() || null,
+    updatedAt: paymentMethod.updatedAt?.toISOString() || null,
+    transactionCount: paymentMethod._count?.transactions || 0,
   }
 }
 
-// Transform category for frontend compatibility
-export function transformCategoryForFrontend(category: CategoryWithChildren) {
-  return {
-    id: category.id,
-    organizationId: category.organizationId,
-    name: category.name,
-    type: category.type,
-    parentId: category.parentId,
-    displayOrder: category.displayOrder,
-    isActive: category.isActive,
-    createdAt: category.createdAt.toISOString(),
-    updatedAt: category.updatedAt.toISOString(),
-    parent: category.parent
-      ? {
-          id: category.parent.id,
-          name: category.parent.name,
-          type: category.parent.type,
-        }
-      : null,
-    children: category.children.map(child => ({
-      id: child.id,
-      name: child.name,
-      type: child.type,
-      displayOrder: child.displayOrder,
-      isActive: child.isActive,
-    })),
-    transactionCount: category._count?.transactions || 0,
-  }
-}
-
-// Build hierarchical category tree
-export function buildCategoryTree(
-  categories: CategoryWithChildren[]
-): CategoryWithChildren[] {
-  const categoryMap = new Map<string, CategoryWithChildren>()
-  const rootCategories: CategoryWithChildren[] = []
-
-  // Create a map for quick lookup
-  categories.forEach(category => {
-    categoryMap.set(category.id, category)
-  })
-
-  // Build the tree structure
-  categories.forEach(category => {
-    if (!category.parentId) {
-      rootCategories.push(category)
-    }
-  })
-
-  // Sort root categories by displayOrder
-  return rootCategories.sort(
-    (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)
-  )
-}
-
-// Get category path (breadcrumb)
+// Helper function to get category path (breadcrumb)
 export function getCategoryPath(category: CategoryWithChildren): string[] {
   const path: string[] = []
   let current = category
@@ -363,4 +293,34 @@ export function getCategoryPath(category: CategoryWithChildren): string[] {
   }
 
   return path
+}
+
+// Helper function to build category hierarchy from flat array
+export function buildCategoryHierarchy(categories: CategoryBase[]): CategoryWithHierarchy[] {
+  const categoryMap = new Map<string, CategoryWithHierarchy>()
+  
+  // Initialize all categories
+  categories.forEach(cat => {
+    categoryMap.set(cat.id, {
+      ...cat,
+      parent: null,
+      children: [],
+      transactionCount: 0 // Will be populated separately
+    })
+  })
+  
+  // Build parent-child relationships
+  categories.forEach(cat => {
+    const category = categoryMap.get(cat.id)!
+    
+    if (cat.parentId) {
+      const parent = categoryMap.get(cat.parentId)
+      if (parent) {
+        category.parent = parent
+        parent.children.push(category)
+      }
+    }
+  })
+  
+  return Array.from(categoryMap.values())
 }

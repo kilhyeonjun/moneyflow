@@ -8,14 +8,14 @@ import {
   withErrorHandling,
 } from '@/lib/auth-server'
 import {
-  CategoryWithChildren,
+  CategoryBase,
+  CategoryWithHierarchy,
   CategoryCreateInput,
   CategoryUpdateInput,
   CategoryFilters,
   ServerActionResult,
   ServerActionError,
-  transformCategoryForFrontend,
-  buildCategoryTree,
+  buildCategoryHierarchy,
 } from '@/lib/types'
 import {
   BaseServerAction,
@@ -35,7 +35,7 @@ class CategoriesActions extends BaseServerAction {
     organizationId: string,
     filters?: Partial<CategoryFilters>,
     pagination?: PaginationOptions
-  ): Promise<PaginatedResult<ReturnType<typeof transformCategoryForFrontend>>> {
+  ): Promise<PaginatedResult<CategoryWithHierarchy>> {
     const { user } = await this.validateAuth(organizationId)
 
     const finalFilters: CategoryFilters = {
@@ -52,44 +52,17 @@ class CategoriesActions extends BaseServerAction {
       prisma.category.count({ where }),
       prisma.category.findMany({
         where,
-        include: {
-          children: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-              displayOrder: true,
-              isActive: true,
-            },
-            where: { isActive: finalFilters.isActive ?? true },
-            orderBy: {
-              displayOrder: 'asc',
-            },
-          },
-          parent: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-            },
-          },
-          _count: {
-            select: {
-              transactions: true,
-            },
-          },
-        },
         orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
         take: paginationConfig.take,
         skip: paginationConfig.skip,
       }),
     ])
 
-    // Transform for frontend compatibility
-    const transformedCategories = categories.map(transformCategoryForFrontend)
+    // Build hierarchy and get transaction counts
+    const categoriesWithHierarchy = await this.buildCategoriesWithHierarchy(categories, organizationId)
 
     return await createPaginatedResult(
-      transformedCategories,
+      categoriesWithHierarchy,
       totalCount,
       paginationConfig
     )
@@ -102,7 +75,7 @@ class CategoriesActions extends BaseServerAction {
     organizationId: string,
     type: string,
     includeChildren: boolean = true
-  ): Promise<ReturnType<typeof transformCategoryForFrontend>[]> {
+  ): Promise<CategoryWithHierarchy[]> {
     await this.validateAuth(organizationId)
 
     this.validateCategoryType(type)
@@ -113,39 +86,21 @@ class CategoriesActions extends BaseServerAction {
         type,
         isActive: true,
       },
-      include: {
-        children: includeChildren
-          ? {
-              select: {
-                id: true,
-                name: true,
-                type: true,
-                displayOrder: true,
-                isActive: true,
-              },
-              where: { isActive: true },
-              orderBy: {
-                displayOrder: 'asc',
-              },
-            }
-          : false,
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     })
 
-    return categories.map(transformCategoryForFrontend)
+    if (includeChildren) {
+      return await this.buildCategoriesWithHierarchy(categories, organizationId)
+    } else {
+      // Return flat list without hierarchy for performance
+      const transactionCounts = await this.getTransactionCounts(categories.map(c => c.id))
+      return categories.map(cat => ({
+        ...cat,
+        parent: null,
+        children: [],
+        transactionCount: transactionCounts.get(cat.id) || 0
+      }))
+    }
   }
 
   /**
@@ -155,7 +110,7 @@ class CategoriesActions extends BaseServerAction {
     organizationId: string,
     includeChildren: boolean = true,
     lightweight: boolean = false
-  ): Promise<ReturnType<typeof transformCategoryForFrontend>[]> {
+  ): Promise<CategoryWithHierarchy[]> {
     await this.validateAuth(organizationId)
 
     const categories = await prisma.category.findMany({
@@ -163,42 +118,21 @@ class CategoriesActions extends BaseServerAction {
         organizationId,
         isActive: true,
       },
-      include: {
-        children: includeChildren
-          ? {
-              select: {
-                id: true,
-                name: true,
-                type: true,
-                displayOrder: true,
-                isActive: true,
-              },
-              where: { isActive: true },
-              orderBy: {
-                displayOrder: 'asc',
-              },
-            }
-          : false,
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        // 경량화 모드에서는 transaction count 제외 (성능 향상)
-        ...(!lightweight && {
-          _count: {
-            select: {
-              transactions: true,
-            },
-          },
-        }),
-      },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     })
 
-    return categories.map(transformCategoryForFrontend)
+    if (includeChildren) {
+      return await this.buildCategoriesWithHierarchy(categories, organizationId, !lightweight)
+    } else {
+      // Return flat list without hierarchy for performance
+      const transactionCounts = lightweight ? new Map() : await this.getTransactionCounts(categories.map(c => c.id))
+      return categories.map(cat => ({
+        ...cat,
+        parent: null,
+        children: [],
+        transactionCount: transactionCounts.get(cat.id) || 0
+      }))
+    }
   }
 
   /**
@@ -207,7 +141,7 @@ class CategoriesActions extends BaseServerAction {
   async getCategory(
     categoryId: string,
     organizationId: string
-  ): Promise<ReturnType<typeof transformCategoryForFrontend>> {
+  ): Promise<CategoryWithHierarchy> {
     this.validateUUID(categoryId, 'Category ID')
     await this.validateAuth(organizationId)
 
@@ -216,39 +150,25 @@ class CategoriesActions extends BaseServerAction {
         id: categoryId,
         organizationId,
       },
-      include: {
-        children: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            displayOrder: true,
-            isActive: true,
-          },
-          orderBy: {
-            displayOrder: 'asc',
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
     })
 
     if (!category) {
       throw new Error(ServerActionError.NOT_FOUND)
     }
 
-    return transformCategoryForFrontend(category)
+    // Get all categories to build hierarchy
+    const allCategories = await prisma.category.findMany({
+      where: { organizationId }
+    })
+
+    const categoriesWithHierarchy = await this.buildCategoriesWithHierarchy(allCategories, organizationId)
+    const result = categoriesWithHierarchy.find(cat => cat.id === categoryId)
+    
+    if (!result) {
+      throw new Error(ServerActionError.NOT_FOUND)
+    }
+
+    return result
   }
 
   /**
@@ -256,7 +176,7 @@ class CategoriesActions extends BaseServerAction {
    */
   async createCategory(
     input: CategoryCreateInput
-  ): Promise<ReturnType<typeof transformCategoryForFrontend>> {
+  ): Promise<CategoryWithHierarchy> {
     const { user } = await this.validateAuth(input.organizationId)
 
     // Validate required fields
@@ -338,40 +258,22 @@ class CategoriesActions extends BaseServerAction {
 
     const category = await prisma.category.create({
       data: categoryData,
-      include: {
-        children: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            displayOrder: true,
-            isActive: true,
-          },
-          orderBy: {
-            displayOrder: 'asc',
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
     })
+
+    // Get the created category with hierarchy
+    const allCategories = await prisma.category.findMany({
+      where: { organizationId: input.organizationId }
+    })
+
+    const categoriesWithHierarchy = await this.buildCategoriesWithHierarchy(allCategories, input.organizationId)
+    const result = categoriesWithHierarchy.find(cat => cat.id === category.id)!
 
     // Revalidate relevant pages
     revalidatePath(`/org/${input.organizationId}/transactions`)
     revalidatePath(`/org/${input.organizationId}/dashboard`)
     revalidatePath(`/org/${input.organizationId}/settings`)
 
-    return transformCategoryForFrontend(category)
+    return result
   }
 
   /**
@@ -379,7 +281,7 @@ class CategoriesActions extends BaseServerAction {
    */
   async updateCategory(
     input: CategoryUpdateInput
-  ): Promise<ReturnType<typeof transformCategoryForFrontend>> {
+  ): Promise<CategoryWithHierarchy> {
     this.validateUUID(input.id, 'Category ID')
 
     if (!input.organizationId) {
@@ -396,9 +298,14 @@ class CategoriesActions extends BaseServerAction {
         id: input.id,
         organizationId: input.organizationId,
       },
-      include: {
-        children: true,
-      },
+    })
+
+    // Get children count separately
+    const childrenCount = await prisma.category.count({
+      where: {
+        parentId: input.id,
+        organizationId: input.organizationId,
+      }
     })
 
     if (!existingCategory) {
@@ -415,8 +322,16 @@ class CategoriesActions extends BaseServerAction {
       updateData.type = this.validateCategoryType(updateData.type)
 
       // If changing type, ensure it's compatible with existing children
-      if (existingCategory.children.length > 0) {
-        const incompatibleChildren = existingCategory.children.filter(
+      if (childrenCount > 0) {
+        const children = await prisma.category.findMany({
+          where: {
+            parentId: input.id,
+            organizationId: input.organizationId,
+          },
+          select: { type: true }
+        })
+
+        const incompatibleChildren = children.filter(
           child => !this.areTypesCompatible(updateData.type, child.type)
         )
 
@@ -503,40 +418,22 @@ class CategoriesActions extends BaseServerAction {
     const updatedCategory = await prisma.category.update({
       where: { id: input.id },
       data: updateData,
-      include: {
-        children: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            displayOrder: true,
-            isActive: true,
-          },
-          orderBy: {
-            displayOrder: 'asc',
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
     })
+
+    // Get the updated category with hierarchy
+    const allCategories = await prisma.category.findMany({
+      where: { organizationId: input.organizationId }
+    })
+
+    const categoriesWithHierarchy = await this.buildCategoriesWithHierarchy(allCategories, input.organizationId)
+    const result = categoriesWithHierarchy.find(cat => cat.id === input.id)!
 
     // Revalidate relevant pages
     revalidatePath(`/org/${input.organizationId}/transactions`)
     revalidatePath(`/org/${input.organizationId}/dashboard`)
     revalidatePath(`/org/${input.organizationId}/settings`)
 
-    return transformCategoryForFrontend(updatedCategory)
+    return result
   }
 
   /**
@@ -557,29 +454,37 @@ class CategoriesActions extends BaseServerAction {
         id: categoryId,
         organizationId,
       },
-      include: {
-        children: true,
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
     })
 
     if (!category) {
       throw new Error(ServerActionError.NOT_FOUND)
     }
 
+    // Get children and transaction counts separately
+    const [childrenCount, transactionCount] = await Promise.all([
+      prisma.category.count({
+        where: {
+          parentId: categoryId,
+          organizationId,
+        }
+      }),
+      prisma.transaction.count({
+        where: {
+          categoryId,
+          organizationId,
+        }
+      })
+    ])
+
     // Check if category has children
-    if (category.children.length > 0) {
+    if (childrenCount > 0) {
       throw new Error(
         `${ServerActionError.VALIDATION_ERROR}: Cannot delete category with child categories. Please delete or move child categories first.`
       )
     }
 
     // Check if category has transactions
-    const hasTransactions = category._count.transactions > 0
+    const hasTransactions = transactionCount > 0
 
     if (hasTransactions && !forceDelete) {
       // Soft delete - set isActive to false
@@ -624,7 +529,7 @@ class CategoriesActions extends BaseServerAction {
     organizationId: string,
     type?: string,
     includeInactive: boolean = false
-  ): Promise<ReturnType<typeof transformCategoryForFrontend>[]> {
+  ): Promise<CategoryWithHierarchy[]> {
     await this.validateAuth(organizationId)
 
     const where: Prisma.CategoryWhereInput = {
@@ -635,42 +540,37 @@ class CategoriesActions extends BaseServerAction {
 
     const categories = await prisma.category.findMany({
       where,
-      include: {
-        children: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-            displayOrder: true,
-            isActive: true,
-          },
-          where: includeInactive ? {} : { isActive: true },
-          orderBy: {
-            displayOrder: 'asc',
-          },
-        },
-        parent: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
-        },
-        _count: {
-          select: {
-            transactions: true,
-          },
-        },
-      },
       orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
     })
 
-    // Build tree structure by filtering root categories (no parentId)
-    const rootCategories = categories
-      .filter(cat => !cat.parentId)
-      .map(transformCategoryForFrontend)
+    const categoriesWithHierarchy = await this.buildCategoriesWithHierarchy(categories, organizationId)
 
-    return rootCategories
+    // Return only root categories (no parentId) as they contain their children
+    return categoriesWithHierarchy.filter(cat => !cat.parentId)
+  }
+
+  /**
+   * Get categories with usage statistics (transaction counts)
+   */
+  async getCategoriesWithUsage(
+    organizationId: string,
+    type?: string,
+    includeInactive: boolean = false
+  ): Promise<CategoryWithHierarchy[]> {
+    await this.validateAuth(organizationId)
+
+    const where: Prisma.CategoryWhereInput = {
+      organizationId,
+      ...(type && { type: this.validateCategoryType(type) }),
+      ...(!includeInactive && { isActive: true }),
+    }
+
+    const categories = await prisma.category.findMany({
+      where,
+      orderBy: [{ displayOrder: 'asc' }, { name: 'asc' }],
+    })
+
+    return await this.buildCategoriesWithHierarchy(categories, organizationId, true)
   }
 
   /**
@@ -697,11 +597,7 @@ class CategoriesActions extends BaseServerAction {
       categoryId: { not: null },
       ...(startDate && { transactionDate: { gte: startDate } }),
       ...(endDate && { transactionDate: { lte: endDate } }),
-      ...(type && {
-        category: {
-          type: this.validateCategoryType(type),
-        },
-      }),
+      // Note: type filtering handled at application level due to relationMode = "prisma"
     }
 
     const stats = await prisma.transaction.groupBy({
@@ -727,6 +623,7 @@ class CategoriesActions extends BaseServerAction {
       where: {
         id: { in: categoryIds },
         organizationId,
+        ...(type && { type: this.validateCategoryType(type) }),
       },
       select: {
         id: true,
@@ -735,8 +632,13 @@ class CategoriesActions extends BaseServerAction {
     })
 
     const categoryMap = new Map(categories.map(cat => [cat.id, cat.name]))
+    
+    // Filter stats to only include categories that match the type filter
+    const filteredStats = type 
+      ? stats.filter(stat => stat.categoryId && categoryMap.has(stat.categoryId))
+      : stats
 
-    return stats.map(stat => ({
+    return filteredStats.map(stat => ({
       categoryId: stat.categoryId!,
       categoryName: categoryMap.get(stat.categoryId!) || 'Unknown',
       transactionCount: stat._count.id,
@@ -746,6 +648,58 @@ class CategoriesActions extends BaseServerAction {
   }
 
   // Private helper methods
+
+  /**
+   * Build categories with hierarchy and transaction counts
+   */
+  private async buildCategoriesWithHierarchy(
+    categories: CategoryBase[],
+    organizationId: string,
+    includeTransactionCounts: boolean = true
+  ): Promise<CategoryWithHierarchy[]> {
+    // Get transaction counts if needed
+    const transactionCounts = includeTransactionCounts 
+      ? await this.getTransactionCounts(categories.map(c => c.id))
+      : new Map()
+
+    // Build hierarchy using the utility function
+    const categoriesWithHierarchy = buildCategoryHierarchy(categories)
+
+    // Add transaction counts
+    categoriesWithHierarchy.forEach(cat => {
+      cat.transactionCount = transactionCounts.get(cat.id) || 0
+    })
+
+    return categoriesWithHierarchy
+  }
+
+  /**
+   * Get transaction counts for multiple categories
+   */
+  private async getTransactionCounts(categoryIds: string[]): Promise<Map<string, number>> {
+    if (categoryIds.length === 0) {
+      return new Map()
+    }
+
+    const counts = await prisma.transaction.groupBy({
+      by: ['categoryId'],
+      where: {
+        categoryId: { in: categoryIds }
+      },
+      _count: {
+        id: true
+      }
+    })
+
+    const countMap = new Map<string, number>()
+    counts.forEach(count => {
+      if (count.categoryId) {
+        countMap.set(count.categoryId, count._count.id)
+      }
+    })
+
+    return countMap
+  }
 
   private buildCategoryWhereClause(
     filters: CategoryFilters
@@ -885,6 +839,11 @@ export const deleteCategory = createServerAction(
 export const getCategoryTree = createServerAction(
   async (organizationId: string, type?: string, includeInactive?: boolean) =>
     categoriesActions.getCategoryTree(organizationId, type, includeInactive)
+)
+
+export const getCategoriesWithUsage = createServerAction(
+  async (organizationId: string, type?: string, includeInactive?: boolean) =>
+    categoriesActions.getCategoriesWithUsage(organizationId, type, includeInactive)
 )
 
 export const getCategoryStats = createServerAction(
