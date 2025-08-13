@@ -194,14 +194,14 @@ export async function requireAdminOrOwnerRole(
 }
 
 /**
- * Get organization with full details (for admins)
+ * Get organization with full details (for admins and owners)
  */
 export async function getOrganizationDetails(
   userId: string,
   organizationId: string
 ) {
-  // Validate admin access
-  await requireAdminRole(userId, organizationId)
+  // Validate admin or owner access
+  await requireAdminOrOwnerRole(userId, organizationId)
 
   const organization = await prisma.organization.findUnique({
     where: { id: organizationId },
