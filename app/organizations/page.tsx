@@ -57,10 +57,7 @@ import {
   commonValidationRules,
 } from '@/hooks/useFormValidation'
 import { organizationCreateSchema } from '@/lib/validation/schemas'
-import {
-  createNavigationHandler,
-  NavigationResult,
-} from '@/lib/utils/navigation-handler'
+// Navigation handler 제거하고 직접 router.push 사용
 
 interface ReceivedInvitation {
   id: string
@@ -105,7 +102,6 @@ export default function OrganizationsPage() {
   const [deleting, setDeleting] = useState(false)
   const router = useRouter()
   const { handleError } = useErrorHandler()
-  const navigationHandler = createNavigationHandler(router)
 
   // Form validation setup
   const {
@@ -265,41 +261,32 @@ export default function OrganizationsPage() {
 
   const selectOrganization = async (orgId: string) => {
     try {
-      // 안전한 네비게이션 핸들러 사용
-      const result: NavigationResult =
-        await navigationHandler.navigateToOrganization(orgId, {
-          timeout: 3000,
-          onProgress: step => {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[NAVIGATION_PROGRESS]', step)
-            }
-          },
-        })
-
-      if (!result.success) {
-        // 네비게이션 실패 시 사용자에게 알림
-        toast.error(result.error || '페이지 이동에 실패했습니다.')
-
-        // 개발 환경에서 상세 정보 로깅
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[NAVIGATION_FAILED]', {
-            orgId,
-            error: result.error,
-            method: result.method,
-          })
-        }
-      } else if (result.fallbackUsed) {
-        // 대체 방법 사용 시 알림 (개발 환경에서만)
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[NAVIGATION_FALLBACK_USED]', {
-            orgId,
-            method: result.method,
-          })
-        }
+      const targetUrl = `/org/${orgId}/dashboard`
+      
+      // 개발 환경에서 네비게이션 정보 로깅
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[NAVIGATION_START]', { orgId, targetUrl })
       }
+
+      // 직접 router.push 사용 (더 안정적)
+      router.push(targetUrl)
+      
+      // 성공적으로 실행되었음을 개발 환경에서 로깅
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[NAVIGATION_COMPLETED]', { orgId, targetUrl })
+      }
+
     } catch (error) {
       console.error('[NAVIGATION_ERROR]', error)
       toast.error('페이지 이동 중 오류가 발생했습니다.')
+      
+      // 대체 방법으로 window.location 사용
+      try {
+        window.location.href = `/org/${orgId}/dashboard`
+      } catch (fallbackError) {
+        console.error('[NAVIGATION_FALLBACK_ERROR]', fallbackError)
+        toast.error('페이지 이동에 실패했습니다. 페이지를 새로고침하고 다시 시도해주세요.')
+      }
     }
   }
 
@@ -494,19 +481,10 @@ export default function OrganizationsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {organizations.map(org => (
-              <Card
+              <div
                 key={org.id}
-                className="hover:shadow-lg transition-shadow relative cursor-pointer"
-                onClick={e => {
-                  // 드롭다운 메뉴 클릭 시 이벤트 전파 방지
-                  if (
-                    (e.target as HTMLElement).closest('[data-dropdown-trigger]')
-                  ) {
-                    return
-                  }
-                  selectOrganization(org.id)
-                }}
-                onDoubleClick={() => selectOrganization(org.id)}
+                className="cursor-pointer"
+                onClick={() => selectOrganization(org.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={e => {
@@ -517,6 +495,9 @@ export default function OrganizationsPage() {
                 }}
                 aria-label={`${org.name} 조직으로 이동`}
               >
+                <Card
+                  className="hover:shadow-lg transition-shadow relative"
+                >
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-3 w-full">
                     <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
@@ -588,7 +569,8 @@ export default function OrganizationsPage() {
                     </Chip>
                   </div>
                 </CardBody>
-              </Card>
+                </Card>
+              </div>
             ))}
           </div>
         )}

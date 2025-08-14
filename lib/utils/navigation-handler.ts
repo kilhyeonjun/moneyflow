@@ -97,6 +97,9 @@ export class NavigationHandler {
       // router.push 실행
       await this.router.push(url)
 
+      // router.push가 실행될 시간을 확보하기 위한 초기 지연
+      await this.delay(200)
+
       // 네비게이션 성공 확인 (URL 변경 확인)
       const isSuccess = await this.waitForNavigation(
         url,
@@ -176,10 +179,15 @@ export class NavigationHandler {
 
     return new Promise(resolve => {
       const checkNavigation = () => {
+        const currentPath = window.location.pathname
+        
         // 현재 URL이 목표 URL과 일치하는지 확인
+        // targetUrl이 정확히 일치하거나, 목표 경로의 하위 경로에 있는지 확인
         if (
-          window.location.pathname.includes(targetUrl) ||
-          window.location.pathname === targetUrl
+          currentPath === targetUrl ||
+          currentPath.startsWith(targetUrl) ||
+          (targetUrl.includes('/org/') && currentPath.includes('/org/') && 
+           targetUrl.split('/')[2] === currentPath.split('/')[2])
         ) {
           resolve(true)
           return
@@ -187,6 +195,7 @@ export class NavigationHandler {
 
         // 타임아웃 확인
         if (Date.now() - startTime > timeout) {
+          console.log(`[NAVIGATION_TIMEOUT] Current: ${currentPath}, Target: ${targetUrl}`)
           resolve(false)
           return
         }
