@@ -476,15 +476,16 @@ export default function SettingsPage() {
       router.push('/organizations')
     } catch (error: any) {
       console.error('조직 삭제 실패:', error)
-      
+
       let errorMessage = '조직 삭제에 실패했습니다.'
-      
+
       if (error.message && error.message.includes('existing data')) {
-        errorMessage = '조직에 거래 내역이나 결제수단이 있어 삭제할 수 없습니다. 먼저 모든 데이터를 삭제해주세요.'
+        errorMessage =
+          '조직에 거래 내역이나 결제수단이 있어 삭제할 수 없습니다. 먼저 모든 데이터를 삭제해주세요.'
       } else if (error.message) {
         errorMessage = error.message
       }
-      
+
       toast.error(errorMessage)
     }
   }
@@ -1019,8 +1020,11 @@ export default function SettingsPage() {
           </ModalHeader>
           <ModalBody>
             <div className="space-y-4">
-              <p>정말로 <strong>"{organization?.name}"</strong> 조직을 삭제하시겠습니까?</p>
-              
+              <p>
+                정말로 <strong>&quot;{organization?.name}&quot;</strong> 조직을
+                삭제하시겠습니까?
+              </p>
+
               <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                 <p className="text-orange-800 font-medium mb-2">⚠️ 주의사항</p>
                 <ul className="text-orange-700 text-sm space-y-1">
@@ -1035,8 +1039,9 @@ export default function SettingsPage() {
 
               <div className="p-4 bg-red-50 rounded-lg border border-red-200">
                 <p className="text-red-800 font-medium text-sm">
-                  <strong>참고:</strong> 조직에 거래 내역이나 결제수단이 있는 경우 삭제할 수 없습니다. 
-                  먼저 모든 거래와 결제수단을 삭제한 후 다시 시도해주세요.
+                  <strong>참고:</strong> 조직에 거래 내역이나 결제수단이 있는
+                  경우 삭제할 수 없습니다. 먼저 모든 거래와 결제수단을 삭제한 후
+                  다시 시도해주세요.
                 </p>
               </div>
             </div>
@@ -1045,8 +1050,8 @@ export default function SettingsPage() {
             <Button variant="light" onPress={onDeleteOrgModalClose}>
               취소
             </Button>
-            <Button 
-              color="warning" 
+            <Button
+              color="warning"
               onPress={handleDeleteOrganization}
               startContent={<Trash2 className="w-4 h-4" />}
             >

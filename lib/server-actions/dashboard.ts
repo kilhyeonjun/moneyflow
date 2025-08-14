@@ -34,18 +34,27 @@ class DashboardActions extends BaseServerAction {
   /**
    * Helper function to enrich transactions with category information
    */
-  private async enrichTransactionsWithCategories<T extends { categoryId: string | null, [key: string]: any }>(
+  private async enrichTransactionsWithCategories<
+    T extends { categoryId: string | null; [key: string]: any },
+  >(
     transactions: T[],
     organizationId: string
-  ): Promise<(T & { category?: { id: string; name: string; type: string; parent?: { id: string; name: string; type: string } | null } | null })[]> {
+  ): Promise<
+    (T & {
+      category?: {
+        id: string
+        name: string
+        type: string
+        parent?: { id: string; name: string; type: string } | null
+      } | null
+    })[]
+  > {
     if (transactions.length === 0) return []
 
     // Get unique category IDs
-    const categoryIds = [...new Set(
-      transactions
-        .map(t => t.categoryId)
-        .filter(Boolean)
-    )] as string[]
+    const categoryIds = [
+      ...new Set(transactions.map(t => t.categoryId).filter(Boolean)),
+    ] as string[]
 
     if (categoryIds.length === 0) {
       return transactions.map(t => ({ ...t, category: null }))
@@ -56,36 +65,36 @@ class DashboardActions extends BaseServerAction {
       where: {
         id: { in: categoryIds },
         organizationId,
-        isActive: true
+        isActive: true,
       },
       select: {
         id: true,
         name: true,
         type: true,
-        parentId: true
-      }
+        parentId: true,
+      },
     })
 
     // Get parent categories for hierarchical data
-    const parentIds = [...new Set(
-      categories
-        .map(c => c.parentId)
-        .filter(Boolean)
-    )] as string[]
+    const parentIds = [
+      ...new Set(categories.map(c => c.parentId).filter(Boolean)),
+    ] as string[]
 
-    const parentCategories = parentIds.length > 0 ?
-      await prisma.category.findMany({
-        where: {
-          id: { in: parentIds },
-          organizationId,
-          isActive: true
-        },
-        select: {
-          id: true,
-          name: true,
-          type: true
-        }
-      }) : []
+    const parentCategories =
+      parentIds.length > 0
+        ? await prisma.category.findMany({
+            where: {
+              id: { in: parentIds },
+              organizationId,
+              isActive: true,
+            },
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          })
+        : []
 
     // Create lookup maps
     const categoryMap = new Map(categories.map(c => [c.id, c]))
@@ -93,17 +102,23 @@ class DashboardActions extends BaseServerAction {
 
     // Enrich transactions with category information
     return transactions.map(transaction => {
-      const category = transaction.categoryId ? categoryMap.get(transaction.categoryId) : null
-      const enrichedCategory = category ? {
-        id: category.id,
-        name: category.name,
-        type: category.type,
-        parent: category.parentId ? parentMap.get(category.parentId) || null : null
-      } : null
+      const category = transaction.categoryId
+        ? categoryMap.get(transaction.categoryId)
+        : null
+      const enrichedCategory = category
+        ? {
+            id: category.id,
+            name: category.name,
+            type: category.type,
+            parent: category.parentId
+              ? parentMap.get(category.parentId) || null
+              : null,
+          }
+        : null
 
       return {
         ...transaction,
-        category: enrichedCategory
+        category: enrichedCategory,
       }
     })
   }

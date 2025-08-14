@@ -12,7 +12,11 @@ import type {
 } from '@prisma/client'
 
 // Export Prisma types for use in other files
-export type { Organization, OrganizationMember, OrganizationInvitation } from '@prisma/client'
+export type {
+  Organization,
+  OrganizationMember,
+  OrganizationInvitation,
+} from '@prisma/client'
 
 // Extended types with relations for common use cases
 
@@ -265,7 +269,9 @@ export function transformTransactionForFrontend(
 }
 
 // Payment method transformer for frontend compatibility
-export function transformPaymentMethodForFrontend(paymentMethod: PaymentMethodWithUsage) {
+export function transformPaymentMethodForFrontend(
+  paymentMethod: PaymentMethodWithUsage
+) {
   return {
     id: paymentMethod.id,
     organizationId: paymentMethod.organizationId,
@@ -296,23 +302,25 @@ export function getCategoryPath(category: CategoryWithChildren): string[] {
 }
 
 // Helper function to build category hierarchy from flat array
-export function buildCategoryHierarchy(categories: CategoryBase[]): CategoryWithHierarchy[] {
+export function buildCategoryHierarchy(
+  categories: CategoryBase[]
+): CategoryWithHierarchy[] {
   const categoryMap = new Map<string, CategoryWithHierarchy>()
-  
+
   // Initialize all categories
   categories.forEach(cat => {
     categoryMap.set(cat.id, {
       ...cat,
       parent: null,
       children: [],
-      transactionCount: 0 // Will be populated separately
+      transactionCount: 0, // Will be populated separately
     })
   })
-  
+
   // Build parent-child relationships
   categories.forEach(cat => {
     const category = categoryMap.get(cat.id)!
-    
+
     if (cat.parentId) {
       const parent = categoryMap.get(cat.parentId)
       if (parent) {
@@ -321,6 +329,6 @@ export function buildCategoryHierarchy(categories: CategoryBase[]): CategoryWith
       }
     }
   })
-  
+
   return Array.from(categoryMap.values())
 }

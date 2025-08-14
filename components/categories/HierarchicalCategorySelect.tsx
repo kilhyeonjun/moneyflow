@@ -199,7 +199,8 @@ export default function HierarchicalCategorySelect({
       .filter(cat => !cat.parentId && cat.isActive)
       .sort(
         (a, b) =>
-          (a.displayOrder || 0) - (b.displayOrder || 0) || a.name.localeCompare(b.name)
+          (a.displayOrder || 0) - (b.displayOrder || 0) ||
+          a.name.localeCompare(b.name)
       )
   }, [currentTypeCategories])
 
@@ -215,7 +216,8 @@ export default function HierarchicalCategorySelect({
         .filter(child => child.isActive)
         .sort(
           (a, b) =>
-            (a.displayOrder || 0) - (b.displayOrder || 0) || a.name.localeCompare(b.name)
+            (a.displayOrder || 0) - (b.displayOrder || 0) ||
+            a.name.localeCompare(b.name)
         ) || []
     )
   }, [currentTypeCategories, selectedParentId])

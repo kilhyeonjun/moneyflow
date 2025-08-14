@@ -160,7 +160,7 @@ class OrganizationActions extends BaseServerAction {
 
     // Delete organization and all related data in transaction
     // With relationMode = "prisma", no foreign key constraints exist in DB
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async tx => {
       // Delete all related data - order doesn't matter without FK constraints
       await Promise.all([
         tx.transaction.deleteMany({ where: { organizationId } }),
