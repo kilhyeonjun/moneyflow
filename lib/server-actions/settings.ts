@@ -6,6 +6,7 @@ import {
   getCurrentUser,
   requireAuth,
   requireAdminRole,
+  requireAdminOrOwnerRole,
   checkOrganizationMembership,
 } from '@/lib/auth-server'
 import {
@@ -98,7 +99,7 @@ class SettingsActions extends BaseServerAction {
   }
 
   /**
-   * Get organization invitations (admin only)
+   * Get organization invitations (admin or owner only)
    */
   async getOrganizationInvitations(
     organizationId: string
@@ -106,8 +107,8 @@ class SettingsActions extends BaseServerAction {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, organizationId)
 
     const invitations = await prisma.organizationInvitation.findMany({
       where: { organizationId },
