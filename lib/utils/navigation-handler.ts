@@ -180,14 +180,15 @@ export class NavigationHandler {
     return new Promise(resolve => {
       const checkNavigation = () => {
         const currentPath = window.location.pathname
-        
+
         // 현재 URL이 목표 URL과 일치하는지 확인
         // targetUrl이 정확히 일치하거나, 목표 경로의 하위 경로에 있는지 확인
         if (
           currentPath === targetUrl ||
           currentPath.startsWith(targetUrl) ||
-          (targetUrl.includes('/org/') && currentPath.includes('/org/') && 
-           targetUrl.split('/')[2] === currentPath.split('/')[2])
+          (targetUrl.includes('/org/') &&
+            currentPath.includes('/org/') &&
+            targetUrl.split('/')[2] === currentPath.split('/')[2])
         ) {
           resolve(true)
           return
@@ -195,7 +196,9 @@ export class NavigationHandler {
 
         // 타임아웃 확인
         if (Date.now() - startTime > timeout) {
-          console.log(`[NAVIGATION_TIMEOUT] Current: ${currentPath}, Target: ${targetUrl}`)
+          console.log(
+            `[NAVIGATION_TIMEOUT] Current: ${currentPath}, Target: ${targetUrl}`
+          )
           resolve(false)
           return
         }

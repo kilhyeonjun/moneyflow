@@ -92,6 +92,8 @@ interface HierarchicalCategorySelectProps {
   readOnly?: boolean
   /** 비활성화 상태 */
   isDisabled?: boolean
+  /** 표시할 카테고리 유형 (선택 시 해당 유형만 필터링하여 표시) */
+  allowedCategoryTypes?: TransactionType[]
 }
 
 /**
@@ -119,6 +121,7 @@ export default function HierarchicalCategorySelect({
   noneOptionLabel = '카테고리 없음',
   readOnly = false,
   isDisabled = false,
+  allowedCategoryTypes,
 }: HierarchicalCategorySelectProps) {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { handleError } = useErrorHandler()
@@ -187,6 +190,14 @@ export default function HierarchicalCategorySelect({
     },
     [allCategories]
   )
+
+  // allowedCategoryTypes가 있을 때 필터링된 모든 카테고리
+  const filteredAllCategories = useMemo(() => {
+    if (!allowedCategoryTypes || allowedCategoryTypes.length === 0) {
+      return allCategories
+    }
+    return allCategories.filter(cat => allowedCategoryTypes.includes(cat.type))
+  }, [allCategories, allowedCategoryTypes])
 
   // 현재 선택된 타입의 카테고리들 (메모이제이션)
   const currentTypeCategories = useMemo(() => {
@@ -323,13 +334,17 @@ export default function HierarchicalCategorySelect({
   const handleBack = () => {
     if (selectedParentId) {
       setSelectedParentId(null)
-    } else if (selectedType) {
+    } else if (selectedType && !allowedCategoryTypes) {
       setSelectedType(null)
     }
   }
 
   // 현재 단계 제목
   const getCurrentStepTitle = () => {
+    if (allowedCategoryTypes) {
+      if (!selectedParentId) return '카테고리 선택'
+      return '세부 카테고리 선택'
+    }
     if (!selectedType) return '거래 유형 선택'
     if (!selectedParentId) return '대분류 선택'
     return '소분류 선택'
@@ -406,7 +421,8 @@ export default function HierarchicalCategorySelect({
           <ModalHeader className="flex flex-col gap-2">
             {/* 제목과 뒤로가기 */}
             <div className="flex items-center gap-2">
-              {(selectedType || selectedParentId) && (
+              {((selectedType && !allowedCategoryTypes) ||
+                selectedParentId) && (
                 <Button
                   isIconOnly
                   variant="light"
@@ -471,7 +487,12 @@ export default function HierarchicalCategorySelect({
                 {/* 1단계: 거래 유형 선택 */}
                 {!selectedType && (
                   <div className="flex flex-col">
-                    {transactionTypes.map(type => (
+                    {(allowedCategoryTypes
+                      ? transactionTypes.filter(type =>
+                          allowedCategoryTypes.includes(type)
+                        )
+                      : transactionTypes
+                    ).map(type => (
                       <div
                         key={type}
                         className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3"
@@ -519,15 +540,20 @@ export default function HierarchicalCategorySelect({
                           />
                           <div className="flex flex-col">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{category.name}</span>
-                              <Chip 
-                                size="sm" 
-                                variant="flat" 
+                              <span className="font-medium">
+                                {category.name}
+                              </span>
+                              <Chip
+                                size="sm"
+                                variant="flat"
                                 color={
-                                  category.type === 'income' ? 'success' :
-                                  category.type === 'savings' ? 'primary' :
-                                  category.type === 'fixed_expense' ? 'warning' :
-                                  'secondary'
+                                  category.type === 'income'
+                                    ? 'success'
+                                    : category.type === 'savings'
+                                      ? 'primary'
+                                      : category.type === 'fixed_expense'
+                                        ? 'warning'
+                                        : 'secondary'
                                 }
                                 className="text-xs"
                               >
@@ -576,9 +602,15 @@ export default function HierarchicalCategorySelect({
                 )}
 
                 {/* 3단계: 소분류 선택 */}
-                {selectedType && selectedParentId && (
+                {((selectedType && selectedParentId) ||
+                  (allowedCategoryTypes && selectedParentId)) && (
                   <div className="flex flex-col">
-                    {filteredChildCategories.map(category => (
+                    {(allowedCategoryTypes
+                      ? filteredAllCategories.filter(
+                          cat => cat.parentId === selectedParentId
+                        )
+                      : filteredChildCategories
+                    ).map(category => (
                       <div
                         key={category.id}
                         className="px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3"
@@ -591,14 +623,17 @@ export default function HierarchicalCategorySelect({
                         />
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{category.name}</span>
-                          <Chip 
-                            size="sm" 
-                            variant="flat" 
+                          <Chip
+                            size="sm"
+                            variant="flat"
                             color={
-                              category.type === 'income' ? 'success' :
-                              category.type === 'savings' ? 'primary' :
-                              category.type === 'fixed_expense' ? 'warning' :
-                              'secondary'
+                              category.type === 'income'
+                                ? 'success'
+                                : category.type === 'savings'
+                                  ? 'primary'
+                                  : category.type === 'fixed_expense'
+                                    ? 'warning'
+                                    : 'secondary'
                             }
                             className="text-xs"
                           >

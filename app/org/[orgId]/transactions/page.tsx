@@ -806,7 +806,7 @@ export default function TransactionsPage() {
                 label="거래 유형"
                 placeholder="거래 유형을 선택하세요"
                 selectedKeys={new Set([createForm.data.transactionType])}
-                onSelectionChange={(keys) => {
+                onSelectionChange={keys => {
                   const value = Array.from(keys)[0] as string
                   const newTransactionType = value || 'expense'
                   createForm.updateField('transactionType', newTransactionType)
@@ -825,19 +825,40 @@ export default function TransactionsPage() {
               <ValidatedCategorySelect
                 organizationId={orgId}
                 value={createForm.data.categoryId}
+                allowedCategoryTypes={(() => {
+                  const transactionType = createForm.data.transactionType
+                  const compatibilityMap: Record<
+                    string,
+                    (
+                      | 'income'
+                      | 'savings'
+                      | 'fixed_expense'
+                      | 'variable_expense'
+                    )[]
+                  > = {
+                    income: ['income', 'savings'],
+                    expense: ['fixed_expense', 'variable_expense'],
+                    transfer: ['income', 'savings'],
+                  }
+                  return compatibilityMap[transactionType] || []
+                })()}
                 onSelectionChangeWithValidation={(
                   categoryId: string | undefined,
                   error: string | null,
                   categoryData?: any
                 ) => {
                   createForm.updateField('categoryId', categoryId || '')
-                  
+
                   // 카테고리 데이터가 있을 때 추가 validation 수행
                   if (categoryData && categoryId) {
-                    const compatibilityError = categoryValidationRules.allowedForTransactionType(
-                      createForm.data.transactionType as 'income' | 'expense' | 'transfer'
-                    )(categoryId, categoryData)
-                    
+                    const compatibilityError =
+                      categoryValidationRules.allowedForTransactionType(
+                        createForm.data.transactionType as
+                          | 'income'
+                          | 'expense'
+                          | 'transfer'
+                      )(categoryId, categoryData)
+
                     if (compatibilityError) {
                       // setFieldError 메서드가 없으므로 대신 validation으로 처리
                       createForm.validateField('categoryId', categoryId || '')

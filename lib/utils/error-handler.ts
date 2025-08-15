@@ -139,7 +139,8 @@ export class EnhancedErrorHandler {
     }
     if (
       message.includes('Category type') &&
-      (message.includes('not compatible') || message.includes('is not compatible'))
+      (message.includes('not compatible') ||
+        message.includes('is not compatible'))
     ) {
       // 더 구체적인 메시지 추출 시도
       if (message.includes('income') && message.includes('expense')) {

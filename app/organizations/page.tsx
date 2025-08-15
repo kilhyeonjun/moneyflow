@@ -262,7 +262,7 @@ export default function OrganizationsPage() {
   const selectOrganization = async (orgId: string) => {
     try {
       const targetUrl = `/org/${orgId}/dashboard`
-      
+
       // 개발 환경에서 네비게이션 정보 로깅
       if (process.env.NODE_ENV === 'development') {
         console.log('[NAVIGATION_START]', { orgId, targetUrl })
@@ -270,22 +270,23 @@ export default function OrganizationsPage() {
 
       // 직접 router.push 사용 (더 안정적)
       router.push(targetUrl)
-      
+
       // 성공적으로 실행되었음을 개발 환경에서 로깅
       if (process.env.NODE_ENV === 'development') {
         console.log('[NAVIGATION_COMPLETED]', { orgId, targetUrl })
       }
-
     } catch (error) {
       console.error('[NAVIGATION_ERROR]', error)
       toast.error('페이지 이동 중 오류가 발생했습니다.')
-      
+
       // 대체 방법으로 window.location 사용
       try {
         window.location.href = `/org/${orgId}/dashboard`
       } catch (fallbackError) {
         console.error('[NAVIGATION_FALLBACK_ERROR]', fallbackError)
-        toast.error('페이지 이동에 실패했습니다. 페이지를 새로고침하고 다시 시도해주세요.')
+        toast.error(
+          '페이지 이동에 실패했습니다. 페이지를 새로고침하고 다시 시도해주세요.'
+        )
       }
     }
   }
@@ -495,80 +496,78 @@ export default function OrganizationsPage() {
                 }}
                 aria-label={`${org.name} 조직으로 이동`}
               >
-                <Card
-                  className="hover:shadow-lg transition-shadow relative"
-                >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3 w-full">
-                    <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                      <Users className="h-6 w-6 text-blue-600" />
+                <Card className="hover:shadow-lg transition-shadow relative">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+                        <Users className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {org.name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {org.createdAt
+                            ? formatCreationDate(org.createdAt.toISOString())
+                            : '날짜 없음'}
+                        </p>
+                      </div>
+                      {/* Owner인 경우만 드롭다운 메뉴 표시 */}
+                      {org.membershipRole === 'owner' && (
+                        <Dropdown>
+                          <DropdownTrigger>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="light"
+                              className="text-gray-500 hover:text-gray-700"
+                              onClick={e => e.stopPropagation()}
+                              data-dropdown-trigger="true"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownTrigger>
+                          <DropdownMenu aria-label="조직 관리">
+                            <DropdownItem
+                              key="settings"
+                              startContent={<Settings className="w-4 h-4" />}
+                              onPress={() => {
+                                router.push(`/org/${org.id}/settings`)
+                              }}
+                            >
+                              설정
+                            </DropdownItem>
+                            <DropdownItem
+                              key="delete"
+                              className="text-danger"
+                              color="danger"
+                              startContent={<Trash2 className="w-4 h-4" />}
+                              onPress={() => {
+                                setSelectedOrganization(org)
+                                onDeleteModalOpen()
+                              }}
+                            >
+                              삭제
+                            </DropdownItem>
+                          </DropdownMenu>
+                        </Dropdown>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0 text-left">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {org.name}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        {org.createdAt
-                          ? formatCreationDate(org.createdAt.toISOString())
-                          : '날짜 없음'}
-                      </p>
-                    </div>
-                    {/* Owner인 경우만 드롭다운 메뉴 표시 */}
-                    {org.membershipRole === 'owner' && (
-                      <Dropdown>
-                        <DropdownTrigger>
-                          <Button
-                            isIconOnly
-                            size="sm"
-                            variant="light"
-                            className="text-gray-500 hover:text-gray-700"
-                            onClick={e => e.stopPropagation()}
-                            data-dropdown-trigger="true"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownTrigger>
-                        <DropdownMenu aria-label="조직 관리">
-                          <DropdownItem
-                            key="settings"
-                            startContent={<Settings className="w-4 h-4" />}
-                            onPress={() => {
-                              router.push(`/org/${org.id}/settings`)
-                            }}
-                          >
-                            설정
-                          </DropdownItem>
-                          <DropdownItem
-                            key="delete"
-                            className="text-danger"
-                            color="danger"
-                            startContent={<Trash2 className="w-4 h-4" />}
-                            onPress={() => {
-                              setSelectedOrganization(org)
-                              onDeleteModalOpen()
-                            }}
-                          >
-                            삭제
-                          </DropdownItem>
-                        </DropdownMenu>
-                      </Dropdown>
+                  </CardHeader>
+                  <CardBody className="pt-0">
+                    {org.description && (
+                      <p className="text-gray-600 text-sm">{org.description}</p>
                     )}
-                  </div>
-                </CardHeader>
-                <CardBody className="pt-0">
-                  {org.description && (
-                    <p className="text-gray-600 text-sm">{org.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Chip
-                      color={getRoleColor(org.membershipRole) as any}
-                      variant="flat"
-                      size="sm"
-                    >
-                      {getRoleDisplayName(org.membershipRole)}
-                    </Chip>
-                  </div>
-                </CardBody>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Chip
+                        color={getRoleColor(org.membershipRole) as any}
+                        variant="flat"
+                        size="sm"
+                      >
+                        {getRoleDisplayName(org.membershipRole)}
+                      </Chip>
+                    </div>
+                  </CardBody>
                 </Card>
               </div>
             ))}

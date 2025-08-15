@@ -118,6 +118,16 @@ export interface ValidatedCategorySelectProps {
    * 비활성화 상태
    */
   isDisabled?: boolean
+
+  /**
+   * 표시할 카테고리 유형 (선택 시 해당 유형만 필터링하여 표시)
+   */
+  allowedCategoryTypes?: (
+    | 'income'
+    | 'savings'
+    | 'fixed_expense'
+    | 'variable_expense'
+  )[]
 }
 
 /**
@@ -146,6 +156,7 @@ export default function ValidatedCategorySelect({
   noneOptionLabel = '카테고리 없음',
   readOnly = false,
   isDisabled = false,
+  allowedCategoryTypes,
 }: ValidatedCategorySelectProps) {
   const [internalError, setInternalError] = useState<string | null>(null)
   const [hasChanged, setHasChanged] = useState(false)
@@ -219,6 +230,7 @@ export default function ValidatedCategorySelect({
       noneOptionLabel={noneOptionLabel}
       readOnly={readOnly}
       isDisabled={isDisabled}
+      allowedCategoryTypes={allowedCategoryTypes}
     />
   )
 }
@@ -309,11 +321,11 @@ export const categoryValidationRules = {
       const compatibilityMap: Record<string, string[]> = {
         income: ['income', 'savings'],
         expense: ['fixed_expense', 'variable_expense'],
-        transfer: ['savings'],
+        transfer: ['income', 'savings'],
       }
 
       const allowedCategoryTypes = compatibilityMap[transactionType] || []
-      
+
       if (!allowedCategoryTypes.includes(categoryData.type)) {
         const typeNames: Record<string, string> = {
           income: '수입',
@@ -325,7 +337,7 @@ export const categoryValidationRules = {
         const allowedTypeNames = allowedCategoryTypes
           .map(type => typeNames[type])
           .join(', ')
-        
+
         const transactionTypeNames: Record<string, string> = {
           income: '수입',
           expense: '지출',
