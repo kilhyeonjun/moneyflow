@@ -802,16 +802,52 @@ export default function TransactionsPage() {
           <ModalHeader>새 거래 추가</ModalHeader>
           <ModalBody>
             <div className="space-y-4">
+              <ValidatedSelect
+                label="거래 유형"
+                placeholder="거래 유형을 선택하세요"
+                selectedKeys={new Set([createForm.data.transactionType])}
+                onSelectionChange={(keys) => {
+                  const value = Array.from(keys)[0] as string
+                  const newTransactionType = value || 'expense'
+                  createForm.updateField('transactionType', newTransactionType)
+                  // 거래 유형 변경 시 카테고리 초기화 (호환되지 않는 카테고리 방지)
+                  createForm.updateField('categoryId', '')
+                }}
+                validation={createZodValidationRules.transactionType}
+                isRequired
+                options={[
+                  { key: 'expense', label: '지출' },
+                  { key: 'income', label: '수입' },
+                  { key: 'transfer', label: '이체' },
+                ]}
+              />
+
               <ValidatedCategorySelect
                 organizationId={orgId}
                 value={createForm.data.categoryId}
+                onSelectionChangeWithValidation={(
+                  categoryId: string | undefined,
+                  error: string | null,
+                  categoryData?: any
+                ) => {
+                  createForm.updateField('categoryId', categoryId || '')
+                  
+                  // 카테고리 데이터가 있을 때 추가 validation 수행
+                  if (categoryData && categoryId) {
+                    const compatibilityError = categoryValidationRules.allowedForTransactionType(
+                      createForm.data.transactionType as 'income' | 'expense' | 'transfer'
+                    )(categoryId, categoryData)
+                    
+                    if (compatibilityError) {
+                      // setFieldError 메서드가 없으므로 대신 validation으로 처리
+                      createForm.validateField('categoryId', categoryId || '')
+                    } else {
+                      createForm.clearFieldError('categoryId')
+                    }
+                  }
+                }}
                 onSelectionChange={(categoryId: string | undefined) => {
                   createForm.updateField('categoryId', categoryId || '')
-                  // 카테고리 선택 시 거래 유형 자동 설정 (하위 호환성)
-                  if (categoryId) {
-                    // 카테고리가 선택되면 해당 카테고리의 유형에 맞는 transactionType 설정
-                    // 이는 서버 액션에서 처리되므로 여기서는 기본값 유지
-                  }
                 }}
                 label="카테고리"
                 placeholder="카테고리를 선택하세요"

@@ -298,6 +298,47 @@ export const categoryValidationRules = {
     },
 
   /**
+   * 거래 유형에 호환되는 카테고리만 허용하는 검사
+   */
+  allowedForTransactionType:
+    (transactionType: 'income' | 'expense' | 'transfer') =>
+    (value: string | undefined, categoryData?: CategoryData) => {
+      if (!value || !categoryData) return null
+
+      // 거래 유형과 카테고리 유형 호환성 매핑
+      const compatibilityMap: Record<string, string[]> = {
+        income: ['income', 'savings'],
+        expense: ['fixed_expense', 'variable_expense'],
+        transfer: ['savings'],
+      }
+
+      const allowedCategoryTypes = compatibilityMap[transactionType] || []
+      
+      if (!allowedCategoryTypes.includes(categoryData.type)) {
+        const typeNames: Record<string, string> = {
+          income: '수입',
+          savings: '저축',
+          fixed_expense: '고정 지출',
+          variable_expense: '변동 지출',
+        }
+
+        const allowedTypeNames = allowedCategoryTypes
+          .map(type => typeNames[type])
+          .join(', ')
+        
+        const transactionTypeNames: Record<string, string> = {
+          income: '수입',
+          expense: '지출',
+          transfer: '이체',
+        }
+
+        return `${transactionTypeNames[transactionType]} 거래에는 ${allowedTypeNames} 카테고리만 사용할 수 있습니다`
+      }
+
+      return null
+    },
+
+  /**
    * 여러 validation 조합
    */
   combine:

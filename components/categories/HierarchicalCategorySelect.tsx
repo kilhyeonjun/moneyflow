@@ -518,7 +518,22 @@ export default function HierarchicalCategorySelect({
                             size={18}
                           />
                           <div className="flex flex-col">
-                            <span className="font-medium">{category.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{category.name}</span>
+                              <Chip 
+                                size="sm" 
+                                variant="flat" 
+                                color={
+                                  category.type === 'income' ? 'success' :
+                                  category.type === 'savings' ? 'primary' :
+                                  category.type === 'fixed_expense' ? 'warning' :
+                                  'secondary'
+                                }
+                                className="text-xs"
+                              >
+                                {getTypeName(category.type)}
+                              </Chip>
+                            </div>
                             {category.transactionCount > 0 && (
                               <span className="text-xs text-gray-500">
                                 {category.transactionCount}건의 거래
@@ -574,7 +589,22 @@ export default function HierarchicalCategorySelect({
                           categoryType={category.type}
                           size={18}
                         />
-                        <span className="font-medium">{category.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{category.name}</span>
+                          <Chip 
+                            size="sm" 
+                            variant="flat" 
+                            color={
+                              category.type === 'income' ? 'success' :
+                              category.type === 'savings' ? 'primary' :
+                              category.type === 'fixed_expense' ? 'warning' :
+                              'secondary'
+                            }
+                            className="text-xs"
+                          >
+                            {getTypeName(category.type)}
+                          </Chip>
+                        </div>
                       </div>
                     ))}
 

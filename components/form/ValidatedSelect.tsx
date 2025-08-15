@@ -157,14 +157,10 @@ export default function ValidatedSelect({
     return allOptions
   }, [options, showEmptyOption, emptyOptionLabel])
 
-  // 필수 필드 라벨 처리
+  // 필수 필드 라벨 처리 (CSS로 별표를 처리하므로 여기서는 원본 라벨 사용)
   const processedLabel = useMemo(() => {
-    if (!label) return label
-    if (isRequired && typeof label === 'string' && !label.includes('*')) {
-      return `${label} *`
-    }
     return label
-  }, [label, isRequired])
+  }, [label])
 
   // renderValue 처리
   const defaultRenderValue = useCallback(

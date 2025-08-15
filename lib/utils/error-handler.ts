@@ -139,9 +139,16 @@ export class EnhancedErrorHandler {
     }
     if (
       message.includes('Category type') &&
-      message.includes('not compatible')
+      (message.includes('not compatible') || message.includes('is not compatible'))
     ) {
-      return '선택한 카테고리는 이 거래 유형과 호환되지 않습니다. 적절한 카테고리를 선택해주세요.'
+      // 더 구체적인 메시지 추출 시도
+      if (message.includes('income') && message.includes('expense')) {
+        return '수입 카테고리는 지출 거래에 사용할 수 없습니다. 지출 카테고리를 선택해주세요.'
+      }
+      if (message.includes('expense') && message.includes('income')) {
+        return '지출 카테고리는 수입 거래에 사용할 수 없습니다. 수입 카테고리를 선택해주세요.'
+      }
+      return '선택한 카테고리는 이 거래 유형과 호환되지 않습니다. 거래 유형에 맞는 카테고리를 선택해주세요.'
     }
 
     // 결제수단 관련 에러
