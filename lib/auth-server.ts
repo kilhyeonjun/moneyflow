@@ -161,21 +161,6 @@ export async function getUserOrganizations(userId: string) {
   }
 }
 
-/**
- * Check if user has admin role in organization
- */
-export async function requireAdminRole(
-  userId: string,
-  organizationId: string
-): Promise<OrganizationMemberWithOrganization> {
-  const member = await checkOrganizationMembership(userId, organizationId)
-
-  if (!member || member.role !== 'admin') {
-    throw new Error(ServerActionError.FORBIDDEN)
-  }
-
-  return member
-}
 
 /**
  * Check if user has admin or owner role in organization

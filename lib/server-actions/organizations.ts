@@ -6,7 +6,6 @@ import {
   getCurrentUser,
   requireAuth,
   checkOrganizationMembership,
-  requireAdminRole,
   requireAdminOrOwnerRole,
   getUserOrganizations as getUserOrganizationsFromAuth,
   getOrganizationDetails as getOrganizationDetailsFromAuth,
@@ -117,8 +116,8 @@ class OrganizationActions extends BaseServerAction {
     const user = await requireAuth()
     this.validateUUID(input.id, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, input.id)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, input.id)
 
     // Prepare update data
     const updateData = this.sanitizeInput(input)
@@ -191,8 +190,8 @@ class OrganizationActions extends BaseServerAction {
     const user = await requireAuth()
     this.validateUUID(organizationId, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, organizationId)
 
     const members = await prisma.organizationMember.findMany({
       where: { organizationId },
@@ -216,8 +215,8 @@ class OrganizationActions extends BaseServerAction {
     this.validateUUID(input.organizationId, 'Organization ID')
     this.validateUUID(input.userId, 'User ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, input.organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, input.organizationId)
 
     // Validate role
     const validRoles = ['admin', 'member']
@@ -285,8 +284,8 @@ class OrganizationActions extends BaseServerAction {
     this.validateUUID(organizationId, 'Organization ID')
     this.validateUUID(userId, 'User ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, organizationId)
 
     // Prevent self-removal if user is the only admin
     if (userId === user.id) {
@@ -345,8 +344,8 @@ class OrganizationActions extends BaseServerAction {
     const user = await requireAuth()
     this.validateUUID(input.organizationId, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, input.organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, input.organizationId)
 
     // Validate required fields
     this.validateRequiredFields(input, ['organizationId', 'email'])
@@ -428,8 +427,8 @@ class OrganizationActions extends BaseServerAction {
     this.validateUUID(invitationId, 'Invitation ID')
     this.validateUUID(organizationId, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, organizationId)
 
     // Check if invitation exists and belongs to the organization
     const invitation = await prisma.organizationInvitation.findFirst({

@@ -5,7 +5,6 @@ import { prisma } from '@/lib/prisma'
 import {
   getCurrentUser,
   requireAuth,
-  requireAdminRole,
   requireAdminOrOwnerRole,
   checkOrganizationMembership,
 } from '@/lib/auth-server'
@@ -171,8 +170,8 @@ class SettingsActions extends BaseServerAction {
     this.validateUUID(invitationId, 'Invitation ID')
     this.validateUUID(organizationId, 'Organization ID')
 
-    // Verify admin role
-    await requireAdminRole(user.id, organizationId)
+    // Verify admin or owner role
+    await requireAdminOrOwnerRole(user.id, organizationId)
 
     // Check if invitation exists and is pending
     const invitation = await prisma.organizationInvitation.findFirst({
